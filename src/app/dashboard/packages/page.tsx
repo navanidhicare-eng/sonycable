@@ -1,7 +1,39 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+
+const mockPackages = [
+  {
+    id: "pkg1",
+    name: "SONY BASIC",
+    amount: "250",
+    description: "Basic channels for family entertainment.",
+  },
+  {
+    id: "pkg2",
+    name: "SONY PREMIUM",
+    amount: "450",
+    description: "Includes all basic channels plus premium sports and movie channels.",
+  },
+  {
+    id: "pkg3",
+    name: "SONY HD+ PACK",
+    amount: "550",
+    description: "All channels in HD quality for the best viewing experience.",
+  },
+];
+
 
 export default function PackagesPage() {
   return (
@@ -28,7 +60,26 @@ export default function PackagesPage() {
             <CardTitle>Package List</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Package details will be displayed here.</p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Package Name</TableHead>
+                  <TableHead>Amount (₹)</TableHead>
+                  <TableHead>Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mockPackages.map((pkg) => (
+                  <TableRow key={pkg.id}>
+                    <TableCell className="font-medium">{pkg.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">₹{pkg.amount}</Badge>
+                    </TableCell>
+                    <TableCell>{pkg.description}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
