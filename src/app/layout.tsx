@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Colacsan Cable Comparator',
+  title: 'SONY CABLE NETWORK',
   description: 'AI-powered cable bill analysis and recommendation.',
 };
 

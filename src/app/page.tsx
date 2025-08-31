@@ -9,7 +9,7 @@ export default function Home() {
           <div className="mb-4 flex items-center gap-3 text-primary">
             <Network className="h-10 w-10" />
             <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-              Colacsan Cable Comparator
+              SONY CABLE NETWORK
             </h1>
           </div>
           <p className="max-w-3xl text-lg text-muted-foreground md:text-xl">
