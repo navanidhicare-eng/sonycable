@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 const mockStaff = [
   {
@@ -18,21 +19,24 @@ const mockStaff = [
     name: "Ravi Kumar",
     mobile: "9123456780",
     area: "KPHB",
-    username: "ravi_k"
+    username: "ravi_k",
+    commission: "5%",
   },
   {
     id: "staff2",
     name: "Anil Yadav",
     mobile: "9123456781",
     area: "Nizampet",
-    username: "anil_y"
+    username: "anil_y",
+    commission: "5%",
   },
    {
     id: "staff3",
     name: "Kiran Goud",
     mobile: "9123456782",
     area: "All Areas",
-    username: "kiran_g"
+    username: "kiran_g",
+    commission: "4.5%",
   },
 ];
 
@@ -68,6 +72,7 @@ export default function StaffPage() {
                   <TableHead>Staff Name</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Assigned Area</TableHead>
+                  <TableHead>Commission</TableHead>
                   <TableHead>Username</TableHead>
                 </TableRow>
               </TableHeader>
@@ -77,6 +82,9 @@ export default function StaffPage() {
                     <TableCell className="font-medium">{staff.name}</TableCell>
                     <TableCell>{staff.mobile}</TableCell>
                     <TableCell>{staff.area}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{staff.commission}</Badge>
+                    </TableCell>
                     <TableCell>{staff.username}</TableCell>
                   </TableRow>
                 ))}

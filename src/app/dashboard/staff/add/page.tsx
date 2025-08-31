@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription as FormDescriptionComponent,
   FormField,
   FormItem,
   FormLabel,
@@ -36,6 +37,7 @@ const formSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
   mobileNumber: z.string().min(10, "Please enter a valid mobile number."),
   area: z.string({ required_error: "Please select an area." }),
+  commission: z.string().min(1, "Commission is required."),
   username: z.string().min(4, "Username must be at least 4 characters."),
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
@@ -53,6 +55,7 @@ export default function AddStaffPage() {
       mobileNumber: "",
       username: "",
       password: "",
+      commission: "",
     },
   });
 
@@ -125,6 +128,22 @@ export default function AddStaffPage() {
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="commission"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Collection Commission</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 5%" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                       <FormDescriptionComponent>
+                        Enter commission as a percentage (e.g. 5%).
+                      </FormDescriptionComponent>
                     </FormItem>
                   )}
                 />
