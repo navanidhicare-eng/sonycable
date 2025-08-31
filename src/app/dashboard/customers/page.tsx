@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
+import Link from "next/link";
 
 export default function CustomersPage() {
   return (
@@ -15,9 +16,11 @@ export default function CustomersPage() {
               Manage your customer information here.
             </p>
           </div>
-          <Button className="mt-4 sm:mt-0">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Customer
+          <Button asChild className="mt-4 sm:mt-0">
+            <Link href="/dashboard/customers/add">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Customer
+            </Link>
           </Button>
         </header>
         <Card className="w-full max-w-4xl">
