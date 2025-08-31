@@ -32,7 +32,7 @@ export default function WithSidebarLayout({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={true}>
-                <Link href="/">
+                <Link href="/dashboard">
                   <LayoutDashboard />
                   <span>Dashboard</span>
                 </Link>
