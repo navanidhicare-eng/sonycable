@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
@@ -26,6 +26,122 @@ export default function DashboardPage() {
     return "Welcome to your SONY CABLE dashboard.";
   };
 
+  const AdminDashboard = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                Total Revenue
+            </CardTitle>
+            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">₹45,231.89</div>
+            <p className="text-xs text-muted-foreground">
+                +20.1% from last month
+            </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                Active Customers
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">+2350</div>
+            <p className="text-xs text-muted-foreground">
+                +180.1% from last month
+            </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">+12</div>
+            <p className="text-xs text-muted-foreground">
+                +1 from last month
+            </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                All Collection Agents
+            </CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">5</div>
+            <p className="text-xs text-muted-foreground">
+                Total active agents
+            </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
+            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">₹5,250</div>
+            <p className="text-xs text-muted-foreground">
+                Collection as of now
+            </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month's Collection</CardTitle>
+            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">₹1,20,500</div>
+            <p className="text-xs text-muted-foreground">
+                Total for this month
+            </p>
+            </CardContent>
+        </Card>
+    </div>
+  );
+
+  const StaffDashboard = () => (
+     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                Collection Wallet
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">₹12,550</div>
+            <p className="text-xs text-muted-foreground">
+                Your total collection this month
+            </p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                Commission Wallet
+            </CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+            <div className="text-2xl font-bold">₹1,255</div>
+            <p className="text-xs text-muted-foreground">
+                Your total commission this month
+            </p>
+            </CardContent>
+        </Card>
+     </div>
+  );
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
@@ -46,86 +162,9 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-              <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹45,231.89</div>
-              <p className="text-xs text-muted-foreground">
-                +20.1% from last month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Active Customers
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">+2350</div>
-              <p className="text-xs text-muted-foreground">
-                +180.1% from last month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">+12</div>
-              <p className="text-xs text-muted-foreground">
-                +1 from last month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                All Collection Agents
-              </CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">5</div>
-              <p className="text-xs text-muted-foreground">
-                Total active agents
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
-              <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹5,250</div>
-              <p className="text-xs text-muted-foreground">
-                Collection as of now
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month's Collection</CardTitle>
-              <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹1,20,500</div>
-              <p className="text-xs text-muted-foreground">
-                Total for this month
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {userRole === 'Admin' && <AdminDashboard />}
+        {userRole === 'Staff' && <StaffDashboard />}
+
       </div>
     </main>
   );
