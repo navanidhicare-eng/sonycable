@@ -117,7 +117,7 @@ export default function ComplaintsPage() {
                 <TableBody>
                   {complaints.map((complaint) => (
                     <TableRow key={complaint.id}>
-                      <TableCell>{new Date(complaint.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(complaint.date).toLocaleDateString('en-CA')}</TableCell>
                       <TableCell className="font-medium">
                         <div>{complaint.customerName}</div>
                         <div className="text-xs text-muted-foreground">{complaint.stbId}</div>
