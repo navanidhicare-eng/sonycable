@@ -16,11 +16,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
 
 export default function DashboardPage() {
   const [userRole, setUserRole] = useState("");
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
   const { toast } = useToast();
+  const [commissionReceived, setCommissionReceived] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -40,11 +44,16 @@ export default function DashboardPage() {
   };
 
   const handleSettleCollection = () => {
+    const collectionAmount = 12550;
+    const commissionAmount = 1255;
+    const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
+
     toast({
         title: "Settlement Successful",
-        description: "Your collected amount of ₹12,550 has been sent to the admin.",
+        description: `Your collected amount of ₹${amountToSend.toLocaleString()} has been sent to the admin.`,
     });
     setIsSettleDialogOpen(false);
+    setCommissionReceived(false); // Reset checkbox state after action
   }
 
   const CollectionCard = () => (
@@ -237,6 +246,12 @@ export default function DashboardPage() {
                 <span className="font-bold text-foreground">₹12,550</span> to the admin? This action cannot be undone.
             </DialogDescription>
         </DialogHeader>
+        <div className="py-4">
+            <div className="flex items-center space-x-2">
+                <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
+                <Label htmlFor="commission-received">Commission Received (₹1,255)</Label>
+            </div>
+        </div>
         <DialogFooter>
             <Button variant="outline" onClick={() => setIsSettleDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSettleCollection}>Confirm & Send</Button>
