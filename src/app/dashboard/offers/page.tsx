@@ -22,18 +22,21 @@ const mockOffers = [
     name: "New Year Bonanza",
     description: "Get 20% off on yearly subscription.",
     status: "Active",
+    commission: "5% of recharge",
   },
   {
     id: "offer2",
     name: "Festival Combo",
     description: "Premium pack for just ₹400 for 2 months.",
     status: "Active",
+    commission: "₹20 per recharge",
   },
   {
     id: "offer3",
     name: "Summer Sale",
     description: "1-month free subscription on HD+ Pack.",
     status: "Expired",
+    commission: "₹10 per recharge",
   },
 ];
 
@@ -79,6 +82,7 @@ export default function OffersPage() {
                 <TableRow>
                   <TableHead>Offer Name</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Commission</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -87,6 +91,7 @@ export default function OffersPage() {
                   <TableRow key={offer.id}>
                     <TableCell className="font-medium">{offer.name}</TableCell>
                     <TableCell>{offer.description}</TableCell>
+                    <TableCell className="font-medium text-primary">{offer.commission}</TableCell>
                     <TableCell>
                       <Badge variant={offer.status === 'Active' ? 'default' : 'destructive'}>
                         {offer.status}
