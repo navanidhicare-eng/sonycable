@@ -101,32 +101,32 @@ export default function WithSidebarLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             {userRole === 'Admin' && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/dashboard/packages">
-                    <Package />
-                    <span>Packages</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/areas">
-                  <Map />
-                  <span>Areas</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            {userRole === 'Admin' && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/dashboard/mso-payments">
-                    <ArrowRightLeft />
-                    <span>MSO Payments</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/dashboard/packages">
+                      <Package />
+                      <span>Packages</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/dashboard/areas">
+                      <Map />
+                      <span>Areas</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/dashboard/mso-payments">
+                      <ArrowRightLeft />
+                      <span>MSO Payments</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
