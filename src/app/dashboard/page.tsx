@@ -3,13 +3,24 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [userRole, setUserRole] = useState("");
+  const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -27,6 +38,14 @@ export default function DashboardPage() {
     }
     return "Welcome to your SONY CABLE dashboard.";
   };
+
+  const handleSettleCollection = () => {
+    toast({
+        title: "Settlement Successful",
+        description: "Your collected amount of ₹12,550 has been sent to the admin.",
+    });
+    setIsSettleDialogOpen(false);
+  }
 
   const CollectionCard = () => (
     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -164,10 +183,27 @@ export default function DashboardPage() {
             </p>
             </CardContent>
         </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                Settle Collection
+            </CardTitle>
+            <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)}>
+                    Send to Admin
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                    Send your collected amount to the admin for settlement.
+                </p>
+            </CardContent>
+        </Card>
      </div>
   );
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
         <header className="mb-10">
@@ -192,5 +228,21 @@ export default function DashboardPage() {
 
       </div>
     </main>
+    <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+            <DialogTitle>Confirm Settlement</DialogTitle>
+            <DialogDescription>
+                Are you sure you want to send the collected amount of{" "}
+                <span className="font-bold text-foreground">₹12,550</span> to the admin? This action cannot be undone.
+            </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSettleDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSettleCollection}>Confirm & Send</Button>
+        </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
