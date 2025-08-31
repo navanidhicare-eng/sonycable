@@ -14,13 +14,12 @@ import { extractTextFromUrl } from '@/services/url-extractor';
 
 const CompareCableBillsInputSchema = z.object({
   urls: z.array(z.string().url()).describe('An array of URLs pointing to cable bill documents.'),
-  userPreferences: z.string().optional().describe('User preferences for cable services (e.g., desired features, budget limits).'),
 });
 export type CompareCableBillsInput = z.infer<typeof CompareCableBillsInputSchema>;
 
 const CompareCableBillsOutputSchema = z.object({
   comparison: z.string().describe('A detailed comparison of the cable bills, highlighting key features and pricing.'),
-  recommendation: z.string().describe('A recommendation of the most suitable cable network options based on user preferences and bill details.'),
+  recommendation: z.string().describe('A recommendation of the most suitable cable network options based on the bill details.'),
 });
 export type CompareCableBillsOutput = z.infer<typeof CompareCableBillsOutputSchema>;
 
@@ -32,14 +31,13 @@ const compareCableBillsPrompt = ai.definePrompt({
   name: 'compareCableBillsPrompt',
   input: {schema: CompareCableBillsInputSchema},
   output: {schema: CompareCableBillsOutputSchema},
-  prompt: `You are an expert in analyzing cable bills and recommending the best options based on user preferences.
+  prompt: `You are an expert in analyzing cable bills and recommending the best options.
 
   You will receive an array of URLs, each pointing to a cable bill document. You will extract the relevant information from each bill, such as the features offered and the pricing details.
 
-  Based on the extracted information and the user's preferences (if provided), you will compare the cable bills and recommend the most suitable options.
+  Based on the extracted information, you will compare the cable bills and recommend the most suitable options.
 
   URLs: {{{urls}}}
-  User Preferences: {{userPreferences}}
 
   Comparison:
   Recommendation: `,
@@ -64,9 +62,8 @@ const compareCableBillsFlow = ai.defineFlow(
       })
     );
 
-    // Call the prompt with the extracted texts and user preferences
+    // Call the prompt with the extracted texts
     const {output} = await compareCableBillsPrompt({
-      ...input,
       urls: extractedTexts,
     });
     return output!;

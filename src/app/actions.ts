@@ -5,12 +5,10 @@ import { z } from "zod";
 
 const actionSchema = z.object({
   urls: z.array(z.string().url()),
-  preferences: z.string().optional(),
 });
 
 export async function getComparisonAction(data: {
   urls: string[];
-  preferences?: string;
 }): Promise<CompareCableBillsOutput> {
   const validation = actionSchema.safeParse(data);
   if (!validation.success) {
@@ -20,7 +18,6 @@ export async function getComparisonAction(data: {
   try {
     const result = await compareCableBills({
       urls: validation.data.urls,
-      userPreferences: validation.data.preferences,
     });
     return result;
   } catch (error) {

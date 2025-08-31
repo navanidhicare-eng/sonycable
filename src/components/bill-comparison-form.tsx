@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,23 +15,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getComparisonAction } from "@/app/actions";
 import { ComparisonResults } from "./comparison-results";
 import { useToast } from "@/hooks/use-toast";
 import type { CompareCableBillsOutput } from "@/ai/flows/compare-cable-bills";
-import { Loader2, Plus, Sparkles, Trash2, Settings, Link as LinkIcon } from "lucide-react";
+import { Loader2, Plus, Sparkles, Trash2, Link as LinkIcon } from "lucide-react";
 
 const formSchema = z.object({
   urls: z.array(z.object({ value: z.string().url({ message: "Please enter a valid URL." }) })).min(1, "Please add at least one URL."),
-  preferences: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-const PREFERENCES_STORAGE_KEY = "cable_comparator_preferences";
 
 export function BillComparisonForm() {
   const [result, setResult] = useState<CompareCableBillsOutput | null>(null);
@@ -42,7 +38,6 @@ export function BillComparisonForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       urls: [{ value: "" }],
-      preferences: "",
     },
   });
 
@@ -51,25 +46,12 @@ export function BillComparisonForm() {
     name: "urls",
   });
 
-  useEffect(() => {
-    const savedPreferences = localStorage.getItem(PREFERENCES_STORAGE_KEY);
-    if (savedPreferences) {
-      form.setValue("preferences", savedPreferences);
-    }
-  }, [form]);
-
-  const handlePreferencesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    form.setValue("preferences", e.target.value);
-    localStorage.setItem(PREFERENCES_STORAGE_KEY, e.target.value);
-  };
-
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     setResult(null);
     try {
       const response = await getComparisonAction({
         urls: data.urls.map(u => u.value),
-        preferences: data.preferences,
       });
       setResult(response);
     } catch (error) {
@@ -137,28 +119,6 @@ export function BillComparisonForm() {
                   Add another URL
                 </Button>
               </div>
-
-              <FormField
-                control={form.control}
-                name="preferences"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-lg font-semibold">
-                      <Settings className="h-5 w-5" />
-                      Your Preferences (Optional)
-                    </FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="e.g., 'I need at least 100 Mbps internet speed', 'My budget is $80/month', 'I want sports channels like ESPN'"
-                        className="min-h-[120px]"
-                        {...field}
-                        onChange={handlePreferencesChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <Button type="submit" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting}>
                 {isSubmitting ? (
