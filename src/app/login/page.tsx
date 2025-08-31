@@ -50,7 +50,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     // This is a simple, non-production authentication check.
     if (
-      data.email === "Psdgandepalli@gmail.com" &&
+      data.email.toLowerCase() === "psdgandepalli@gmail.com" &&
       data.password === "Psd@1986"
     ) {
       toast({
