@@ -3,7 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
   const [userRole, setUserRole] = useState("");
@@ -29,9 +30,17 @@ export default function DashboardPage() {
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
         <header className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-            Dashboard
-          </h1>
+          <div className="flex items-center gap-4">
+             <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
+                Dashboard
+             </h1>
+             {userRole && (
+                <Badge variant={userRole === "Admin" ? "default" : "secondary"} className="text-lg">
+                   <ShieldCheck className="mr-2 h-5 w-5" />
+                   {userRole} Role
+                </Badge>
+            )}
+          </div>
           <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
             {getWelcomeMessage()}
           </p>
