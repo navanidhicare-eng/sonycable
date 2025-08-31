@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Search, User } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 // In a real app, you might fetch this list from your customers data
 const mockCustomers = [
@@ -45,7 +46,7 @@ export default function AddComplaintPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [foundCustomer, setFoundCustomer] = useState(null);
+  const [foundCustomer, setFoundCustomer] = useState<(typeof mockCustomers[0]) | null>(null);
   const [searchError, setSearchError] = useState("");
 
   const form = useForm<FormValues>({
@@ -104,56 +105,56 @@ export default function AddComplaintPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4 mb-6">
-                <FormLabel>Find Customer</FormLabel>
-                <div className="flex gap-2">
-                    <Input
-                        placeholder="Search by Name, Mobile, STB or Customer ID"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <Button type="button" onClick={handleCustomerSearch}>
-                        <Search className="mr-2 h-4 w-4" />
-                        Search
-                    </Button>
-                </div>
-                {searchError && <p className="text-sm font-medium text-destructive">{searchError}</p>}
-                {foundCustomer && (
-                    <div className="flex items-center rounded-md border border-dashed p-3">
-                        <User className="mr-3 h-6 w-6 text-muted-foreground" />
-                        <div>
-                            <p className="font-semibold">{foundCustomer.name}</p>
-                            <p className="text-sm text-muted-foreground">STB ID: {foundCustomer.stbId} | Mobile: {foundCustomer.mobile}</p>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="complaintDetails"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Complaint Details</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe the customer's complaint in detail..."
-                          className="resize-none"
-                          rows={4}
-                          {...field}
+             <Form {...form}>
+                <div className="space-y-4 mb-6">
+                    <Label>Find Customer</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="Search by Name, Mobile, STB or Customer ID"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={!foundCustomer}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Register Complaint
-                </Button>
-              </form>
+                        <Button type="button" onClick={handleCustomerSearch}>
+                            <Search className="mr-2 h-4 w-4" />
+                            Search
+                        </Button>
+                    </div>
+                    {searchError && <p className="text-sm font-medium text-destructive">{searchError}</p>}
+                    {foundCustomer && (
+                        <div className="flex items-center rounded-md border border-dashed p-3">
+                            <User className="mr-3 h-6 w-6 text-muted-foreground" />
+                            <div>
+                                <p className="font-semibold">{foundCustomer.name}</p>
+                                <p className="text-sm text-muted-foreground">STB ID: {foundCustomer.stbId} | Mobile: {foundCustomer.mobile}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                    control={form.control}
+                    name="complaintDetails"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Complaint Details</FormLabel>
+                        <FormControl>
+                            <Textarea
+                            placeholder="Describe the customer's complaint in detail..."
+                            className="resize-none"
+                            rows={4}
+                            {...field}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <Button type="submit" className="w-full" disabled={!foundCustomer}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Register Complaint
+                    </Button>
+                </form>
             </Form>
           </CardContent>
         </Card>
