@@ -1,4 +1,7 @@
 
+"use client";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
@@ -36,6 +39,15 @@ const mockOffers = [
 
 
 export default function OffersPage() {
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("userRole");
+      setUserRole(role || "");
+    }
+  }, []);
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
@@ -48,12 +60,14 @@ export default function OffersPage() {
               Manage your promotional offers and campaigns.
             </p>
           </div>
-          <Button asChild className="mt-4 sm:mt-0">
-            <Link href="/dashboard/offers/add">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Offer
-            </Link>
-          </Button>
+          {userRole === 'Admin' && (
+            <Button asChild className="mt-4 sm:mt-0">
+              <Link href="/dashboard/offers/add">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Offer
+              </Link>
+            </Button>
+          )}
         </header>
         <Card className="w-full max-w-4xl">
           <CardHeader>
