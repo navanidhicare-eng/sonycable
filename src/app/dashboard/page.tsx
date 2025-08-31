@@ -3,8 +3,10 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
   const [userRole, setUserRole] = useState("");
@@ -26,8 +28,30 @@ export default function DashboardPage() {
     return "Welcome to your SONY CABLE dashboard.";
   };
 
+  const CollectionCard = () => (
+    <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+        <Link href="/dashboard/collection" className="block h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                    Payment Collection
+                </CardTitle>
+                <IndianRupee className="h-4 w-4 text-primary-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between">
+                    <p className="text-xs">
+                        Go to collection page
+                    </p>
+                    <ArrowRight className="h-5 w-5" />
+                </div>
+            </CardContent>
+        </Link>
+    </Card>
+  );
+
   const AdminDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <CollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -111,6 +135,7 @@ export default function DashboardPage() {
 
   const StaffDashboard = () => (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <CollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
