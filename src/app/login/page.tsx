@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -51,7 +50,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     // This is a simple, non-production authentication check.
     if (
-      data.email === "Psdgandepalli@gmail.com" &&
+      data.email === "dgandepalli@gmail.com" &&
       data.password === "Psd@1986"
     ) {
       toast({
