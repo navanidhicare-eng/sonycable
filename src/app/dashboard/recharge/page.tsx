@@ -3,7 +3,12 @@
 
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -20,7 +25,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CreditCard } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Search, CreditCard, Package } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 const mockCustomers = [
   {
@@ -57,6 +73,28 @@ const mockCustomers = [
   },
 ];
 
+const mockPackages = [
+  {
+    id: "pkg1",
+    name: "SONY BASIC",
+    amount: "250",
+    description: "Basic channels for family entertainment.",
+  },
+  {
+    id: "pkg2",
+    name: "SONY PREMIUM",
+    amount: "450",
+    description: "Includes all basic channels plus premium sports and movie channels.",
+  },
+  {
+    id: "pkg3",
+    name: "SONY HD+ PACK",
+    amount: "550",
+    description: "All channels in HD quality for the best viewing experience.",
+  },
+];
+
+
 const areaOptions = [
   { value: "all", label: "All Areas" },
   { value: "KPHB", label: "KPHB" },
@@ -66,8 +104,11 @@ const areaOptions = [
 ];
 
 export default function RechargePage() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const filteredCustomers = useMemo(() => {
     return mockCustomers.filter((customer) => {
@@ -84,6 +125,24 @@ export default function RechargePage() {
       return matchesSearch && matchesArea;
     });
   }, [searchTerm, filterArea]);
+
+  const handleRecharge = (customerName: string) => {
+    if (selectedPackage) {
+      const pkg = mockPackages.find(p => p.id === selectedPackage);
+      toast({
+        title: "Recharge Successful",
+        description: `${customerName} has been recharged with ${pkg?.name} for ₹${pkg?.amount}.`,
+      });
+      setIsDialogOpen(false);
+      setSelectedPackage(null);
+    } else {
+       toast({
+        variant: "destructive",
+        title: "Recharge Failed",
+        description: "Please select a package before confirming.",
+      });
+    }
+  };
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -146,19 +205,50 @@ export default function RechargePage() {
                       <TableCell>{customer.mobile}</TableCell>
                       <TableCell>{customer.stbId}</TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm">
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Recharge
-                        </Button>
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              Recharge
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                              <DialogTitle>Recharge for {customer.name}</DialogTitle>
+                              <DialogDescription>
+                                Select a package to continue with the recharge.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="package" className="text-right">
+                                  Package
+                                </Label>
+                                <Select onValueChange={setSelectedPackage}>
+                                  <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="Select a package" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {mockPackages.map((pkg) => (
+                                      <SelectItem key={pkg.id} value={pkg.id}>
+                                        {pkg.name} - ₹{pkg.amount}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button type="button" onClick={() => handleRecharge(customer.name)}>Confirm Recharge</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="h-24 text-center"
-                    >
+                    <TableCell colSpan={4} className="h-24 text-center">
                       No results found.
                     </TableCell>
                   </TableRow>
