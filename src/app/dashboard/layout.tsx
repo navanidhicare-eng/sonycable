@@ -10,7 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Users, Network, Package, ArrowRightLeft } from 'lucide-react';
+import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WithSidebarLayout({
@@ -51,6 +51,14 @@ export default function WithSidebarLayout({
                 <Link href="/dashboard/packages">
                   <Package />
                   <span>Packages</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/areas">
+                  <Map />
+                  <span>Areas</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
