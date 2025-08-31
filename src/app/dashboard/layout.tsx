@@ -2,6 +2,7 @@
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -10,7 +11,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map, CreditCard, IndianRupee, MessageSquareWarning, UserPlus, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map, CreditCard, IndianRupee, MessageSquareWarning, UserPlus, Megaphone, LogOut } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WithSidebarLayout({
@@ -112,6 +113,18 @@ export default function WithSidebarLayout({
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
+        <SidebarFooter>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/login">
+                            <LogOut />
+                            <span>Logout</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
