@@ -1,82 +1,63 @@
 
-"use client";
-
-import { usePathname } from 'next/navigation';
-import { BillComparisonForm } from '@/components/bill-comparison-form';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { LayoutDashboard, Users, Network } from 'lucide-react';
-import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Package, CircleDollarSign } from "lucide-react";
 
 export default function DashboardPage() {
-    const pathname = usePathname();
-
   return (
     <main className="min-h-screen w-full font-body text-foreground">
-      <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
-        <header className="mb-10 flex flex-col items-center text-center">
+      <div className="container mx-auto p-4 py-8 md:p-12">
+        <header className="mb-10">
           <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
             Dashboard
           </h1>
           <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-            Upload your cable bills, tell us what you want, and let our AI find the perfect plan for you. Save money and get the features you love.
+            Welcome to your SONY CABLE dashboard.
           </p>
         </header>
-        <BillComparisonForm />
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Revenue
+              </CardTitle>
+              <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹45,231.89</div>
+              <p className="text-xs text-muted-foreground">
+                +20.1% from last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Active Customers
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+2350</div>
+              <p className="text-xs text-muted-foreground">
+                +180.1% from last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+12</div>
+              <p className="text-xs text-muted-foreground">
+                +1 from last month
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </main>
-  );
-}
-
-function WithSidebarLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <Network className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">SONY CABLE</span>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === '/dashboard'}
-              >
-                <Link href="/dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === '/dashboard/customers'}
-              >
-                <Link href="/dashboard/customers">
-                  <Users />
-                  <span>Customers</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
   );
 }
