@@ -172,7 +172,7 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
                   <TableBody>
                     {mockAllTransactions.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
                         <TableCell>
                           <Badge variant={item.type === 'Recharge' ? 'default' : 'secondary'}>
                             {item.type}
@@ -205,7 +205,7 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
                   <TableBody>
                     {mockRechargeHistory.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
                         <TableCell>{item.description.split('with ')[1]}</TableCell>
                         <TableCell>₹{item.amount}</TableCell>
                         <TableCell>
@@ -237,7 +237,7 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
                   <TableBody>
                     {mockPaymentHistory.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
                         <TableCell>₹{item.amount}</TableCell>
                         <TableCell>
                            <Badge variant="secondary">{item.description.split('via ')[1]}</Badge>
@@ -254,3 +254,5 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
     </main>
   );
 }
+
+    
