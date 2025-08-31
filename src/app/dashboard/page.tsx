@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -20,18 +20,42 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
 
+interface SettlementRequest {
+  id: string;
+  staffName: string;
+  amount: number;
+  commission: number;
+  amountToSend: number;
+  status: 'pending' | 'approved';
+}
+
 export default function DashboardPage() {
   const [userRole, setUserRole] = useState("");
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
+  
+  // Simulate a shared state for settlement requests using localStorage
+  const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("userRole");
       setUserRole(role || "");
+
+      const storedRequests = localStorage.getItem("settlementRequests");
+      if (storedRequests) {
+        setSettlementRequests(JSON.parse(storedRequests));
+      }
     }
   }, []);
+
+  const updateAndStoreRequests = (newRequests: SettlementRequest[]) => {
+    setSettlementRequests(newRequests);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("settlementRequests", JSON.stringify(newRequests));
+    }
+  };
 
   const getWelcomeMessage = () => {
     if (userRole === "Admin") {
@@ -48,12 +72,35 @@ export default function DashboardPage() {
     const commissionAmount = 1255;
     const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
 
+    const newRequest: SettlementRequest = {
+        id: `settle_${new Date().getTime()}`,
+        staffName: 'Staff Member', // In a real app, this would be dynamic
+        amount: collectionAmount,
+        commission: commissionReceived ? commissionAmount : 0,
+        amountToSend: amountToSend,
+        status: 'pending',
+    };
+
+    updateAndStoreRequests([...settlementRequests, newRequest]);
+    
     toast({
-        title: "Settlement Successful",
-        description: `Your collected amount of ₹${amountToSend.toLocaleString()} has been sent to the admin.`,
+        title: "Request Sent",
+        description: `Your settlement request for ₹${amountToSend.toLocaleString()} has been sent to the admin for approval.`,
     });
+    
     setIsSettleDialogOpen(false);
     setCommissionReceived(false); // Reset checkbox state after action
+  }
+
+  const handleApproveSettlement = (requestId: string) => {
+    const updatedRequests = settlementRequests.map(req => 
+        req.id === requestId ? { ...req, status: 'approved' } : req
+    );
+    updateAndStoreRequests(updatedRequests);
+    toast({
+        title: "Settlement Approved",
+        description: "The staff member's wallet has been marked as cleared.",
+    })
   }
 
   const CollectionCard = () => (
@@ -77,8 +124,38 @@ export default function DashboardPage() {
     </Card>
   );
 
+   const SettlementRequestsCard = () => {
+    const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
+    if(pendingRequests.length === 0) return null;
+
+    return (
+         <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+                <CardTitle>Settlement Requests</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {pendingRequests.map(req => (
+                    <div key={req.id} className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                            <p className="font-semibold">{req.staffName}</p>
+                            <p className="text-sm text-muted-foreground">
+                                Requesting to settle <span className="font-bold text-foreground">₹{req.amountToSend.toLocaleString()}</span>
+                            </p>
+                        </div>
+                        <Button onClick={() => handleApproveSettlement(req.id)}>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Approve
+                        </Button>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+   };
+
   const AdminDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <SettlementRequestsCard />
         <CollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -161,7 +238,14 @@ export default function DashboardPage() {
     </div>
   );
 
-  const StaffDashboard = () => (
+  const StaffDashboard = () => {
+     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending');
+     const isWalletCleared = settlementRequests.every(req => req.status === 'approved');
+
+     const walletAmount = isWalletCleared ? 0 : 12550;
+     const commissionAmount = isWalletCleared ? 0 : 1255;
+
+     return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <CollectionCard />
         <Card>
@@ -172,7 +256,7 @@ export default function DashboardPage() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">₹12,550</div>
+            <div className="text-2xl font-bold">₹{walletAmount.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
                 Your total collection this month
             </p>
@@ -186,7 +270,7 @@ export default function DashboardPage() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">₹1,255</div>
+            <div className="text-2xl font-bold">₹{commissionAmount.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
                 Your total commission this month
             </p>
@@ -200,16 +284,17 @@ export default function DashboardPage() {
             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)}>
-                    Send to Admin
+                <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)} disabled={hasPendingRequest || isWalletCleared}>
+                    {hasPendingRequest ? 'Approval Pending' : (isWalletCleared ? 'Settled' : 'Send to Admin')}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                    Send your collected amount to the admin for settlement.
+                   {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}
                 </p>
             </CardContent>
         </Card>
      </div>
-  );
+     )
+  };
 
   return (
     <>
@@ -261,3 +346,4 @@ export default function DashboardPage() {
     </>
   );
 }
+    
