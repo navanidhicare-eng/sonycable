@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -27,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Network, LogIn } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }),
+  username: z.string().min(1, { message: "Please enter your username or mobile number." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
 
@@ -41,7 +42,7 @@ export default function LoginPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
   });
@@ -49,10 +50,15 @@ export default function LoginPage() {
   function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     // This is a simple, non-production authentication check.
-    if (
-      data.email.toLowerCase() === "psdgandepalli@gmail.com" &&
-      data.password === "Psd@1986"
-    ) {
+    const isAdmin =
+      data.username.toLowerCase() === "psdgandepalli@gmail.com" &&
+      data.password === "Psd@1986";
+    
+    const isStaff = 
+      data.username === "9010737882" &&
+      data.password === "12345678";
+
+    if (isAdmin || isStaff) {
       toast({
         title: "Login Successful",
         description: "Redirecting to dashboard...",
@@ -62,7 +68,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: "Invalid username or password. Please try again.",
       });
     }
     setIsSubmitting(false);
@@ -74,21 +80,20 @@ export default function LoginPage() {
         <CardHeader className="items-center text-center">
             <Network className="h-10 w-10 text-primary mb-2" />
           <CardTitle className="text-2xl">SONY CABLE NETWORK</CardTitle>
-          <CardDescription>Admin Login</CardDescription>
+          <CardDescription>Admin & Staff Login</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="email"
+                name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Username / Mobile</FormLabel>
                     <FormControl>
                       <Input
-                        type="email"
-                        placeholder="admin@example.com"
+                        placeholder="Enter your username or mobile"
                         {...field}
                       />
                     </FormControl>
