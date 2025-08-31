@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -53,6 +53,44 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold">+12</div>
               <p className="text-xs text-muted-foreground">
                 +1 from last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                All Collection Agents
+              </CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">5</div>
+              <p className="text-xs text-muted-foreground">
+                Total active agents
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
+              <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹5,250</div>
+              <p className="text-xs text-muted-foreground">
+                Collection as of now
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">This Month's Collection</CardTitle>
+              <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹1,20,500</div>
+              <p className="text-xs text-muted-foreground">
+                Total for this month
               </p>
             </CardContent>
           </Card>
