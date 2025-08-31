@@ -73,7 +73,6 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
         });
       }
     } catch (error) {
-      console.error('Error sharing:', error);
       toast({
         variant: "destructive",
         title: "Sharing Failed",
@@ -254,5 +253,3 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
     </main>
   );
 }
-
-    
