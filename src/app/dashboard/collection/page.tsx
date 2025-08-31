@@ -34,7 +34,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Phone, HandCoins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const mockCollections = [
+const initialCollections = [
   {
     id: "coll1",
     name: "Rajesh Sharma",
@@ -69,9 +69,10 @@ export default function CollectionPage() {
   const [amountCollected, setAmountCollected] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const { toast } = useToast();
+  const [collections, setCollections] = useState(initialCollections);
 
   const filteredCollections = useMemo(() => {
-    return mockCollections.filter((collection) => {
+    return collections.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
@@ -83,7 +84,7 @@ export default function CollectionPage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea]);
+  }, [searchTerm, filterArea, collections]);
 
   const openCollectDialog = (customer: any) => {
     setCurrentCustomer(customer);
@@ -98,8 +99,9 @@ export default function CollectionPage() {
       title: "Collection Recorded",
       description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
     });
+    setCollections(prevCollections => prevCollections.filter(c => c.id !== currentCustomer.id));
     setIsCollectDialogOpen(false);
-    // Here you would typically update your backend data
+    setCurrentCustomer(null);
   };
 
   return (

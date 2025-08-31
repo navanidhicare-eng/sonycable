@@ -141,7 +141,9 @@ export default function CustomersPage() {
                   filteredCustomers.map((customer) => (
                     <TableRow key={customer.id}>
                       <TableCell className="font-medium">
-                        {customer.name}
+                        <Link href={`/dashboard/customers/${customer.id}/history`} className="hover:underline text-primary">
+                          {customer.name}
+                        </Link>
                       </TableCell>
                       <TableCell>{customer.mobile}</TableCell>
                       <TableCell>{customer.area}</TableCell>
