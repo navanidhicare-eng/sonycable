@@ -10,7 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map, CreditCard, IndianRupee, MessageSquareWarning, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map, CreditCard, IndianRupee, MessageSquareWarning, UserPlus, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WithSidebarLayout({
@@ -99,6 +99,14 @@ export default function WithSidebarLayout({
                 <Link href="/dashboard/complaints">
                   <MessageSquareWarning />
                   <span>Complaints</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/offers">
+                  <Megaphone />
+                  <span>Offers</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
