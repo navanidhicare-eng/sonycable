@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Search } from "lucide-react";
@@ -58,6 +58,15 @@ export default function ComplaintsPage() {
   const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
   const [currentComplaint, setCurrentComplaint] = useState(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("userRole");
+      setUserRole(role || "");
+    }
+  }, []);
+
 
   const openResolveDialog = (complaint) => {
     setCurrentComplaint(complaint);
@@ -135,7 +144,7 @@ export default function ComplaintsPage() {
                         </Badge>
                       </TableCell>
                        <TableCell>
-                        {complaint.status === 'Pending' && (
+                        {userRole === 'Admin' && complaint.status === 'Pending' && (
                           <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
                             Resolve
                           </Button>
