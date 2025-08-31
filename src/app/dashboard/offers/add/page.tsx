@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription as FormDescriptionComponent,
   FormField,
   FormItem,
   FormLabel,
@@ -37,6 +38,7 @@ import {
 const formSchema = z.object({
   offerName: z.string().min(1, "Offer name is required."),
   description: z.string().min(1, "Description is required."),
+  commission: z.string().min(1, "Commission is required."),
   status: z.string({ required_error: "Please select a status." }),
 });
 
@@ -51,6 +53,7 @@ export default function AddOfferPage() {
     defaultValues: {
       offerName: "",
       description: "",
+      commission: "",
     },
   });
 
@@ -103,6 +106,22 @@ export default function AddOfferPage() {
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="commission"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Commission</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 5% or ₹20" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      <FormDescriptionComponent>
+                        Enter as a percentage (e.g. 5%) or a fixed amount (e.g. ₹20).
+                      </FormDescriptionComponent>
                     </FormItem>
                   )}
                 />
