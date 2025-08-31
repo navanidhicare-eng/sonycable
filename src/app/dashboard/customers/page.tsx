@@ -2,6 +2,42 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+const mockCustomers = [
+  {
+    id: "cust1",
+    name: "Suresh Kumar",
+    mobile: "9876543210",
+    area: "KPHB",
+    stbId: "STB12345",
+    customerId: "CUST9876",
+  },
+  {
+    id: "cust2",
+    name: "Rajesh Sharma",
+    mobile: "9988776655",
+    area: "Nizampet",
+    stbId: "STB67890",
+    customerId: "CUST5432",
+  },
+  {
+    id: "cust3",
+    name: "Anitha Reddy",
+    mobile: "9123456789",
+    area: "Pragathi Nagar",
+    stbId: "STB54321",
+    customerId: "CUST1234",
+  },
+];
+
 
 export default function CustomersPage() {
   return (
@@ -28,7 +64,28 @@ export default function CustomersPage() {
             <CardTitle>Customer List</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Customer details will be displayed here.</p>
+             <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer Name</TableHead>
+                  <TableHead>Mobile</TableHead>
+                  <TableHead>Area</TableHead>
+                  <TableHead>STB ID</TableHead>
+                  <TableHead>Customer ID</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mockCustomers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>{customer.mobile}</TableCell>
+                    <TableCell>{customer.area}</TableCell>
+                    <TableCell>{customer.stbId}</TableCell>
+                    <TableCell>{customer.customerId}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
