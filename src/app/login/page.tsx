@@ -59,6 +59,13 @@ export default function LoginPage() {
       data.password === "12345678";
 
     if (isAdmin || isStaff) {
+       if (typeof window !== "undefined") {
+        if (isAdmin) {
+          localStorage.setItem("userRole", "Admin");
+        } else if (isStaff) {
+          localStorage.setItem("userRole", "Staff");
+        }
+      }
       toast({
         title: "Login Successful",
         description: "Redirecting to dashboard...",

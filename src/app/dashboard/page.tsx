@@ -1,8 +1,30 @@
 
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Package, CircleDollarSign, UserCheck } from "lucide-react";
 
 export default function DashboardPage() {
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("userRole");
+      setUserRole(role || "");
+    }
+  }, []);
+
+  const getWelcomeMessage = () => {
+    if (userRole === "Admin") {
+      return "Welcome, Admin!";
+    }
+    if (userRole === "Staff") {
+      return "Welcome, Staff!";
+    }
+    return "Welcome to your SONY CABLE dashboard.";
+  };
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
@@ -11,7 +33,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-            Welcome to your SONY CABLE dashboard.
+            {getWelcomeMessage()}
           </p>
         </header>
 
