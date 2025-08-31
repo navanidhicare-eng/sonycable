@@ -34,9 +34,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, CreditCard, Package } from "lucide-react";
+import { Search, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const mockCustomers = [
   {
@@ -108,7 +109,9 @@ export default function RechargePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [paymentReceived, setPaymentReceived] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentCustomer, setCurrentCustomer] = useState<any>(null);
 
   const filteredCustomers = useMemo(() => {
     return mockCustomers.filter((customer) => {
@@ -126,15 +129,25 @@ export default function RechargePage() {
     });
   }, [searchTerm, filterArea]);
 
-  const handleRecharge = (customerName: string) => {
-    if (selectedPackage) {
+  const handleRecharge = () => {
+    if (selectedPackage && currentCustomer) {
       const pkg = mockPackages.find(p => p.id === selectedPackage);
+      let description;
+      if (paymentReceived) {
+        description = `${currentCustomer.name} has been recharged with ${pkg?.name} for ₹${pkg?.amount}. Payment received.`;
+      } else {
+        description = `${currentCustomer.name} has been recharged with ${pkg?.name}. ₹${pkg?.amount} added to collection balance.`;
+      }
+      
       toast({
         title: "Recharge Successful",
-        description: `${customerName} has been recharged with ${pkg?.name} for ₹${pkg?.amount}.`,
+        description: description,
       });
+
       setIsDialogOpen(false);
       setSelectedPackage(null);
+      setPaymentReceived(true);
+      setCurrentCustomer(null);
     } else {
        toast({
         variant: "destructive",
@@ -142,6 +155,11 @@ export default function RechargePage() {
         description: "Please select a package before confirming.",
       });
     }
+  };
+
+  const openDialog = (customer: any) => {
+    setCurrentCustomer(customer);
+    setIsDialogOpen(true);
   };
 
   return (
@@ -205,44 +223,10 @@ export default function RechargePage() {
                       <TableCell>{customer.mobile}</TableCell>
                       <TableCell>{customer.stbId}</TableCell>
                       <TableCell>
-                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Recharge
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px]">
-                            <DialogHeader>
-                              <DialogTitle>Recharge for {customer.name}</DialogTitle>
-                              <DialogDescription>
-                                Select a package to continue with the recharge.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="package" className="text-right">
-                                  Package
-                                </Label>
-                                <Select onValueChange={setSelectedPackage}>
-                                  <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="Select a package" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {mockPackages.map((pkg) => (
-                                      <SelectItem key={pkg.id} value={pkg.id}>
-                                        {pkg.name} - ₹{pkg.amount}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button type="button" onClick={() => handleRecharge(customer.name)}>Confirm Recharge</Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                        <Button variant="outline" size="sm" onClick={() => openDialog(customer)}>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Recharge
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -258,6 +242,50 @@ export default function RechargePage() {
           </CardContent>
         </Card>
       </div>
+
+      {currentCustomer && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Recharge for {currentCustomer.name}</DialogTitle>
+                <DialogDescription>
+                  Select a package to continue with the recharge.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="package" className="text-right">
+                    Package
+                  </Label>
+                  <Select onValueChange={setSelectedPackage}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select a package" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockPackages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          {pkg.name} - ₹{pkg.amount}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2 justify-center">
+                    <Checkbox 
+                      id="payment-received" 
+                      checked={paymentReceived} 
+                      onCheckedChange={(checked) => setPaymentReceived(Boolean(checked))}
+                    />
+                    <Label htmlFor="payment-received">Payment Received</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" onClick={handleRecharge}>Confirm Recharge</Button>
+              </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      )}
     </main>
   );
 }
+
