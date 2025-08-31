@@ -10,7 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map } from 'lucide-react';
+import { LayoutDashboard, Users, Network, Package, ArrowRightLeft, Map, CreditCard, IndianRupee } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WithSidebarLayout({
@@ -43,6 +43,22 @@ export default function WithSidebarLayout({
                 <Link href="/dashboard/customers">
                   <Users />
                   <span>Customers</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/recharge">
+                  <CreditCard />
+                  <span>Recharge</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/dashboard/collection">
+                  <IndianRupee />
+                  <span>Collection</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
