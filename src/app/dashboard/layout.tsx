@@ -26,6 +26,7 @@ import {
   UserPlus,
   Megaphone,
   LogOut,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -115,6 +116,14 @@ export default function WithSidebarLayout({
                     <Link href="/dashboard/areas">
                       <Map />
                       <span>Areas</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/dashboard/commission-calculator">
+                      <Calculator />
+                      <span>Commission Calculator</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
