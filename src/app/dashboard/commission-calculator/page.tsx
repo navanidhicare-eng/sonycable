@@ -47,6 +47,10 @@ export default function CommissionCalculatorPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      totalCollection: "" as any,
+      commissionPercentage: "" as any,
+    },
   });
 
   function onSubmit(data: FormValues) {
