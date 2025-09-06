@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, doc, updateDoc, query, where } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 
 interface SettlementRequest {
@@ -33,6 +33,15 @@ interface SettlementRequest {
   createdAt: Date;
 }
 
+interface DashboardStats {
+    totalRevenue: number;
+    activeCustomers: number;
+    activePackages: number;
+    collectionAgents: number;
+    todaysCollection: number;
+    monthlyCollection: number;
+}
+
 export default function DashboardPage() {
   const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
@@ -40,6 +49,14 @@ export default function DashboardPage() {
   const [commissionReceived, setCommissionReceived] = useState(false);
   const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+      totalRevenue: 0,
+      activeCustomers: 0,
+      activePackages: 0,
+      collectionAgents: 0,
+      todaysCollection: 0,
+      monthlyCollection: 0,
+  });
 
   useEffect(() => {
     if (authLoading) {
@@ -57,6 +74,29 @@ export default function DashboardPage() {
 
     if (userRole === "Admin") {
       q = query(settlementsRef);
+       const fetchStats = async () => {
+            try {
+                const customersSnapshot = await getDocs(query(collection(db, "customers"), where("userId", "==", currentUser.uid)));
+                const packagesSnapshot = await getDocs(query(collection(db, "packages"), where("userId", "==", currentUser.uid)));
+                // Mocking other stats for now as there's no collection for them yet
+                setStats({
+                    totalRevenue: 45231.89,
+                    activeCustomers: customersSnapshot.size,
+                    activePackages: packagesSnapshot.size,
+                    collectionAgents: 5,
+                    todaysCollection: 5250,
+                    monthlyCollection: 120500,
+                });
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+                 toast({
+                    variant: "destructive",
+                    title: "Error fetching stats",
+                    description: "Could not fetch dashboard statistics.",
+                });
+            }
+        };
+        fetchStats();
     } else if (userRole === "Staff") {
       q = query(settlementsRef, where("staffId", "==", currentUser.uid));
     } else {
@@ -210,10 +250,7 @@ export default function DashboardPage() {
             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">₹45,231.89</div>
-            <p className="text-xs text-muted-foreground">
-                +20.1% from last month
-            </p>
+            <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
             </CardContent>
         </Card>
         <Card>
@@ -224,10 +261,7 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">+2350</div>
-            <p className="text-xs text-muted-foreground">
-                +180.1% from last month
-            </p>
+            <div className="text-2xl font-bold">{stats.activeCustomers}</div>
             </CardContent>
         </Card>
         <Card>
@@ -236,10 +270,7 @@ export default function DashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">+12</div>
-            <p className="text-xs text-muted-foreground">
-                +1 from last month
-            </p>
+            <div className="text-2xl font-bold">{stats.activePackages}</div>
             </CardContent>
         </Card>
         <Card>
@@ -250,10 +281,7 @@ export default function DashboardPage() {
             <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground">
-                Total active agents
-            </p>
+            <div className="text-2xl font-bold">{stats.collectionAgents}</div>
             </CardContent>
         </Card>
         <Card>
@@ -262,10 +290,7 @@ export default function DashboardPage() {
             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">₹5,250</div>
-            <p className="text-xs text-muted-foreground">
-                Collection as of now
-            </p>
+            <div className="text-2xl font-bold">₹{stats.todaysCollection.toLocaleString()}</div>
             </CardContent>
         </Card>
         <Card>
@@ -274,10 +299,7 @@ export default function DashboardPage() {
             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">₹1,20,500</div>
-            <p className="text-xs text-muted-foreground">
-                Total for this month
-            </p>
+            <div className="text-2xl font-bold">₹{stats.monthlyCollection.toLocaleString()}</div>
             </CardContent>
         </Card>
     </div>
