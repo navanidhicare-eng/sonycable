@@ -56,12 +56,12 @@ const mockAllTransactions = [
 
 
 export default function CustomerHistoryPage({ params }: { params: { id: string } }) {
+  const customerId = params.id;
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const customerId = params.id;
-
+  
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -318,3 +318,5 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
     </main>
   );
 }
+
+    
