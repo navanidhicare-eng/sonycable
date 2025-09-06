@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, where, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -100,6 +100,24 @@ export default function AddCustomerPage() {
     }
     setIsSubmitting(true);
     try {
+      // Check if customer ID already exists for this user
+      const q = query(
+        collection(db, "customers"),
+        where("userId", "==", user.uid),
+        where("customerId", "==", data.customerId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        toast({
+          variant: "destructive",
+          title: "Duplicate Customer ID",
+          description: "This Customer ID is already in use. Please choose another one.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       await addDoc(collection(db, "customers"), {
         name: data.customerName,
         mobile: data.mobileNumber,
