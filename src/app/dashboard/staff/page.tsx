@@ -24,7 +24,7 @@ interface Staff {
   id: string;
   name: string;
   mobile: string;
-  area: string;
+  area: string | string[];
   email: string;
   commission: string;
   createdAt: {
@@ -111,7 +111,7 @@ export default function StaffPage() {
                     <TableRow key={staff.id}>
                       <TableCell className="font-medium">{staff.name}</TableCell>
                       <TableCell>{staff.mobile}</TableCell>
-                      <TableCell>{staff.area}</TableCell>
+                      <TableCell>{Array.isArray(staff.area) ? staff.area.join(', ') : staff.area}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{staff.commission}</Badge>
                       </TableCell>

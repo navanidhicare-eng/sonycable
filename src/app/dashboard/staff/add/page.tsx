@@ -22,13 +22,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Loader2 } from "lucide-react";
@@ -37,11 +30,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { db, auth } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, addDoc, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
   mobileNumber: z.string().min(10, "Please enter a valid mobile number."),
-  area: z.string({ required_error: "Please select an area." }),
+  area: z.array(z.string()).refine((value) => value.some((item) => item), {
+    message: "You have to select at least one area.",
+  }),
   commission: z.string().min(1, "Commission is required."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
@@ -52,7 +48,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddStaffPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const [areas, setAreas] = useState<{ value: string; label: string }[]>([]);
+  const [areas, setAreas] = useState<{ id: string; label: string }[]>([]);
   const { user, loading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,6 +61,7 @@ export default function AddStaffPage() {
       email: "",
       password: "",
       commission: "",
+      area: [],
     },
   });
 
@@ -73,7 +70,7 @@ export default function AddStaffPage() {
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
-        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+        const areasData = snapshot.docs.map(doc => ({ id: doc.data().name, label: doc.data().name }));
         setAreas(areasData);
     }, (error) => {
         console.error("Error fetching areas: ", error);
@@ -190,24 +187,49 @@ export default function AddStaffPage() {
                 <FormField
                   control={form.control}
                   name="area"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
-                      <FormLabel>Assign Area</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an area" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="all_areas">All Areas</SelectItem>
-                           {areas.map(area => (
-                            <SelectItem key={area.value} value={area.value}>
-                              {area.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="mb-4">
+                        <FormLabel className="text-base">Assign Area</FormLabel>
+                        <FormDescriptionComponent>
+                          Select the areas this staff member will be assigned to.
+                        </FormDescriptionComponent>
+                      </div>
+                      <div className="space-y-2">
+                        {areas.map((item) => (
+                          <FormField
+                            key={item.id}
+                            control={form.control}
+                            name="area"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={item.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(item.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), item.id])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value) => value !== item.id
+                                              )
+                                            );
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal">
+                                    {item.label}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
