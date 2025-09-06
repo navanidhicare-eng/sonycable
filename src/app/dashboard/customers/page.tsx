@@ -23,7 +23,7 @@ import {
 import { PlusCircle, Search, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -39,6 +39,7 @@ interface Customer {
     seconds: number;
     nanoseconds: number;
   };
+  lastRechargeDate?: Timestamp;
 }
 
 interface Area {
@@ -116,6 +117,11 @@ export default function CustomersPage() {
     });
   }, [searchTerm, filterArea, customers]);
 
+  const formatDate = (timestamp?: Timestamp) => {
+    if (!timestamp) return 'N/A';
+    return timestamp.toDate().toLocaleDateString('en-CA');
+  }
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
@@ -177,6 +183,7 @@ export default function CustomersPage() {
                     <TableHead>Area</TableHead>
                     <TableHead>STB ID</TableHead>
                     <TableHead>Customer ID</TableHead>
+                    <TableHead>Last Recharge</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -192,12 +199,13 @@ export default function CustomersPage() {
                         <TableCell>{customer.area}</TableCell>
                         <TableCell>{customer.stbId}</TableCell>
                         <TableCell>{customer.customerId}</TableCell>
+                        <TableCell>{formatDate(customer.lastRechargeDate)}</TableCell>
                         </TableRow>
                     ))
                     ) : (
                     <TableRow>
                         <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="h-24 text-center"
                         >
                         No results found.

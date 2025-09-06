@@ -30,11 +30,15 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 
 const formSchema = z.object({
@@ -44,6 +48,7 @@ const formSchema = z.object({
     (val) => (val === "" ? "0" : val),
     z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
   ),
+  lastRechargeDate: z.date().optional(),
   area: z.string({ required_error: "Please select an area." }),
   stbId: z.string().min(1, "STB ID is required."),
   customerId: z.string().min(1, "Customer ID is required."),
@@ -117,6 +122,13 @@ export default function AddCustomerPage() {
         setIsSubmitting(false);
         return;
       }
+      
+      let expiryDate = null;
+      if (data.lastRechargeDate) {
+        expiryDate = new Date(data.lastRechargeDate);
+        expiryDate.setDate(expiryDate.getDate() + 30);
+      }
+
 
       await addDoc(collection(db, "customers"), {
         name: data.customerName,
@@ -127,6 +139,8 @@ export default function AddCustomerPage() {
         customerId: data.customerId,
         createdAt: new Date(),
         userId: user.uid,
+        lastRechargeDate: data.lastRechargeDate || null,
+        expiryDate: expiryDate,
       });
       toast({
         title: "Customer Added",
@@ -195,6 +209,47 @@ export default function AddCustomerPage() {
                       <FormControl>
                         <Input type="number" placeholder="Enter opening balance" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lastRechargeDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Last Recharge Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
