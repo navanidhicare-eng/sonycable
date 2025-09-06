@@ -1,4 +1,7 @@
 
+"use client";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
@@ -13,35 +16,18 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-const mockStaff = [
-  {
-    id: "staff1",
-    name: "Ravi Kumar",
-    mobile: "9123456780",
-    area: "KPHB",
-    username: "ravi_k",
-    commission: "5%",
-  },
-  {
-    id: "staff2",
-    name: "Anil Yadav",
-    mobile: "9123456781",
-    area: "Nizampet",
-    username: "anil_y",
-    commission: "5%",
-  },
-   {
-    id: "staff3",
-    name: "Kiran Goud",
-    mobile: "9123456782",
-    area: "All Areas",
-    username: "kiran_g",
-    commission: "4.5%",
-  },
-];
-
+interface Staff {
+  id: string;
+  name: string;
+  mobile: string;
+  area: string;
+  username: string;
+  commission: string;
+}
 
 export default function StaffPage() {
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
@@ -77,17 +63,25 @@ export default function StaffPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockStaff.map((staff) => (
-                  <TableRow key={staff.id}>
-                    <TableCell className="font-medium">{staff.name}</TableCell>
-                    <TableCell>{staff.mobile}</TableCell>
-                    <TableCell>{staff.area}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{staff.commission}</Badge>
+                {staffList.length > 0 ? (
+                  staffList.map((staff) => (
+                    <TableRow key={staff.id}>
+                      <TableCell className="font-medium">{staff.name}</TableCell>
+                      <TableCell>{staff.mobile}</TableCell>
+                      <TableCell>{staff.area}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{staff.commission}</Badge>
+                      </TableCell>
+                      <TableCell>{staff.username}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      No staff found.
                     </TableCell>
-                    <TableCell>{staff.username}</TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </CardContent>
