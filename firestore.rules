@@ -1,23 +1,30 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /settlements/{settlementId} {
-      // Allow read/write access only to authenticated users
-      allow read, write: if request.auth != null;
-
-      // Staff can create their own settlement requests
-      allow create: if request.auth != null && request.resource.data.staffId == request.auth.uid;
-      
-      // Admin can approve (update) any settlement request
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
-
-      // Staff can read their own settlements, Admin can read all
-      allow get, list: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' || resource.data.staffId == request.auth.uid);
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // A user document to store roles
+    // Allow users to read/write their own settlement data
+    match /settlements/{settlementId} {
+      // Allow read access if the user is an Admin OR if the document's staffId matches the user's uid
+      allow read: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' || request.auth.uid == resource.data.staffId);
+      
+      // Allow create access if the user is authenticated
+      allow create: if request.auth != null;
+      
+      // Allow update access only for Admins
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // This rule is needed for the role check above
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
     }
   }
 }
+
+    
