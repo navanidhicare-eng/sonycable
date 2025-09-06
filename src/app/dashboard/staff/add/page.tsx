@@ -70,7 +70,7 @@ export default function AddStaffPage() {
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
-        const areasData = snapshot.docs.map(doc => ({ id: doc.data().name, label: doc.data().name }));
+        const areasData = snapshot.docs.map(doc => ({ id: doc.id, label: doc.data().name }));
         setAreas(areasData);
     }, (error) => {
         console.error("Error fetching areas: ", error);
@@ -184,7 +184,7 @@ export default function AddStaffPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
+                 <FormField
                   control={form.control}
                   name="area"
                   render={() => (
@@ -195,39 +195,42 @@ export default function AddStaffPage() {
                           Select the areas this staff member will be assigned to.
                         </FormDescriptionComponent>
                       </div>
-                      {areas.map((item) => (
-                        <FormField
-                          key={item.id}
-                          control={form.control}
-                          name="area"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item.id}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...(field.value || []), item.id])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.id
-                                            )
-                                          );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  {item.label}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
+                      <div className="space-y-2">
+                        {areas.map((item) => (
+                          <FormField
+                            key={item.id}
+                            control={form.control}
+                            name="area"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={item.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(item.label)}
+                                      onCheckedChange={(checked) => {
+                                        const fieldValue = field.value || [];
+                                        return checked
+                                          ? field.onChange([...fieldValue, item.label])
+                                          : field.onChange(
+                                              fieldValue?.filter(
+                                                (value) => value !== item.label
+                                              )
+                                            );
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal">
+                                    {item.label}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
