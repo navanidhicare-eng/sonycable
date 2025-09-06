@@ -24,7 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { db } from "@/lib/firebase";
+import { addDoc, collection } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   packageName: z.string().min(1, "Package name is required."),
@@ -37,6 +41,8 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddPackagePage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -47,14 +53,42 @@ export default function AddPackagePage() {
     },
   });
 
-  function onSubmit(data: FormValues) {
-    console.log(data);
-    toast({
-      title: "Package Added",
-      description: `${data.packageName} has been successfully added.`,
-    });
-    router.push("/dashboard/packages");
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Authentication Error",
+            description: "You must be logged in to add a package.",
+        });
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "packages"), {
+        packageName: data.packageName,
+        packageAmount: data.packageAmount,
+        description: data.description || "",
+        createdAt: new Date(),
+        userId: user.uid,
+      });
+      toast({
+        title: "Package Added",
+        description: `${data.packageName} has been successfully added.`,
+      });
+      router.push("/dashboard/packages");
+    } catch (error) {
+      console.error("Error adding package: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to add package",
+        description: "An error occurred while saving the package data.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
+
+  const isLoading = authLoading || isSubmitting;
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -112,9 +146,13 @@ export default function AddPackagePage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Package
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                  )}
+                  {isSubmitting ? "Adding Package..." : "Add Package"}
                 </Button>
               </form>
             </Form>

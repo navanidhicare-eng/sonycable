@@ -1,7 +1,9 @@
 
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -12,32 +14,57 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+
 
 interface Package {
   id: string;
-  name: string;
-  amount: string;
+  packageName: string;
+  packageAmount: string;
   description: string;
 }
 
-async function getPackages() {
-    const packagesCollection = collection(db, "packages");
-    const q = query(packagesCollection, orderBy("name"));
-    const querySnapshot = await getDocs(q);
-    const packages = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().packageName,
-        amount: doc.data().packageAmount,
-        description: doc.data().description,
-    })) as Package[];
-    return packages;
-}
 
+export default function PackagesPage() {
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
-export default async function PackagesPage() {
-  const packages = await getPackages();
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, "packages"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
+      setPackages(packagesData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching packages: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch packages",
+        description: "Could not retrieve package data. Check permissions.",
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
+
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -63,6 +90,11 @@ export default async function PackagesPage() {
             <CardTitle>Package List</CardTitle>
           </CardHeader>
           <CardContent>
+             {loading || authLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -72,17 +104,26 @@ export default async function PackagesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {packages.map((pkg) => (
-                  <TableRow key={pkg.id}>
-                    <TableCell className="font-medium">{pkg.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">₹{pkg.amount}</Badge>
-                    </TableCell>
-                    <TableCell>{pkg.description}</TableCell>
-                  </TableRow>
-                ))}
+                {packages.length > 0 ? (
+                  packages.map((pkg) => (
+                    <TableRow key={pkg.id}>
+                      <TableCell className="font-medium">{pkg.packageName}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">₹{pkg.packageAmount}</Badge>
+                      </TableCell>
+                      <TableCell>{pkg.description}</TableCell>
+                    </TableRow>
+                  ))
+                 ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-24 text-center">
+                        No packages found.
+                      </TableCell>
+                    </TableRow>
+                  )}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       </div>
