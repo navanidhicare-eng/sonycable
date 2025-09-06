@@ -37,24 +37,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const initialCollections = [
-  {
-    id: "coll1",
-    name: "Rajesh Sharma",
-    mobile: "9988776655",
-    area: "Nizampet",
-    amountDue: "450",
-    stbId: "STB67890",
-  },
-  {
-    id: "coll2",
-    name: "Vijay Varma",
-    mobile: "9000011111",
-    area: "KPHB",
-    amountDue: "550",
-    stbId: "STB11223",
-  },
-];
+const initialCollections: any[] = [];
 
 export default function CollectionPage() {
   const [searchTerm, setSearchTerm] = useState("");
