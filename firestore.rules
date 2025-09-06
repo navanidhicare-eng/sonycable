@@ -1,9 +1,12 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all collections for any authenticated user
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Allow read/write access to authenticated users for customers, settlements, and areas collections
+    match /{collection}/{document} {
+      allow read, write: if request.auth != null && (collection == 'customers' || collection == 'settlements' || collection == 'areas');
     }
+
+    // More specific rules can be added below if needed
   }
 }
