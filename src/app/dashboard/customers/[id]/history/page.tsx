@@ -60,6 +60,7 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const customerId = params.id;
 
   useEffect(() => {
     if (authLoading) return;
@@ -68,10 +69,10 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
         return;
     };
 
-    if (params.id) {
+    if (customerId) {
       const getCustomerData = async () => {
         setLoading(true);
-        const docRef = doc(db, "customers", params.id);
+        const docRef = doc(db, "customers", customerId);
         try {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
@@ -95,7 +96,7 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
       };
       getCustomerData();
     }
-  }, [params.id, toast, user, authLoading]);
+  }, [customerId, toast, user, authLoading]);
 
 
   const handleShare = async () => {
