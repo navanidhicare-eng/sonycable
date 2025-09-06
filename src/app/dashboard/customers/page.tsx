@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,33 +22,18 @@ import {
 } from "@/components/ui/table";
 import { PlusCircle, Search } from "lucide-react";
 import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
-const mockCustomers = [
-  {
-    id: "cust1",
-    name: "Suresh Kumar",
-    mobile: "9876543210",
-    area: "KPHB",
-    stbId: "STB12345",
-    customerId: "CUST9876",
-  },
-  {
-    id: "cust2",
-    name: "Rajesh Sharma",
-    mobile: "9988776655",
-    area: "Nizampet",
-    stbId: "STB67890",
-    customerId: "CUST5432",
-  },
-  {
-    id: "cust3",
-    name: "Anitha Reddy",
-    mobile: "9123456789",
-    area: "Pragathi Nagar",
-    stbId: "STB54321",
-    customerId: "CUST1234",
-  },
-];
+interface Customer {
+  id: string;
+  name: string;
+  mobile: string;
+  area: string;
+  stbId: string;
+  customerId: string;
+}
 
 const areaOptions = [
   { value: "all", label: "All Areas" },
@@ -59,11 +44,30 @@ const areaOptions = [
 ];
 
 export default function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      setCustomers(customersData);
+    }, (error) => {
+      console.error("Error fetching customers: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch customers",
+        description: "Could not retrieve customer data from the database.",
+      });
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
 
   const filteredCustomers = useMemo(() => {
-    return mockCustomers.filter((customer) => {
+    return customers.filter((customer) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         customer.name.toLowerCase().includes(searchTermLower) ||
@@ -76,7 +80,7 @@ export default function CustomersPage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea]);
+  }, [searchTerm, filterArea, customers]);
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">

@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -19,20 +20,22 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ArrowLeft, QrCode, Share2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from "firebase/firestore";
+
+interface Customer {
+  id: string;
+  name: string;
+  mobile: string;
+  area: string;
+  stbId: string;
+  customerId: string;
+}
 
 // Mock data - In a real app, you would fetch this based on the customer ID
-const mockCustomer = {
-  id: 'cust1',
-  name: 'Suresh Kumar',
-  mobile: '9876543210',
-  area: 'KPHB',
-  stbId: 'STB12345',
-  customerId: 'CUST9876',
-};
-
 const mockRechargeHistory = [
   { id: 'rh1', date: '2024-07-15', description: 'Recharged with SONY PREMIUM', amount: '450', status: 'Paid' },
   { id: 'rh2', date: '2024-06-15', description: 'Recharged with SONY PREMIUM', amount: '450', status: 'Paid' },
@@ -52,11 +55,35 @@ const mockAllTransactions = [
 
 
 export default function CustomerHistoryPage({ params }: { params: { id: string } }) {
-  // You can use params.id to fetch the specific customer's data
-  const customer = mockCustomer;
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (params.id) {
+      const getCustomerData = async () => {
+        setLoading(true);
+        const docRef = doc(db, "customers", params.id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          setCustomer({ id: docSnap.id, ...docSnap.data() } as Customer);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Customer not found",
+            description: "No customer data was found for this ID.",
+          });
+        }
+        setLoading(false);
+      };
+      getCustomerData();
+    }
+  }, [params.id, toast]);
+
+
   const handleShare = async () => {
+    if (!customer) return;
     const shareData = {
       title: `Payment for ${customer.name}`,
       text: `Please make your payment for SONY CABLE. Customer ID: ${customer.customerId}`,
@@ -82,16 +109,37 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
   };
 
   const handleDownloadQR = () => {
-    // In a real app, you'd generate a QR code pointing to a payment link.
-    // For this mock, we'll just show a toast.
+    if (!customer) return;
     toast({
       title: "QR Code Download",
       description: "QR Code download initiated (mock).",
     });
-    // Example of a real implementation:
-    // const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=your-upi-id@okhdfcbank&pn=YourName&am=450&cu=INR&tn=CableBillFor${customer.customerId}`;
-    // window.open(qrCodeUrl, '_blank');
   };
+
+  if (loading) {
+    return (
+        <main className="flex min-h-screen w-full items-center justify-center font-body text-foreground">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </main>
+    )
+  }
+
+  if (!customer) {
+    return (
+        <main className="min-h-screen w-full font-body text-foreground">
+            <div className="container mx-auto p-4 py-8 md:p-12 text-center">
+                 <h1 className="text-2xl font-bold">Customer Not Found</h1>
+                 <p className="text-muted-foreground">The requested customer could not be found.</p>
+                 <Button asChild variant="outline" size="sm" className="mt-4">
+                    <Link href="/dashboard/customers" className="flex items-center gap-2">
+                        <ArrowLeft className="h-4 w-4" />
+                        <span>Back to Customers</span>
+                    </Link>
+                </Button>
+            </div>
+        </main>
+    )
+  }
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">

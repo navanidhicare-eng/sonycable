@@ -31,6 +31,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { useState } from "react";
+
 
 const formSchema = z.object({
   customerName: z.string().min(1, "Customer name is required."),
@@ -45,6 +49,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddCustomerPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -56,13 +61,32 @@ export default function AddCustomerPage() {
     },
   });
 
-  function onSubmit(data: FormValues) {
-    console.log(data);
-    toast({
-      title: "Customer Added",
-      description: `${data.customerName} has been successfully added.`,
-    });
-    router.push("/dashboard/customers");
+  async function onSubmit(data: FormValues) {
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "customers"), {
+        name: data.customerName,
+        mobile: data.mobileNumber,
+        area: data.area,
+        stbId: data.stbId,
+        customerId: data.customerId,
+        createdAt: new Date(),
+      });
+      toast({
+        title: "Customer Added",
+        description: `${data.customerName} has been successfully added.`,
+      });
+      router.push("/dashboard/customers");
+    } catch (error) {
+      console.error("Error adding customer: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to add customer",
+        description: "An error occurred while saving the customer data.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -117,10 +141,10 @@ export default function AddCustomerPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="area1">KPHB</SelectItem>
-                          <SelectItem value="area2">Nizampet</SelectItem>
-                          <SelectItem value="area3">Pragathi Nagar</SelectItem>
-                          <SelectItem value="area4">Bachupally</SelectItem>
+                          <SelectItem value="KPHB">KPHB</SelectItem>
+                          <SelectItem value="Nizampet">Nizampet</SelectItem>
+                          <SelectItem value="Pragathi Nagar">Pragathi Nagar</SelectItem>
+                          <SelectItem value="Bachupally">Bachupally</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -153,9 +177,9 @@ export default function AddCustomerPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Customer
+                  {isSubmitting ? "Adding..." : "Add Customer"}
                 </Button>
               </form>
             </Form>
