@@ -52,6 +52,14 @@ export default function AddAreaPage() {
   });
 
   async function onSubmit(data: FormValues) {
+    if (authLoading) {
+        toast({
+            variant: "destructive",
+            title: "Please wait",
+            description: "Authentication is in progress.",
+        });
+        return;
+    }
     if (!user) {
         toast({
             variant: "destructive",
@@ -66,6 +74,7 @@ export default function AddAreaPage() {
         name: data.areaName,
         description: data.description || "",
         createdAt: new Date(),
+        userId: user.uid,
       });
       toast({
         title: "Area Added",
@@ -77,7 +86,7 @@ export default function AddAreaPage() {
       toast({
         variant: "destructive",
         title: "Failed to add area",
-        description: "An error occurred while saving the area data.",
+        description: "An error occurred while saving the area data. Check Firestore rules.",
       });
     } finally {
       setIsSubmitting(false);
