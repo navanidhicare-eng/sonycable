@@ -1,4 +1,6 @@
 
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
@@ -12,24 +14,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
-const mockPayments = [
-  {
-    id: "pay1",
-    date: "2024-07-01",
-    amount: "50000",
-    transactionId: "TXN123456789",
-  },
-  {
-    id: "pay2",
-    date: "2024-06-01",
-    amount: "48000",
-    transactionId: "TXN987654321",
-  },
-];
-
+interface Payment {
+  id: string;
+  date: string;
+  amount: string;
+  transactionId: string;
+}
 
 export default function MsoPaymentsPage() {
+  const [payments, setPayments] = useState<Payment[]>([]);
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
@@ -63,15 +59,23 @@ export default function MsoPaymentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">₹{payment.amount}</Badge>
+                {payments.length > 0 ? (
+                  payments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">₹{payment.amount}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{payment.transactionId}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center">
+                      No payments found.
                     </TableCell>
-                    <TableCell className="font-medium">{payment.transactionId}</TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </CardContent>
