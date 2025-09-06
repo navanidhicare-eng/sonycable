@@ -52,14 +52,6 @@ export default function AddAreaPage() {
   });
 
   async function onSubmit(data: FormValues) {
-    if (authLoading) {
-        toast({
-            variant: "destructive",
-            title: "Please wait",
-            description: "Authentication is in progress.",
-        });
-        return;
-    }
     if (!user) {
         toast({
             variant: "destructive",
