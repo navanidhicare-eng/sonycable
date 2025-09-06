@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -15,18 +15,56 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface Staff {
   id: string;
   name: string;
   mobile: string;
   area: string;
-  username: string;
+  email: string;
   commission: string;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
 }
 
 export default function StaffPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+        setLoading(false);
+        return;
+    };
+
+    const q = query(collection(db, "staff"), where("adminId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+        staffData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+        setStaffList(staffData);
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching staff:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch staff",
+            description: "Could not retrieve staff data. Check permissions.",
+        });
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
+
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -52,6 +90,11 @@ export default function StaffPage() {
             <CardTitle>Staff List</CardTitle>
           </CardHeader>
           <CardContent>
+            {loading || authLoading ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -59,7 +102,7 @@ export default function StaffPage() {
                   <TableHead>Mobile</TableHead>
                   <TableHead>Assigned Area</TableHead>
                   <TableHead>Commission</TableHead>
-                  <TableHead>Username</TableHead>
+                  <TableHead>Email (Username)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -72,7 +115,7 @@ export default function StaffPage() {
                       <TableCell>
                         <Badge variant="secondary">{staff.commission}</Badge>
                       </TableCell>
-                      <TableCell>{staff.username}</TableCell>
+                      <TableCell>{staff.email}</TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -84,6 +127,7 @@ export default function StaffPage() {
                 )}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -31,18 +31,19 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { collection, onSnapshot, query, where, addDoc, getDocs } from "firebase/firestore";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
   mobileNumber: z.string().min(10, "Please enter a valid mobile number."),
   area: z.string({ required_error: "Please select an area." }),
   commission: z.string().min(1, "Commission is required."),
-  username: z.string().min(4, "Username must be at least 4 characters."),
+  email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
 
@@ -53,6 +54,7 @@ export default function AddStaffPage() {
   const router = useRouter();
   const [areas, setAreas] = useState<{ value: string; label: string }[]>([]);
   const { user, loading: authLoading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   const form = useForm<FormValues>({
@@ -60,7 +62,7 @@ export default function AddStaffPage() {
     defaultValues: {
       staffName: "",
       mobileNumber: "",
-      username: "",
+      email: "",
       password: "",
       commission: "",
     },
@@ -86,14 +88,65 @@ export default function AddStaffPage() {
   }, [user, authLoading, toast]);
 
 
-  function onSubmit(data: FormValues) {
-    console.log(data);
-    toast({
-      title: "Staff Added",
-      description: `${data.staffName} has been successfully added.`,
-    });
-    router.push("/dashboard/staff");
+  async function onSubmit(data: FormValues) {
+     if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Authentication Error",
+            description: "You must be logged in to add staff.",
+        });
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+       // Check if staff email already exists in Firestore 'staff' collection
+      const staffQuery = query(collection(db, "staff"), where("email", "==", data.email), where("adminId", "==", user.uid));
+      const staffSnapshot = await getDocs(staffQuery);
+      if (!staffSnapshot.empty) {
+        toast({ variant: "destructive", title: "User Exists", description: "A staff member with this email already exists." });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const newStaffUser = userCredential.user;
+
+      // Add staff details to Firestore
+      await addDoc(collection(db, "staff"), {
+        uid: newStaffUser.uid,
+        name: data.staffName,
+        mobile: data.mobileNumber,
+        area: data.area,
+        commission: data.commission,
+        email: data.email,
+        adminId: user.uid, // Link to the admin who created the staff
+        createdAt: new Date(),
+      });
+
+      toast({
+        title: "Staff Added",
+        description: `${data.staffName} has been successfully added.`,
+      });
+      router.push("/dashboard/staff");
+
+    } catch (error: any) {
+        console.error("Error adding staff: ", error);
+        let description = "An error occurred while adding the staff member.";
+        if (error.code === 'auth/email-already-in-use') {
+            description = "This email address is already in use by another account.";
+        }
+        toast({
+            variant: "destructive",
+            title: "Failed to add staff",
+            description,
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
+
+  const isLoading = authLoading || isSubmitting;
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -177,12 +230,12 @@ export default function AddStaffPage() {
                 />
                  <FormField
                   control={form.control}
-                  name="username"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>Email (for login)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter a username for login" {...field} />
+                        <Input type="email" placeholder="Enter a valid email" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -201,9 +254,13 @@ export default function AddStaffPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Staff
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                   {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                  )}
+                  {isSubmitting ? "Adding..." : "Add Staff"}
                 </Button>
               </form>
             </Form>
