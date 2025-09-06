@@ -24,7 +24,7 @@ interface Customer {
   mobile: string;
   area: string;
   stbId: string;
-  expiryDate: Timestamp;
+  expiryDate?: Timestamp;
 }
 
 export default function RemindersPage() {
@@ -40,22 +40,27 @@ export default function RemindersPage() {
     }
 
     setLoading(true);
-    const today = new Date();
-    const threeDaysFromNow = new Date();
-    threeDaysFromNow.setDate(today.getDate() + 3);
-
-    const startTimestamp = Timestamp.fromDate(today);
-    const endTimestamp = Timestamp.fromDate(threeDaysFromNow);
-
+    
     const q = query(
       collection(db, "customers"),
-      where("userId", "==", user.uid),
-      where("expiryDate", ">=", startTimestamp),
-      where("expiryDate", "<=", endTimestamp)
+      where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); 
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(today.getDate() + 3);
+      threeDaysFromNow.setHours(23, 59, 59, 999);
+
+      const customersData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
+        .filter(customer => {
+          if (!customer.expiryDate) return false;
+          const expiryDate = customer.expiryDate.toDate();
+          return expiryDate >= today && expiryDate <= threeDaysFromNow;
+        });
+
       setExpiringCustomers(customersData);
       setLoading(false);
     }, (error) => {
@@ -63,7 +68,7 @@ export default function RemindersPage() {
       toast({
         variant: "destructive",
         title: "Failed to fetch reminders",
-        description: "Could not retrieve customer reminder data. You may need to create a Firestore index.",
+        description: "Could not retrieve customer reminder data.",
       });
       setLoading(false);
     });
@@ -71,15 +76,16 @@ export default function RemindersPage() {
     return () => unsubscribe();
   }, [user, authLoading, toast]);
 
-  const formatDate = (timestamp: Timestamp) => {
+  const formatDate = (timestamp?: Timestamp) => {
     if (!timestamp) return 'N/A';
     return timestamp.toDate().toLocaleDateString('en-CA');
   }
 
-  const daysLeft = (timestamp: Timestamp) => {
+  const daysLeft = (timestamp?: Timestamp) => {
     if (!timestamp) return 'N/A';
     const expiryDate = timestamp.toDate();
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const diffTime = expiryDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
