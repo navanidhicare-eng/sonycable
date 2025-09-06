@@ -42,10 +42,14 @@ export default function DashboardPage() {
   const [firestoreLoading, setFirestoreLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading || !currentUser || !userRole) {
-        if(!authLoading) setFirestoreLoading(false);
-        return;
-    };
+    if (authLoading) {
+      setFirestoreLoading(true);
+      return;
+    }
+    if (!currentUser || !userRole) {
+      setFirestoreLoading(false);
+      return;
+    }
     
     setFirestoreLoading(true);
     const settlementsRef = collection(db, "settlements");
