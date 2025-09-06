@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Area {
   id: string;
@@ -28,8 +29,15 @@ export default function AreasPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return; 
+    if (!user) {
+        setLoading(false);
+        return;
+    };
+
     const q = query(collection(db, "areas"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const areasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Area));
@@ -40,13 +48,13 @@ export default function AreasPage() {
       toast({
         variant: "destructive",
         title: "Failed to fetch areas",
-        description: "Could not retrieve area data from the database.",
+        description: "Could not retrieve area data. Check permissions.",
       });
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [user, authLoading, toast]);
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -72,7 +80,7 @@ export default function AreasPage() {
             <CardTitle>Area List</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {loading || authLoading ? (
               <div className="flex justify-center items-center h-40">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>

@@ -20,11 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Customer {
   id: string;
@@ -48,23 +49,33 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+        setLoading(false);
+        return;
+    };
+
     const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       setCustomers(customersData);
+      setLoading(false);
     }, (error) => {
       console.error("Error fetching customers: ", error);
       toast({
         variant: "destructive",
         title: "Failed to fetch customers",
-        description: "Could not retrieve customer data from the database.",
+        description: "Could not retrieve customer data. Check permissions.",
       });
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [user, authLoading, toast]);
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
@@ -130,43 +141,49 @@ export default function CustomersPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer Name</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>STB ID</TableHead>
-                  <TableHead>Customer ID</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.length > 0 ? (
-                  filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell className="font-medium">
-                        <Link href={`/dashboard/customers/${customer.id}/history`} className="hover:underline text-primary">
-                          {customer.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{customer.mobile}</TableCell>
-                      <TableCell>{customer.area}</TableCell>
-                      <TableCell>{customer.stbId}</TableCell>
-                      <TableCell>{customer.customerId}</TableCell>
+            {loading || authLoading ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Customer Name</TableHead>
+                    <TableHead>Mobile</TableHead>
+                    <TableHead>Area</TableHead>
+                    <TableHead>STB ID</TableHead>
+                    <TableHead>Customer ID</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center"
-                    >
-                      No results found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                    {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
+                        <TableRow key={customer.id}>
+                        <TableCell className="font-medium">
+                            <Link href={`/dashboard/customers/${customer.id}/history`} className="hover:underline text-primary">
+                            {customer.name}
+                            </Link>
+                        </TableCell>
+                        <TableCell>{customer.mobile}</TableCell>
+                        <TableCell>{customer.area}</TableCell>
+                        <TableCell>{customer.stbId}</TableCell>
+                        <TableCell>{customer.customerId}</TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell
+                        colSpan={5}
+                        className="h-24 text-center"
+                        >
+                        No results found.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            )}
           </CardContent>
         </Card>
       </div>

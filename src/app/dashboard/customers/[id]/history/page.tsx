@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from "firebase/firestore";
+import { useAuth } from '@/hooks/useAuth';
 
 interface Customer {
   id: string;
@@ -58,28 +59,43 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+        setLoading(false);
+        return;
+    };
+
     if (params.id) {
       const getCustomerData = async () => {
         setLoading(true);
         const docRef = doc(db, "customers", params.id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          setCustomer({ id: docSnap.id, ...docSnap.data() } as Customer);
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Customer not found",
-            description: "No customer data was found for this ID.",
-          });
+        try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                setCustomer({ id: docSnap.id, ...docSnap.data() } as Customer);
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Customer not found",
+                    description: "No customer data was found for this ID.",
+                });
+            }
+        } catch(error) {
+             toast({
+                variant: "destructive",
+                title: "Failed to fetch customer",
+                description: "Could not retrieve customer data. Check permissions.",
+            });
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
       };
       getCustomerData();
     }
-  }, [params.id, toast]);
+  }, [params.id, toast, user, authLoading]);
 
 
   const handleShare = async () => {
@@ -116,7 +132,7 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
     });
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
         <main className="flex min-h-screen w-full items-center justify-center font-body text-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />

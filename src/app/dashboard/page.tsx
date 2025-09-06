@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2 } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, addDoc, onSnapshot, doc, updateDoc, query, where } from "firebase/firestore";
-import { onAuthStateChanged, User } from "firebase/auth";
-
+import { useAuth } from "@/hooks/useAuth";
 
 interface SettlementRequest {
   id: string;
@@ -35,31 +34,20 @@ interface SettlementRequest {
 }
 
 export default function DashboardPage() {
-  const [userRole, setUserRole] = useState("");
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
   const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
-  
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser(user);
-        const role = localStorage.getItem("userRole");
-        setUserRole(role || "");
-      } else {
-        setCurrentUser(null);
-        setUserRole("");
-      }
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser || !userRole) return;
-
+    if (authLoading || !currentUser || !userRole) {
+        if(!authLoading) setFirestoreLoading(false);
+        return;
+    };
+    
+    setFirestoreLoading(true);
     const settlementsRef = collection(db, "settlements");
     let q;
 
@@ -68,6 +56,7 @@ export default function DashboardPage() {
     } else if (userRole === "Staff") {
       q = query(settlementsRef, where("staffId", "==", currentUser.uid));
     } else {
+      setFirestoreLoading(false);
       return;
     }
 
@@ -75,17 +64,19 @@ export default function DashboardPage() {
       const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
       requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setSettlementRequests(requests);
+      setFirestoreLoading(false);
     }, (error) => {
         console.error("Firestore snapshot error:", error);
         toast({
             variant: "destructive",
             title: "Error fetching data",
-            description: "Could not fetch settlement requests. Please check permissions or try again later.",
+            description: "Could not fetch settlement requests. Check permissions.",
         });
+        setFirestoreLoading(false);
     });
 
     return () => unsubscribeFirestore();
-  }, [currentUser, userRole, toast]);
+  }, [currentUser, userRole, authLoading, toast]);
 
 
   const getWelcomeMessage = () => {
@@ -346,6 +337,21 @@ export default function DashboardPage() {
      )
   };
 
+  const renderDashboard = () => {
+    if (authLoading || firestoreLoading) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+    }
+    
+    if (userRole === 'Admin') return <AdminDashboard />;
+    if (userRole === 'Staff') return <StaffDashboard />;
+
+    return null;
+  };
+
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground">
@@ -367,8 +373,7 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        {userRole === 'Admin' && <AdminDashboard />}
-        {userRole === 'Staff' && <StaffDashboard />}
+        {renderDashboard()}
 
       </div>
     </main>
@@ -396,7 +401,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
-
-    
