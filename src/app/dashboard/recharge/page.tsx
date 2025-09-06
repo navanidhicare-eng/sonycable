@@ -39,7 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, Timestamp } from "firebase/firestore";
 
 interface Customer {
   id: string;
@@ -95,6 +95,8 @@ export default function RechargePage() {
     }, (error) => {
         console.error("Error fetching customers:", error);
         toast({ variant: "destructive", title: "Failed to fetch customers" });
+    }, () => {
+        setLoading(false);
     });
 
     const packagesQuery = query(collection(db, "packages"), where("userId", "==", user.uid));
@@ -115,8 +117,6 @@ export default function RechargePage() {
         toast({ variant: "destructive", title: "Failed to fetch areas" });
     });
     
-    setLoading(false);
-
     return () => {
         customersUnsubscribe();
         packagesUnsubscribe();
@@ -153,22 +153,27 @@ export default function RechargePage() {
 
     const rechargeAmount = parseFloat(pkg.packageAmount);
     let description;
+    const customerDocRef = doc(db, "customers", currentCustomer.id);
 
     try {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 30);
+        const expiryTimestamp = Timestamp.fromDate(expiryDate);
+
         if (paymentReceived) {
-            // If payment is received, we just log the recharge.
+            await updateDoc(customerDocRef, {
+                expiryDate: expiryTimestamp
+            });
             description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ₹${rechargeAmount}. Payment received.`;
         } else {
-            // If payment is not received, update the customer's balance.
             const newBalance = currentCustomer.balanceAmount + rechargeAmount;
-            const customerDocRef = doc(db, "customers", currentCustomer.id);
             await updateDoc(customerDocRef, {
                 balanceAmount: newBalance,
+                expiryDate: expiryTimestamp,
             });
             description = `${currentCustomer.name} has been recharged with ${pkg.packageName}. ₹${rechargeAmount} added to collection balance.`;
         }
 
-        // Add a record to a "recharges" collection
         await addDoc(collection(db, "recharges"), {
             customerId: currentCustomer.id,
             customerName: currentCustomer.name,
@@ -337,4 +342,3 @@ export default function RechargePage() {
     </main>
   );
 }
-
