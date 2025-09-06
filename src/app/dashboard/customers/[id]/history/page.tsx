@@ -37,24 +37,16 @@ interface Customer {
   customerId: string;
 }
 
-// Mock data - In a real app, you would fetch this based on the customer ID
-const mockRechargeHistory = [
-  { id: 'rh1', date: '2024-07-15', description: 'Recharged with SONY PREMIUM', amount: '450', status: 'Paid' },
-  { id: 'rh2', date: '2024-06-15', description: 'Recharged with SONY PREMIUM', amount: '450', status: 'Paid' },
-  { id: 'rh3', date: '2024-05-15', description: 'Recharged with SONY BASIC', amount: '250', status: 'Paid' },
-];
-
-const mockPaymentHistory = [
-  { id: 'ph1', date: '2024-07-15', description: 'Payment via UPI', amount: '450' },
-  { id: 'ph2', date: '2024-06-15', description: 'Payment via Cash', amount: '450' },
-  { id: 'ph3', date: '2024-05-15', description: 'Payment via Cash', amount: '250' },
-];
-
-const mockAllTransactions = [
-    ...mockRechargeHistory.map(item => ({...item, type: 'Recharge', packageName: item.description.split('with ')[1]})),
-    ...mockPaymentHistory.map(item => ({...item, type: 'Payment', method: item.description.split('via ')[1]}))
-].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+interface Transaction {
+    id: string;
+    date: string;
+    description: string;
+    amount: string;
+    status?: string;
+    type: 'Recharge' | 'Payment';
+    packageName?: string;
+    method?: string;
+}
 
 export default function CustomerHistoryPage() {
   const params = useParams();
@@ -63,6 +55,9 @@ export default function CustomerHistoryPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   
   useEffect(() => {
     if (authLoading) return;
@@ -236,18 +231,26 @@ export default function CustomerHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockAllTransactions.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
-                        <TableCell>
-                          <Badge variant={item.type === 'Recharge' ? 'default' : 'secondary'}>
-                            {item.type}
-                          </Badge>
+                    {allTransactions.length > 0 ? (
+                      allTransactions.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.type === 'Recharge' ? 'default' : 'secondary'}>
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{item.description}</TableCell>
+                          <TableCell>₹{item.amount}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                          No transactions found.
                         </TableCell>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell>₹{item.amount}</TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -269,18 +272,26 @@ export default function CustomerHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockRechargeHistory.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
-                        <TableCell>{item.description.split('with ')[1]}</TableCell>
-                        <TableCell>₹{item.amount}</TableCell>
-                        <TableCell>
-                          <Badge variant={item.status === 'Paid' ? 'default' : 'destructive'}>
-                            {item.status}
-                          </Badge>
+                    {rechargeHistory.length > 0 ? (
+                      rechargeHistory.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
+                          <TableCell>{item.packageName}</TableCell>
+                          <TableCell>₹{item.amount}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.status === 'Paid' ? 'default' : 'destructive'}>
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                          No recharge history found.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -301,15 +312,23 @@ export default function CustomerHistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockPaymentHistory.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
-                        <TableCell>₹{item.amount}</TableCell>
-                        <TableCell>
-                           <Badge variant="secondary">{item.description.split('via ')[1]}</Badge>
+                    {paymentHistory.length > 0 ? (
+                      paymentHistory.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{new Date(item.date).toLocaleDateString('en-CA')}</TableCell>
+                          <TableCell>₹{item.amount}</TableCell>
+                          <TableCell>
+                             <Badge variant="secondary">{item.method}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          No payment history found.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
