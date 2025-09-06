@@ -318,5 +318,3 @@ export default function CustomerHistoryPage({ params }: { params: { id: string }
     </main>
   );
 }
-
-    
