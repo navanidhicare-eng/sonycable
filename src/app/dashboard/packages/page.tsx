@@ -12,30 +12,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-const mockPackages = [
-  {
-    id: "pkg1",
-    name: "SONY BASIC",
-    amount: "250",
-    description: "Basic channels for family entertainment.",
-  },
-  {
-    id: "pkg2",
-    name: "SONY PREMIUM",
-    amount: "450",
-    description: "Includes all basic channels plus premium sports and movie channels.",
-  },
-  {
-    id: "pkg3",
-    name: "SONY HD+ PACK",
-    amount: "550",
-    description: "All channels in HD quality for the best viewing experience.",
-  },
-];
+interface Package {
+  id: string;
+  name: string;
+  amount: string;
+  description: string;
+}
+
+async function getPackages() {
+    const packagesCollection = collection(db, "packages");
+    const q = query(packagesCollection, orderBy("name"));
+    const querySnapshot = await getDocs(q);
+    const packages = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().packageName,
+        amount: doc.data().packageAmount,
+        description: doc.data().description,
+    })) as Package[];
+    return packages;
+}
 
 
-export default function PackagesPage() {
+export default async function PackagesPage() {
+  const packages = await getPackages();
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
@@ -69,7 +72,7 @@ export default function PackagesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockPackages.map((pkg) => (
+                {packages.map((pkg) => (
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
                     <TableCell>

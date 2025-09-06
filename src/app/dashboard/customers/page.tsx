@@ -23,7 +23,7 @@ import {
 import { PlusCircle, Search, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,6 +34,7 @@ interface Customer {
   area: string;
   stbId: string;
   customerId: string;
+  userId: string;
 }
 
 const areaOptions = [
@@ -59,7 +60,7 @@ export default function CustomersPage() {
         return;
     };
 
-    const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "customers"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       setCustomers(customersData);

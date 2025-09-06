@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -32,13 +32,13 @@ export default function AreasPage() {
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading) return; 
+    if (authLoading) return;
     if (!user) {
         setLoading(false);
         return;
     };
 
-    const q = query(collection(db, "areas"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "areas"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const areasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Area));
       setAreas(areasData);
