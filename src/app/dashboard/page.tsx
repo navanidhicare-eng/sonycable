@@ -58,7 +58,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !userRole) return;
 
     const settlementsRef = collection(db, "settlements");
     let q;
@@ -75,10 +75,17 @@ export default function DashboardPage() {
       const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
       requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setSettlementRequests(requests);
+    }, (error) => {
+        console.error("Firestore snapshot error:", error);
+        toast({
+            variant: "destructive",
+            title: "Error fetching data",
+            description: "Could not fetch settlement requests. Please check permissions or try again later.",
+        });
     });
 
     return () => unsubscribeFirestore();
-  }, [currentUser, userRole]);
+  }, [currentUser, userRole, toast]);
 
 
   const getWelcomeMessage = () => {
@@ -389,3 +396,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
