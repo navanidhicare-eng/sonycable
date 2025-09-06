@@ -41,18 +41,18 @@ interface Customer {
   };
 }
 
-const areaOptions = [
-  { value: "all", label: "All Areas" },
-  { value: "KPHB", label: "KPHB" },
-  { value: "Nizampet", label: "Nizampet" },
-  { value: "Pragathi Nagar", label: "Pragathi Nagar" },
-  { value: "Bachupally", label: "Bachupally" },
-];
+interface Area {
+  id: string;
+  name: string;
+}
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
+  const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
+    { value: "all", label: "All Areas" },
+  ]);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -64,8 +64,8 @@ export default function CustomersPage() {
         return;
     };
 
-    const q = query(collection(db, "customers"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const customersQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
+    const customersUnsubscribe = onSnapshot(customersQuery, (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       customersData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
       setCustomers(customersData);
@@ -80,7 +80,24 @@ export default function CustomersPage() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
+    const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
+        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+        setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+    }, (error) => {
+        console.error("Error fetching areas: ", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch areas",
+            description: "Could not load areas for filtering.",
+        });
+    });
+
+
+    return () => {
+      customersUnsubscribe();
+      areasUnsubscribe();
+    };
   }, [user, authLoading, toast]);
 
   const filteredCustomers = useMemo(() => {

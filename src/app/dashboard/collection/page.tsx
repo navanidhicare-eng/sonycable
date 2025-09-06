@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,6 +33,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Phone, HandCoins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const initialCollections = [
   {
@@ -53,14 +56,6 @@ const initialCollections = [
   },
 ];
 
-const areaOptions = [
-  { value: "all", label: "All Areas" },
-  { value: "KPHB", label: "KPHB" },
-  { value: "Nizampet", label: "Nizampet" },
-  { value: "Pragathi Nagar", label: "Pragathi Nagar" },
-  { value: "Bachupally", label: "Bachupally" },
-];
-
 export default function CollectionPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
@@ -70,6 +65,30 @@ export default function CollectionPage() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const { toast } = useToast();
   const [collections, setCollections] = useState(initialCollections);
+  const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
+    { value: "all", label: "All Areas" },
+  ]);
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
+    const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
+        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+        setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+    }, (error) => {
+        console.error("Error fetching areas: ", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch areas",
+            description: "Could not load areas for filtering.",
+        });
+    });
+
+    return () => areasUnsubscribe();
+  }, [user, authLoading, toast]);
+
 
   const filteredCollections = useMemo(() => {
     return collections.filter((collection) => {

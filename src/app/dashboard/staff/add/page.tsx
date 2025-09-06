@@ -32,6 +32,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 
 const formSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
@@ -47,6 +51,9 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddStaffPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [areas, setAreas] = useState<{ value: string; label: string }[]>([]);
+  const { user, loading: authLoading } = useAuth();
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -58,6 +65,26 @@ export default function AddStaffPage() {
       commission: "",
     },
   });
+
+   useEffect(() => {
+    if (authLoading || !user) return;
+
+    const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
+        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+        setAreas(areasData);
+    }, (error) => {
+        console.error("Error fetching areas: ", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch areas",
+            description: "Could not load areas for assignment.",
+        });
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
+
 
   function onSubmit(data: FormValues) {
     console.log(data);
@@ -121,10 +148,11 @@ export default function AddStaffPage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="all_areas">All Areas</SelectItem>
-                          <SelectItem value="area1">KPHB</SelectItem>
-                          <SelectItem value="area2">Nizampet</SelectItem>
-                          <SelectItem value="area3">Pragathi Nagar</SelectItem>
-                          <SelectItem value="area4">Bachupally</SelectItem>
+                           {areas.map(area => (
+                            <SelectItem key={area.value} value={area.value}>
+                              {area.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
