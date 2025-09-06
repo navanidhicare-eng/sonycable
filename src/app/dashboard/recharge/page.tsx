@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,89 +32,102 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, CreditCard } from "lucide-react";
+import { Search, CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, doc, updateDoc, addDoc } from "firebase/firestore";
 
-const mockCustomers = [
-  {
-    id: "cust1",
-    name: "Suresh Kumar",
-    mobile: "9876543210",
-    area: "KPHB",
-    stbId: "STB12345",
-    customerId: "CUST9876",
-  },
-  {
-    id: "cust2",
-    name: "Rajesh Sharma",
-    mobile: "9988776655",
-    area: "Nizampet",
-    stbId: "STB67890",
-    customerId: "CUST5432",
-  },
-  {
-    id: "cust3",
-    name: "Anitha Reddy",
-    mobile: "9123456789",
-    area: "Pragathi Nagar",
-    stbId: "STB54321",
-    customerId: "CUST1234",
-  },
-  {
-    id: "cust4",
-    name: "Vijay Varma",
-    mobile: "9000011111",
-    area: "KPHB",
-    stbId: "STB11223",
-    customerId: "CUST4321",
-  },
-];
+interface Customer {
+  id: string;
+  name: string;
+  mobile: string;
+  area: string;
+  stbId: string;
+  customerId: string;
+  balanceAmount: number;
+}
 
-const mockPackages = [
-  {
-    id: "pkg1",
-    name: "SONY BASIC",
-    amount: "250",
-    description: "Basic channels for family entertainment.",
-  },
-  {
-    id: "pkg2",
-    name: "SONY PREMIUM",
-    amount: "450",
-    description: "Includes all basic channels plus premium sports and movie channels.",
-  },
-  {
-    id: "pkg3",
-    name: "SONY HD+ PACK",
-    amount: "550",
-    description: "All channels in HD quality for the best viewing experience.",
-  },
-];
+interface Package {
+  id: string;
+  packageName: string;
+  packageAmount: string;
+  description: string;
+}
 
+interface Area {
+  value: string;
+  label: string;
+}
 
-const areaOptions = [
-  { value: "all", label: "All Areas" },
-  { value: "KPHB", label: "KPHB" },
-  { value: "Nizampet", label: "Nizampet" },
-  { value: "Pragathi Nagar", label: "Pragathi Nagar" },
-  { value: "Bachupally", label: "Bachupally" },
-];
 
 export default function RechargePage() {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [areas, setAreas] = useState<Area[]>([{ value: "all", label: "All Areas" }]);
+  const [loading, setLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [paymentReceived, setPaymentReceived] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentCustomer, setCurrentCustomer] = useState<any>(null);
+  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+
+  useEffect(() => {
+    if (authLoading || !user) {
+        if(!authLoading) setLoading(false);
+        return;
+    }
+
+    setLoading(true);
+
+    const customersQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
+    const customersUnsubscribe = onSnapshot(customersQuery, (snapshot) => {
+        const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+        setCustomers(customersData);
+    }, (error) => {
+        console.error("Error fetching customers:", error);
+        toast({ variant: "destructive", title: "Failed to fetch customers" });
+    });
+
+    const packagesQuery = query(collection(db, "packages"), where("userId", "==", user.uid));
+    const packagesUnsubscribe = onSnapshot(packagesQuery, (snapshot) => {
+        const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
+        setPackages(packagesData);
+    }, (error) => {
+        console.error("Error fetching packages:", error);
+        toast({ variant: "destructive", title: "Failed to fetch packages" });
+    });
+
+    const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
+    const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
+        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+        setAreas([{ value: "all", label: "All Areas" }, ...areasData]);
+    }, (error) => {
+        console.error("Error fetching areas:", error);
+        toast({ variant: "destructive", title: "Failed to fetch areas" });
+    });
+    
+    setLoading(false);
+
+    return () => {
+        customersUnsubscribe();
+        packagesUnsubscribe();
+        areasUnsubscribe();
+    }
+
+  }, [user, authLoading, toast]);
+
 
   const filteredCustomers = useMemo(() => {
-    return mockCustomers.filter((customer) => {
+    return customers.filter((customer) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         customer.name.toLowerCase().includes(searchTermLower) ||
@@ -127,37 +140,67 @@ export default function RechargePage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea]);
+  }, [searchTerm, filterArea, customers]);
 
-  const handleRecharge = () => {
-    if (selectedPackage && currentCustomer) {
-      const pkg = mockPackages.find(p => p.id === selectedPackage);
-      let description;
-      if (paymentReceived) {
-        description = `${currentCustomer.name} has been recharged with ${pkg?.name} for ₹${pkg?.amount}. Payment received.`;
-      } else {
-        description = `${currentCustomer.name} has been recharged with ${pkg?.name}. ₹${pkg?.amount} added to collection balance.`;
-      }
+  const handleRecharge = async () => {
+    if (!selectedPackage || !currentCustomer || !user) return;
+    
+    const pkg = packages.find(p => p.id === selectedPackage);
+    if (!pkg) {
+      toast({ variant: "destructive", title: "Package not found" });
+      return;
+    }
+
+    const rechargeAmount = parseFloat(pkg.packageAmount);
+    let description;
+
+    try {
+        if (paymentReceived) {
+            // If payment is received, we just log the recharge.
+            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ₹${rechargeAmount}. Payment received.`;
+        } else {
+            // If payment is not received, update the customer's balance.
+            const newBalance = currentCustomer.balanceAmount + rechargeAmount;
+            const customerDocRef = doc(db, "customers", currentCustomer.id);
+            await updateDoc(customerDocRef, {
+                balanceAmount: newBalance,
+            });
+            description = `${currentCustomer.name} has been recharged with ${pkg.packageName}. ₹${rechargeAmount} added to collection balance.`;
+        }
+
+        // Add a record to a "recharges" collection
+        await addDoc(collection(db, "recharges"), {
+            customerId: currentCustomer.id,
+            customerName: currentCustomer.name,
+            packageId: pkg.id,
+            packageName: pkg.packageName,
+            amount: rechargeAmount,
+            paymentReceived: paymentReceived,
+            rechargeDate: new Date(),
+            rechargedBy: user.uid,
+        });
       
-      toast({
-        title: "Recharge Successful",
-        description: description,
-      });
+        toast({
+            title: "Recharge Successful",
+            description: description,
+        });
 
-      setIsDialogOpen(false);
-      setSelectedPackage(null);
-      setPaymentReceived(true);
-      setCurrentCustomer(null);
-    } else {
-       toast({
-        variant: "destructive",
-        title: "Recharge Failed",
-        description: "Please select a package before confirming.",
-      });
+        setIsDialogOpen(false);
+        setSelectedPackage(null);
+        setPaymentReceived(true);
+        setCurrentCustomer(null);
+
+    } catch (error) {
+        console.error("Recharge failed:", error);
+         toast({
+            variant: "destructive",
+            title: "Recharge Failed",
+            description: "An error occurred while processing the recharge.",
+        });
     }
   };
 
-  const openDialog = (customer: any) => {
+  const openDialog = (customer: Customer) => {
     setCurrentCustomer(customer);
     setIsDialogOpen(true);
   };
@@ -194,7 +237,7 @@ export default function RechargePage() {
                   <SelectValue placeholder="Filter by area" />
                 </SelectTrigger>
                 <SelectContent>
-                  {areaOptions.map((option) => (
+                  {areas.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -204,41 +247,47 @@ export default function RechargePage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer Name</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>STB ID</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.length > 0 ? (
-                  filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell className="font-medium">
-                        {customer.name}
-                      </TableCell>
-                      <TableCell>{customer.mobile}</TableCell>
-                      <TableCell>{customer.stbId}</TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm" onClick={() => openDialog(customer)}>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Recharge
-                        </Button>
-                      </TableCell>
+             {loading || authLoading ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+             ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Customer Name</TableHead>
+                    <TableHead>Mobile</TableHead>
+                    <TableHead>STB ID</TableHead>
+                    <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                      No results found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                    {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
+                        <TableRow key={customer.id}>
+                        <TableCell className="font-medium">
+                            {customer.name}
+                        </TableCell>
+                        <TableCell>{customer.mobile}</TableCell>
+                        <TableCell>{customer.stbId}</TableCell>
+                        <TableCell>
+                            <Button variant="outline" size="sm" onClick={() => openDialog(customer)}>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Recharge
+                            </Button>
+                        </TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                        No results found.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+             )}
           </CardContent>
         </Card>
       </div>
@@ -262,9 +311,9 @@ export default function RechargePage() {
                       <SelectValue placeholder="Select a package" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockPackages.map((pkg) => (
+                      {packages.map((pkg) => (
                         <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.name} - ₹{pkg.amount}
+                          {pkg.packageName} - ₹{pkg.packageAmount}
                         </SelectItem>
                       ))}
                     </SelectContent>
