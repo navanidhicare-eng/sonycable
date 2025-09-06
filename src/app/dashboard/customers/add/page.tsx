@@ -40,6 +40,10 @@ import { useAuth } from "@/hooks/useAuth";
 const formSchema = z.object({
   customerName: z.string().min(1, "Customer name is required."),
   mobileNumber: z.string().min(10, "Please enter a valid mobile number."),
+  balanceAmount: z.preprocess(
+    (val) => (val === "" ? "0" : val),
+    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
+  ),
   area: z.string({ required_error: "Please select an area." }),
   stbId: z.string().min(1, "STB ID is required."),
   customerId: z.string().min(1, "Customer ID is required."),
@@ -59,6 +63,7 @@ export default function AddCustomerPage() {
     defaultValues: {
       customerName: "",
       mobileNumber: "",
+      balanceAmount: 0,
       stbId: "",
       customerId: "",
     },
@@ -98,6 +103,7 @@ export default function AddCustomerPage() {
       await addDoc(collection(db, "customers"), {
         name: data.customerName,
         mobile: data.mobileNumber,
+        balanceAmount: data.balanceAmount || 0,
         area: data.area,
         stbId: data.stbId,
         customerId: data.customerId,
@@ -157,6 +163,19 @@ export default function AddCustomerPage() {
                       <FormLabel>Mobile Number</FormLabel>
                       <FormControl>
                         <Input type="tel" placeholder="Enter mobile number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="balanceAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Opening Balance Amount (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="Enter opening balance" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
