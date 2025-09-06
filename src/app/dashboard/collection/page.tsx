@@ -85,11 +85,12 @@ export default function CollectionPage() {
 
     const collectionsQuery = query(
         collection(db, "customers"), 
-        where("userId", "==", user.uid),
-        where("balanceAmount", ">", 0)
+        where("userId", "==", user.uid)
     );
     const collectionsUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
-        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
+        const collectionsData = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
+          .filter(customer => customer.balanceAmount > 0);
         setCollections(collectionsData);
         setLoading(false);
     }, (error) => {
