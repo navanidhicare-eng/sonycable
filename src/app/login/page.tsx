@@ -26,13 +26,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Network, LogIn } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
-  username: z.string().min(1, { message: "Please enter your username or mobile number." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const staffCredentials = [
+    { email: "staf@gmail.com", password: "password123"},
+    { mobile: "9010737882", password: "12345678"},
+]
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,43 +49,52 @@ export default function LoginPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
 
-  function onSubmit(data: FormValues) {
+  async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
-    // This is a simple, non-production authentication check.
-    const isAdmin =
-      data.username.toLowerCase() === "psdgandepalli@gmail.com" &&
-      data.password === "Psd@1986";
     
-    const isStaff = 
-      data.username === "9010737882" &&
-      data.password === "12345678";
+    const isAdmin = data.email.toLowerCase() === 'psdgandepalli@gmail.com';
+    const isStaff = staffCredentials.some(cred => cred.email === data.email.toLowerCase() || cred.mobile === data.email);
 
-    if (isAdmin || isStaff) {
-       if (typeof window !== "undefined") {
-        if (isAdmin) {
-          localStorage.setItem("userRole", "Admin");
-        } else if (isStaff) {
-          localStorage.setItem("userRole", "Staff");
+    try {
+        await signInWithEmailAndPassword(auth, data.email, data.password);
+        if (typeof window !== "undefined") {
+            if (isAdmin) {
+              localStorage.setItem("userRole", "Admin");
+            } else if (isStaff) {
+              localStorage.setItem("userRole", "Staff");
+            }
         }
-      }
-      toast({
-        title: "Login Successful",
-        description: "Redirecting to dashboard...",
-      });
-      router.push("/dashboard");
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid username or password. Please try again.",
-      });
+        toast({
+            title: "Login Successful",
+            description: "Redirecting to dashboard...",
+        });
+        router.push("/dashboard");
+
+    } catch (error: any) {
+        console.error("Firebase Auth Error:", error);
+        
+        let errorMessage = "Invalid username or password. Please try again.";
+        if(error.code === 'auth/user-not-found') {
+            errorMessage = "No user found with this email.";
+        } else if (error.code === 'auth/wrong-password') {
+            errorMessage = "Incorrect password. Please try again.";
+        } else if (error.code === 'auth/invalid-credential') {
+             errorMessage = "Invalid credentials. Please check your email and password.";
+        }
+
+        toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: errorMessage,
+        });
+    } finally {
+        setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   }
 
   return (
@@ -94,13 +110,13 @@ export default function LoginPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username / Mobile</FormLabel>
+                    <FormLabel>Email / Mobile</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter your username or mobile"
+                        placeholder="Enter your email or mobile"
                         {...field}
                       />
                     </FormControl>

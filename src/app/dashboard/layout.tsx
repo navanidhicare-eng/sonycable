@@ -30,6 +30,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function WithSidebarLayout({
   children,
@@ -37,6 +40,7 @@ export default function WithSidebarLayout({
   children: React.ReactNode;
 }) {
   const [userRole, setUserRole] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -44,6 +48,18 @@ export default function WithSidebarLayout({
       setUserRole(role || '');
     }
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("userRole");
+      }
+      router.push('/login');
+    } catch (error) {
+      console.error("Failed to log out", error);
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -158,11 +174,9 @@ export default function WithSidebarLayout({
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/login">
+              <SidebarMenuButton onClick={handleLogout}>
                   <LogOut />
                   <span>Logout</span>
-                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
