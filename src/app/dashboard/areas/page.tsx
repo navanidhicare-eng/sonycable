@@ -1,7 +1,9 @@
 
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -11,32 +13,41 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useEffect, useState } from "react";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
-const mockAreas = [
-  {
-    id: "area1",
-    name: "KPHB",
-    description: "Kukatpally Housing Board Colony",
-  },
-  {
-    id: "area2",
-    name: "Nizampet",
-    description: "Nizampet Village and surroundings",
-  },
-  {
-    id: "area3",
-    name: "Pragathi Nagar",
-    description: "Pragathi Nagar residential area",
-  },
-  {
-    id: "area4",
-    name: "Bachupally",
-    description: "Bachupally and neighboring areas",
-  },
-];
-
+interface Area {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export default function AreasPage() {
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const q = query(collection(db, "areas"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const areasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Area));
+      setAreas(areasData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching areas: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch areas",
+        description: "Could not retrieve area data from the database.",
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
@@ -61,22 +72,36 @@ export default function AreasPage() {
             <CardTitle>Area List</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Area Name</TableHead>
-                  <TableHead>Description</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockAreas.map((area) => (
-                  <TableRow key={area.id}>
-                    <TableCell className="font-medium">{area.name}</TableCell>
-                    <TableCell>{area.description}</TableCell>
+            {loading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Area Name</TableHead>
+                    <TableHead>Description</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {areas.length > 0 ? (
+                    areas.map((area) => (
+                      <TableRow key={area.id}>
+                        <TableCell className="font-medium">{area.name}</TableCell>
+                        <TableCell>{area.description}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={2} className="h-24 text-center">
+                        No areas found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

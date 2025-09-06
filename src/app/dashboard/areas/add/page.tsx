@@ -25,6 +25,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
+import { useState } from "react";
+import { db } from "@/lib/firebase";
+import { addDoc, collection } from "firebase/firestore";
 
 const formSchema = z.object({
   areaName: z.string().min(1, "Area name is required."),
@@ -36,6 +39,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddAreaPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -45,13 +49,29 @@ export default function AddAreaPage() {
     },
   });
 
-  function onSubmit(data: FormValues) {
-    console.log(data);
-    toast({
-      title: "Area Added",
-      description: `${data.areaName} has been successfully added.`,
-    });
-    router.push("/dashboard/areas");
+  async function onSubmit(data: FormValues) {
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "areas"), {
+        name: data.areaName,
+        description: data.description || "",
+        createdAt: new Date(),
+      });
+      toast({
+        title: "Area Added",
+        description: `${data.areaName} has been successfully added.`,
+      });
+      router.push("/dashboard/areas");
+    } catch (error) {
+      console.error("Error adding area: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to add area",
+        description: "An error occurred while saving the area data.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -97,9 +117,9 @@ export default function AddAreaPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Area
+                  {isSubmitting ? "Adding Area..." : "Add Area"}
                 </Button>
               </form>
             </Form>
