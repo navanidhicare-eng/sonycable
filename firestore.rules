@@ -1,9 +1,23 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /settlements/{document=**} {
+    match /settlements/{settlementId} {
+      // Allow read/write access only to authenticated users
       allow read, write: if request.auth != null;
+
+      // Staff can create their own settlement requests
+      allow create: if request.auth != null && request.resource.data.staffId == request.auth.uid;
+      
+      // Admin can approve (update) any settlement request
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+
+      // Staff can read their own settlements, Admin can read all
+      allow get, list: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' || resource.data.staffId == request.auth.uid);
+    }
+
+    // A user document to store roles
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
