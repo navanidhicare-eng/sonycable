@@ -18,89 +18,132 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { auth, db } from "@/lib/firebase";
+import { collection, addDoc, onSnapshot, doc, updateDoc, query, where } from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 
 interface SettlementRequest {
   id: string;
   staffName: string;
+  staffId: string;
   amount: number;
   commission: number;
   amountToSend: number;
   status: 'pending' | 'approved';
+  createdAt: Date;
 }
 
 export default function DashboardPage() {
   const [userRole, setUserRole] = useState("");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
-  
-  // Simulate a shared state for settlement requests using localStorage
   const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
-
+  
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("userRole");
-      setUserRole(role || "");
-
-      const storedRequests = localStorage.getItem("settlementRequests");
-      if (storedRequests) {
-        setSettlementRequests(JSON.parse(storedRequests));
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user);
+        const role = localStorage.getItem("userRole");
+        setUserRole(role || "");
+      } else {
+        setCurrentUser(null);
+        setUserRole("");
       }
-    }
+    });
+
+    return () => unsubscribeAuth();
   }, []);
 
-  const updateAndStoreRequests = (newRequests: SettlementRequest[]) => {
-    setSettlementRequests(newRequests);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("settlementRequests", JSON.stringify(newRequests));
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const settlementsRef = collection(db, "settlements");
+    let q;
+
+    if (userRole === "Admin") {
+      q = query(settlementsRef);
+    } else if (userRole === "Staff") {
+      q = query(settlementsRef, where("staffId", "==", currentUser.uid));
+    } else {
+      return;
     }
-  };
+
+    const unsubscribeFirestore = onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
+      requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setSettlementRequests(requests);
+    });
+
+    return () => unsubscribeFirestore();
+  }, [currentUser, userRole]);
+
 
   const getWelcomeMessage = () => {
     if (userRole === "Admin") {
       return "Welcome, Admin!";
     }
     if (userRole === "Staff") {
-      return "Welcome, Staff!";
+      return `Welcome, ${currentUser?.displayName || 'Staff'}!`;
     }
     return "Welcome to your SONY CABLE dashboard.";
   };
 
-  const handleSettleCollection = () => {
-    const collectionAmount = 12550;
-    const commissionAmount = 1255;
+  const handleSettleCollection = async () => {
+    if (!currentUser) return;
+    
+    const collectionAmount = 12550; // Replace with actual dynamic amount
+    const commissionAmount = 1255; // Replace with actual dynamic amount
     const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
 
-    const newRequest: SettlementRequest = {
-        id: `settle_${new Date().getTime()}`,
-        staffName: 'Staff Member', // In a real app, this would be dynamic
+    try {
+      await addDoc(collection(db, "settlements"), {
+        staffId: currentUser.uid,
+        staffName: currentUser.displayName || 'Staff Member',
         amount: collectionAmount,
         commission: commissionReceived ? commissionAmount : 0,
         amountToSend: amountToSend,
         status: 'pending',
-    };
+        createdAt: new Date(),
+      });
 
-    updateAndStoreRequests([...settlementRequests, newRequest]);
-    
-    toast({
-        title: "Request Sent",
-        description: `Your settlement request for ₹${amountToSend.toLocaleString()} has been sent to the admin for approval.`,
-    });
-    
-    setIsSettleDialogOpen(false);
-    setCommissionReceived(false); // Reset checkbox state after action
+      toast({
+          title: "Request Sent",
+          description: `Your settlement request for ₹${amountToSend.toLocaleString()} has been sent to the admin for approval.`,
+      });
+      
+      setIsSettleDialogOpen(false);
+      setCommissionReceived(false);
+    } catch (error) {
+      console.error("Error sending settlement request: ", error);
+      toast({
+        variant: "destructive",
+        title: "Request Failed",
+        description: "Could not send your settlement request. Please try again.",
+      });
+    }
   }
 
-  const handleApproveSettlement = (requestId: string) => {
-    const updatedRequests = settlementRequests.map(req => 
-        req.id === requestId ? { ...req, status: 'approved' } : req
-    );
-    updateAndStoreRequests(updatedRequests);
-    toast({
-        title: "Settlement Approved",
-        description: "The staff member's wallet has been marked as cleared.",
-    })
+  const handleApproveSettlement = async (requestId: string) => {
+    try {
+      const requestDocRef = doc(db, "settlements", requestId);
+      await updateDoc(requestDocRef, {
+        status: 'approved'
+      });
+      toast({
+          title: "Settlement Approved",
+          description: "The staff member's wallet has been marked as cleared.",
+      })
+    } catch (error) {
+        console.error("Error approving settlement: ", error);
+        toast({
+            variant: "destructive",
+            title: "Approval Failed",
+            description: "Could not approve the settlement. Please try again.",
+        });
+    }
   }
 
   const CollectionCard = () => (
@@ -239,11 +282,11 @@ export default function DashboardPage() {
   );
 
   const StaffDashboard = () => {
-     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending');
-     const isWalletCleared = settlementRequests.every(req => req.status === 'approved');
+     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
+     const isWalletCleared = !settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid) && settlementRequests.length > 0;
 
-     const walletAmount = isWalletCleared ? 0 : 12550;
-     const commissionAmount = isWalletCleared ? 0 : 1255;
+     const walletAmount = isWalletCleared ? 0 : 12550; // Replace with actual dynamic amount
+     const commissionAmount = isWalletCleared ? 0 : 1255; // Replace with actual dynamic amount
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -284,8 +327,8 @@ export default function DashboardPage() {
             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)} disabled={hasPendingRequest || isWalletCleared}>
-                    {hasPendingRequest ? 'Approval Pending' : (isWalletCleared ? 'Settled' : 'Send to Admin')}
+                <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)} disabled={hasPendingRequest || walletAmount === 0}>
+                    {hasPendingRequest ? 'Approval Pending' : (walletAmount === 0 ? 'Settled' : 'Send to Admin')}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                    {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}
@@ -346,4 +389,3 @@ export default function DashboardPage() {
     </>
   );
 }
-    
