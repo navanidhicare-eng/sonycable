@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -23,6 +23,10 @@ interface Area {
   id: string;
   name: string;
   description: string;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
 }
 
 export default function AreasPage() {
@@ -38,9 +42,10 @@ export default function AreasPage() {
         return;
     };
 
-    const q = query(collection(db, "areas"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "areas"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const areasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Area));
+      areasData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
       setAreas(areasData);
       setLoading(false);
     }, (error) => {

@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,10 @@ interface Package {
   packageName: string;
   packageAmount: string;
   description: string;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
 }
 
 
@@ -44,12 +48,12 @@ export default function PackagesPage() {
 
     const q = query(
       collection(db, "packages"),
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
+      where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
+      packagesData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
       setPackages(packagesData);
       setLoading(false);
     }, (error) => {
