@@ -57,6 +57,7 @@ export default function DashboardPage() {
       todaysCollection: 0,
       monthlyCollection: 0,
   });
+  const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
 
   useEffect(() => {
     if (authLoading) {
@@ -78,14 +79,13 @@ export default function DashboardPage() {
             try {
                 const customersSnapshot = await getDocs(query(collection(db, "customers"), where("userId", "==", currentUser.uid)));
                 const packagesSnapshot = await getDocs(query(collection(db, "packages"), where("userId", "==", currentUser.uid)));
-                // Mocking other stats for now as there's no collection for them yet
                 setStats({
-                    totalRevenue: 45231.89,
+                    totalRevenue: 0,
                     activeCustomers: customersSnapshot.size,
                     activePackages: packagesSnapshot.size,
-                    collectionAgents: 5,
-                    todaysCollection: 5250,
-                    monthlyCollection: 120500,
+                    collectionAgents: 0,
+                    todaysCollection: 0,
+                    monthlyCollection: 0,
                 });
             } catch (error) {
                 console.error("Error fetching stats:", error);
@@ -99,6 +99,8 @@ export default function DashboardPage() {
         fetchStats();
     } else if (userRole === "Staff") {
       q = query(settlementsRef, where("staffId", "==", currentUser.uid));
+       // TODO: Replace with actual logic to calculate staff wallet
+      setStaffWallet({ walletAmount: 0, commissionAmount: 0 });
     } else {
       setFirestoreLoading(false);
       return;
@@ -136,8 +138,8 @@ export default function DashboardPage() {
   const handleSettleCollection = async () => {
     if (!currentUser) return;
     
-    const collectionAmount = 12550; // Replace with actual dynamic amount
-    const commissionAmount = 1255; // Replace with actual dynamic amount
+    const collectionAmount = staffWallet.walletAmount;
+    const commissionAmount = staffWallet.commissionAmount;
     const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
 
     try {
@@ -309,8 +311,7 @@ export default function DashboardPage() {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
      const isWalletCleared = !settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid) && settlementRequests.length > 0;
 
-     const walletAmount = isWalletCleared ? 0 : 12550; // Replace with actual dynamic amount
-     const commissionAmount = isWalletCleared ? 0 : 1255; // Replace with actual dynamic amount
+     const { walletAmount, commissionAmount } = staffWallet;
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -352,7 +353,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)} disabled={hasPendingRequest || walletAmount === 0}>
-                    {hasPendingRequest ? 'Approval Pending' : (walletAmount === 0 ? 'Settled' : 'Send to Admin')}
+                    {hasPendingRequest ? 'Approval Pending' : (isWalletCleared ? 'Settled' : 'Send to Admin')}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                    {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}
@@ -409,13 +410,13 @@ export default function DashboardPage() {
             <DialogTitle>Confirm Settlement</DialogTitle>
             <DialogDescription>
                 Are you sure you want to send the collected amount of{" "}
-                <span className="font-bold text-foreground">₹12,550</span> to the admin? This action cannot be undone.
+                <span className="font-bold text-foreground">₹{staffWallet.walletAmount.toLocaleString()}</span> to the admin? This action cannot be undone.
             </DialogDescription>
         </DialogHeader>
         <div className="py-4">
             <div className="flex items-center space-x-2">
                 <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
-                <Label htmlFor="commission-received">Commission Received (₹1,255)</Label>
+                <Label htmlFor="commission-received">Commission Received (₹{staffWallet.commissionAmount.toLocaleString()})</Label>
             </div>
         </div>
         <DialogFooter>
