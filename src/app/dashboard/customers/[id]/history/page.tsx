@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -55,8 +56,9 @@ const mockAllTransactions = [
 ].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
-export default function CustomerHistoryPage({ params }: { params: { id: string } }) {
-  const customerId = params.id;
+export default function CustomerHistoryPage() {
+  const params = useParams();
+  const customerId = params.id as string;
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
