@@ -31,30 +31,44 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Phone, HandCoins } from "lucide-react";
+import { Search, Phone, HandCoins, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const initialCollections: any[] = [];
+interface Collection {
+    id: string;
+    name: string;
+    mobile: string;
+    stbId: string;
+    area: string;
+    balanceAmount: number;
+    customerId: string;
+}
 
 export default function CollectionPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
   const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false);
-  const [currentCustomer, setCurrentCustomer] = useState<any>(null);
+  const [currentCustomer, setCurrentCustomer] = useState<Collection | null>(null);
   const [amountCollected, setAmountCollected] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const { toast } = useToast();
-  const [collections, setCollections] = useState(initialCollections);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
   const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All Areas" },
   ]);
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user) {
+        if(!authLoading){
+            setLoading(false);
+        }
+        return;
+    }
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
     const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
@@ -69,7 +83,30 @@ export default function CollectionPage() {
         });
     });
 
-    return () => areasUnsubscribe();
+    const collectionsQuery = query(
+        collection(db, "customers"), 
+        where("userId", "==", user.uid),
+        where("balanceAmount", ">", 0)
+    );
+    const collectionsUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
+        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
+        setCollections(collectionsData);
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching collections:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch collections",
+            description: "Could not retrieve outstanding balances.",
+        });
+        setLoading(false);
+    });
+
+
+    return () => {
+        areasUnsubscribe();
+        collectionsUnsubscribe();
+    }
   }, [user, authLoading, toast]);
 
 
@@ -88,22 +125,51 @@ export default function CollectionPage() {
     });
   }, [searchTerm, filterArea, collections]);
 
-  const openCollectDialog = (customer: any) => {
+  const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
-    setAmountCollected(customer.amountDue);
+    setAmountCollected(customer.balanceAmount.toString());
     setPaymentMethod("cash");
     setIsCollectDialogOpen(true);
   };
 
-  const handleConfirmCollection = () => {
+  const handleConfirmCollection = async () => {
     if (!amountCollected || !currentCustomer) return;
-    toast({
-      title: "Collection Recorded",
-      description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
-    });
-    setCollections(prevCollections => prevCollections.filter(c => c.id !== currentCustomer.id));
-    setIsCollectDialogOpen(false);
-    setCurrentCustomer(null);
+    
+    const collectedAmount = parseFloat(amountCollected);
+    const newBalance = currentCustomer.balanceAmount - collectedAmount;
+
+    try {
+        const customerDocRef = doc(db, "customers", currentCustomer.id);
+        await updateDoc(customerDocRef, {
+            balanceAmount: newBalance
+        });
+
+        await addDoc(collection(db, "payments"), {
+            customerId: currentCustomer.id,
+            customerName: currentCustomer.name,
+            amount: collectedAmount,
+            method: paymentMethod,
+            collectedBy: user?.uid,
+            collectionDate: new Date(),
+        });
+
+        toast({
+            title: "Collection Recorded",
+            description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
+        });
+
+        setIsCollectDialogOpen(false);
+        setCurrentCustomer(null);
+
+    } catch (error) {
+        console.error("Error recording collection:", error);
+        toast({
+            variant: "destructive",
+            title: "Collection Failed",
+            description: "An error occurred while recording the payment.",
+        });
+    }
+
   };
 
   return (
@@ -149,6 +215,11 @@ export default function CollectionPage() {
               </div>
             </CardHeader>
             <CardContent>
+             {loading || authLoading ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -170,7 +241,7 @@ export default function CollectionPage() {
                         <TableCell>{collection.area}</TableCell>
                         <TableCell>
                           <Badge variant="destructive">
-                            ₹{collection.amountDue}
+                            ₹{collection.balanceAmount}
                           </Badge>
                         </TableCell>
                         <TableCell className="flex gap-2">
@@ -199,6 +270,7 @@ export default function CollectionPage() {
                   )}
                 </TableBody>
               </Table>
+            )}
             </CardContent>
           </Card>
         </div>
@@ -211,7 +283,7 @@ export default function CollectionPage() {
               <DialogTitle>Collect from {currentCustomer.name}</DialogTitle>
               <DialogDescription>
                 Record the payment collected from the customer. Amount due: ₹
-                {currentCustomer.amountDue}
+                {currentCustomer.balanceAmount}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -257,3 +329,5 @@ export default function CollectionPage() {
     </>
   );
 }
+
+    
