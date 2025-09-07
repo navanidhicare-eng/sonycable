@@ -34,7 +34,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Phone, HandCoins, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface Collection {
@@ -45,6 +45,11 @@ interface Collection {
     area: string;
     balanceAmount: number;
     customerId: string;
+}
+
+interface Staff {
+    area: string[];
+    adminId: string;
 }
 
 export default function CollectionPage() {
@@ -60,7 +65,7 @@ export default function CollectionPage() {
   const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All Areas" },
   ]);
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -70,45 +75,80 @@ export default function CollectionPage() {
         return;
     }
 
-    const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-    const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
-        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
-        setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
-    }, (error) => {
-        console.error("Error fetching areas: ", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to fetch areas",
-            description: "Could not load areas for filtering.",
+    const fetchCollections = async () => {
+        setLoading(true);
+        let collectionsQuery;
+        let areasQuery;
+        let adminIdForAreas = user.uid;
+
+        if (userRole === 'Staff') {
+            const staffDocRef = doc(db, "staff", user.uid);
+            const staffDocSnap = await getDoc(staffDocRef);
+            if (staffDocSnap.exists()) {
+                const staffData = staffDocSnap.data() as Staff;
+                const assignedAreas = staffData.area;
+                adminIdForAreas = staffData.adminId;
+                if (assignedAreas.length > 0) {
+                    collectionsQuery = query(
+                        collection(db, "customers"),
+                        where("userId", "==", staffData.adminId),
+                        where("area", "in", assignedAreas)
+                    );
+                } else {
+                    setCollections([]);
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                 setLoading(false);
+                 return;
+            }
+        } else { // Admin role
+            collectionsQuery = query(
+                collection(db, "customers"),
+                where("userId", "==", user.uid)
+            );
+        }
+        
+        areasQuery = query(collection(db, "areas"), where("userId", "==", adminIdForAreas));
+
+        const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
+            const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+            setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+        }, (error) => {
+            console.error("Error fetching areas: ", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to fetch areas",
+                description: "Could not load areas for filtering.",
+            });
         });
-    });
 
-    const collectionsQuery = query(
-        collection(db, "customers"), 
-        where("userId", "==", user.uid)
-    );
-    const collectionsUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
-        const collectionsData = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
-          .filter(customer => customer.balanceAmount > 0);
-        setCollections(collectionsData);
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching collections:", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to fetch collections",
-            description: "Could not retrieve outstanding balances.",
+        const collectionsUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
+            const collectionsData = snapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
+              .filter(customer => customer.balanceAmount > 0);
+            setCollections(collectionsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching collections:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to fetch collections",
+                description: "Could not retrieve outstanding balances.",
+            });
+            setLoading(false);
         });
-        setLoading(false);
-    });
 
+        return () => {
+            areasUnsubscribe();
+            collectionsUnsubscribe();
+        }
+    };
 
-    return () => {
-        areasUnsubscribe();
-        collectionsUnsubscribe();
-    }
-  }, [user, authLoading, toast]);
+    fetchCollections();
+
+  }, [user, userRole, authLoading, toast]);
 
 
   const filteredCollections = useMemo(() => {
@@ -134,7 +174,7 @@ export default function CollectionPage() {
   };
 
   const handleConfirmCollection = async () => {
-    if (!amountCollected || !currentCustomer) return;
+    if (!amountCollected || !currentCustomer || !user) return;
     
     const collectedAmount = parseFloat(amountCollected);
     const newBalance = currentCustomer.balanceAmount - collectedAmount;
@@ -330,5 +370,3 @@ export default function CollectionPage() {
     </>
   );
 }
-
-    
