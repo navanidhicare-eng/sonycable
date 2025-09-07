@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Loader2, CalendarIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, where, onSnapshot, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, getDocs, Timestamp } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -56,12 +56,22 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface Area {
+    value: string;
+    label: string;
+}
+interface Package {
+    id: string;
+    packageName: string;
+}
+
 export default function AddCustomerPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, loading: authLoading } = useAuth();
-  const [areas, setAreas] = useState<{ value: string; label: string }[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -78,7 +88,7 @@ export default function AddCustomerPage() {
     if (authLoading || !user) return;
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
+    const unsubscribeAreas = onSnapshot(areasQuery, (snapshot) => {
         const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
         setAreas(areasData);
     }, (error) => {
@@ -90,7 +100,18 @@ export default function AddCustomerPage() {
         });
     });
 
-    return () => unsubscribe();
+    const packagesQuery = query(collection(db, "packages"), where("userId", "==", user.uid));
+    const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
+        const packagesData = snapshot.docs.map(doc => ({ id: doc.id, packageName: doc.data().packageName }));
+        setPackages(packagesData);
+    }, (error) => {
+        console.error("Error fetching packages: ", error);
+    });
+
+    return () => {
+      unsubscribeAreas();
+      unsubscribePackages();
+    };
   }, [user, authLoading, toast]);
 
 
@@ -139,8 +160,8 @@ export default function AddCustomerPage() {
         customerId: data.customerId,
         createdAt: new Date(),
         userId: user.uid,
-        lastRechargeDate: data.lastRechargeDate || null,
-        expiryDate: expiryDate,
+        lastRechargeDate: data.lastRechargeDate ? Timestamp.fromDate(data.lastRechargeDate) : null,
+        expiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null,
       });
       toast({
         title: "Customer Added",
@@ -320,3 +341,5 @@ export default function AddCustomerPage() {
     </main>
   );
 }
+
+    

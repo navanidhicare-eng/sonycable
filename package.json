@@ -1,3 +1,4 @@
+
 {
   "name": "nextn",
   "version": "0.1.0",
@@ -46,6 +47,7 @@
     "jspdf": "^2.5.1",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
+    "papaparse": "^5.4.1",
     "patch-package": "^8.0.0",
     "qrcode": "^1.5.3",
     "react": "^18.3.1",
@@ -59,6 +61,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/papaparse": "^5.3.14",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -68,3 +71,5 @@
     "typescript": "^5"
   }
 }
+
+    

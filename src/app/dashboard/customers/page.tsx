@@ -20,12 +20,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Search, Loader2 } from "lucide-react";
+import { PlusCircle, Search, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Timestamp, writeBatch, doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import Papa from "papaparse";
 
 interface Customer {
   id: string;
@@ -57,6 +59,8 @@ export default function CustomersPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -107,8 +111,8 @@ export default function CustomersPage() {
       const matchesSearch =
         customer.name.toLowerCase().includes(searchTermLower) ||
         customer.mobile.includes(searchTerm) ||
-        customer.stbId.toLowerCase().includes(searchTermLower) ||
-        customer.customerId.toLowerCase().includes(searchTermLower);
+        (customer.stbId && customer.stbId.toLowerCase().includes(searchTermLower)) ||
+        (customer.customerId && customer.customerId.toLowerCase().includes(searchTermLower));
 
       const matchesArea =
         filterArea === "all" || customer.area === filterArea;
@@ -122,7 +126,107 @@ export default function CustomersPage() {
     return timestamp.toDate().toLocaleDateString('en-CA');
   }
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploading(true);
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const requiredFields = ["customerName", "mobileNumber", "area", "stbId", "customerId"];
+        const headers = results.meta.fields || [];
+        const missingHeaders = requiredFields.filter(h => !headers.includes(h));
+
+        if (missingHeaders.length > 0) {
+          toast({
+            variant: "destructive",
+            title: "Invalid CSV format",
+            description: `Missing required columns: ${missingHeaders.join(", ")}`
+          });
+          setIsUploading(false);
+          return;
+        }
+
+        const newCustomers = results.data as any[];
+
+        try {
+          const batch = writeBatch(db);
+          newCustomers.forEach(cust => {
+            const customerRef = doc(collection(db, "customers"));
+
+            const lastRechargeDate = cust.lastRechargeDate ? new Date(cust.lastRechargeDate) : null;
+            let expiryDate = null;
+            if (lastRechargeDate) {
+              expiryDate = new Date(lastRechargeDate);
+              expiryDate.setDate(expiryDate.getDate() + 30);
+            }
+            
+            batch.set(customerRef, {
+              name: cust.customerName,
+              mobile: cust.mobileNumber,
+              area: cust.area,
+              stbId: cust.stbId,
+              customerId: cust.customerId,
+              balanceAmount: parseFloat(cust.balanceAmount) || 0,
+              lastRechargeDate: lastRechargeDate ? Timestamp.fromDate(lastRechargeDate) : null,
+              expiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null,
+              createdAt: new Date(),
+              userId: user.uid,
+            });
+          });
+
+          await batch.commit();
+
+          toast({
+            title: "Upload Successful",
+            description: `${newCustomers.length} customers have been added.`
+          });
+
+        } catch (error) {
+            console.error("Error bulk adding customers:", error);
+            toast({
+              variant: "destructive",
+              title: "Upload Failed",
+              description: "An error occurred while saving the customer data."
+            });
+        } finally {
+          setIsUploading(false);
+          setIsUploadDialogOpen(false);
+        }
+      },
+      error: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "File Read Error",
+          description: error.message
+        });
+        setIsUploading(false);
+      }
+    });
+  };
+
+  const generateCsvTemplate = () => {
+    const headers = "customerName,mobileNumber,area,stbId,customerId,balanceAmount,lastRechargeDate\n";
+    const exampleRow = "John Doe,9876543210,Main Area,123456789,CUST001,50,2023-01-15";
+    const content = headers + exampleRow;
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.href) {
+      URL.revokeObjectURL(link.href);
+    }
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute("download", "customer_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
         <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
@@ -134,12 +238,48 @@ export default function CustomersPage() {
               Manage your customer information here.
             </p>
           </div>
-          <Button asChild className="mt-4 sm:mt-0">
-            <Link href="/dashboard/customers/add">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Customer
-            </Link>
-          </Button>
+          <div className="flex gap-2 mt-4 sm:mt-0">
+             <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Bulk Upload
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Bulk Upload Customers</DialogTitle>
+                  <DialogDescription>
+                    Upload a CSV file with customer data. Please ensure it follows the correct format.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Required columns: `customerName`, `mobileNumber`, `area`, `stbId`, `customerId`.
+                  </p>
+                   <p className="text-sm text-muted-foreground mb-4">
+                    Optional columns: `balanceAmount`, `lastRechargeDate` (in YYYY-MM-DD format).
+                  </p>
+                  <Button variant="link" onClick={generateCsvTemplate} className="p-0 h-auto mb-4">
+                    Download CSV Template
+                  </Button>
+                  <Input type="file" accept=".csv" onChange={handleFileUpload} disabled={isUploading} />
+                  {isUploading && (
+                    <div className="flex items-center mt-4 text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span>Processing file, please wait...</span>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button asChild>
+              <Link href="/dashboard/customers/add">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Customer
+              </Link>
+            </Button>
+          </div>
         </header>
         <Card className="w-full max-w-4xl">
           <CardHeader>
@@ -219,5 +359,8 @@ export default function CustomersPage() {
         </Card>
       </div>
     </main>
+    </>
   );
 }
+
+    
