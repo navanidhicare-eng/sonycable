@@ -84,6 +84,7 @@ export default function WithSidebarLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
              {userRole === 'Staff' && (
+               <>
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild>
                         <Link href="/dashboard/payments-collections">
@@ -92,6 +93,15 @@ export default function WithSidebarLayout({
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/dashboard/reminders-staff">
+                        <BellRing />
+                        <span>Reminders</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+               </>
             )}
             {userRole === 'Admin' && (
               <>
