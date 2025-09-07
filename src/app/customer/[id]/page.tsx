@@ -95,91 +95,79 @@ export default function CustomerPublicPage() {
 
   useEffect(() => {
     if (!customerId) {
-        setLoading(false);
-        return;
-    };
-    
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const getCustomerData = async () => {
-        const docRef = doc(db, "customers", customerId);
-        try {
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const customerData = { id: docSnap.id, ...docSnap.data() } as Customer;
-                setCustomer(customerData);
-                // Fetch packages once we have the admin's user ID
-                if (customerData.userId) {
-                    const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
-                    const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
-                        const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
-                        setPackages(packagesData);
-                    });
-                    // Note: We don't have a way to unsubscribe this on component unmount
-                    // because it's nested. This is a minor memory leak for this page.
-                }
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Customer not found",
-                });
-            }
-        } catch(error) {
-             toast({
-                variant: "destructive",
-                title: "Failed to fetch customer",
-            });
-        }
-    };
 
-    const getTransactionData = () => {
-        const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
-        const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
+    let customerUnsubscribe: () => void = () => {};
+    let paymentsUnsubscribe: () => void = () => {};
+    let rechargesUnsubscribe: () => void = () => {};
+    let packagesUnsubscribe: () => void = () => {};
 
-        const paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
+    const customerDocRef = doc(db, "customers", customerId);
+
+    customerUnsubscribe = onSnapshot(customerDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const customerData = { id: docSnap.id, ...docSnap.data() } as Customer;
+        setCustomer(customerData);
+
+        // Once we have the customer, we can fetch everything else.
+        if (customerData.userId) {
+          const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
+          const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
+          const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
+
+          paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
             const payments = snapshot.docs.map(doc => ({
-                id: doc.id,
-                date: doc.data().collectionDate.toDate().toISOString(),
-                description: `Payment via ${doc.data().method}`,
-                amount: doc.data().amount,
-                method: doc.data().method,
-                type: 'Payment'
+              id: doc.id,
+              date: doc.data().collectionDate.toDate().toISOString(),
+              description: `Payment via ${doc.data().method}`,
+              amount: doc.data().amount,
+              method: doc.data().method,
+              type: 'Payment'
             } as Transaction));
             setPaymentHistory(payments);
-        });
+          });
 
-        const rechargesUnsubscribe = onSnapshot(rechargesQuery, (snapshot) => {
+          rechargesUnsubscribe = onSnapshot(rechargesQuery, (snapshot) => {
             const recharges = snapshot.docs.map(doc => ({
-                id: doc.id,
-                date: doc.data().rechargeDate.toDate().toISOString(),
-                description: `Recharge - ${doc.data().packageName}`,
-                amount: doc.data().amount,
-                packageName: doc.data().packageName,
-                status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
-                type: 'Recharge'
+              id: doc.id,
+              date: doc.data().rechargeDate.toDate().toISOString(),
+              description: `Recharge - ${doc.data().packageName}`,
+              amount: doc.data().amount,
+              packageName: doc.data().packageName,
+              status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
+              type: 'Recharge'
             } as Transaction));
             setRechargeHistory(recharges);
-        });
-        
-        return () => {
-            paymentsUnsubscribe();
-            rechargesUnsubscribe();
-        }
-    }
+          });
 
-    const runAsync = async () => {
-        await getCustomerData();
-        const unsub = getTransactionData();
+          packagesUnsubscribe = onSnapshot(packagesQuery, (snapshot) => {
+            const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
+            setPackages(packagesData);
+            setLoading(false); // Set loading to false after all data is fetched
+          }, () => { setLoading(false); });
+        } else {
+            setLoading(false);
+        }
+      } else {
+        toast({ variant: "destructive", title: "Customer not found" });
         setLoading(false);
-        return unsub;
-    }
-    
-    let unsubscribe: (() => void) | undefined;
-    runAsync().then(unsub => unsubscribe = unsub);
+      }
+    }, (error) => {
+      console.error("Error fetching customer:", error);
+      toast({ variant: "destructive", title: "Failed to fetch customer" });
+      setLoading(false);
+    });
 
     return () => {
-      if(unsubscribe) unsubscribe();
+      customerUnsubscribe();
+      paymentsUnsubscribe();
+      rechargesUnsubscribe();
+      packagesUnsubscribe();
     };
-
   }, [customerId, toast]);
 
   const handleRechargeRequest = async () => {
@@ -423,3 +411,5 @@ export default function CustomerPublicPage() {
     </>
   );
 }
+
+    
