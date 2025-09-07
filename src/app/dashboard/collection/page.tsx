@@ -82,12 +82,18 @@ export default function CollectionPage() {
         let adminIdForAreas = user.uid;
 
         if (userRole === 'Staff') {
-            const staffDocRef = doc(db, "staff", user.uid);
-            const staffDocSnap = await getDoc(staffDocRef);
-            if (staffDocSnap.exists()) {
-                const staffData = staffDocSnap.data() as Staff;
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+
+            if (!staffSnapshot.empty) {
+                const staffDoc = staffSnapshot.docs[0];
+                const staffData = staffDoc.data() as Staff;
                 const assignedAreas = staffData.area;
                 adminIdForAreas = staffData.adminId;
+
+                const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
+                setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
+
                 if (assignedAreas.length > 0) {
                     collectionsQuery = query(
                         collection(db, "customers"),
@@ -108,22 +114,21 @@ export default function CollectionPage() {
                 collection(db, "customers"),
                 where("userId", "==", user.uid)
             );
+            areasQuery = query(collection(db, "areas"), where("userId", "==", adminIdForAreas));
+            const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
+                const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+                setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+            }, (error) => {
+                console.error("Error fetching areas: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Failed to fetch areas",
+                    description: "Could not load areas for filtering.",
+                });
+            });
+            // We will not return unsubscribe for admin as it is inside the block
         }
         
-        areasQuery = query(collection(db, "areas"), where("userId", "==", adminIdForAreas));
-
-        const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
-            const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
-            setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
-        }, (error) => {
-            console.error("Error fetching areas: ", error);
-            toast({
-                variant: "destructive",
-                title: "Failed to fetch areas",
-                description: "Could not load areas for filtering.",
-            });
-        });
-
         const collectionsUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
             const collectionsData = snapshot.docs
               .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
@@ -141,8 +146,8 @@ export default function CollectionPage() {
         });
 
         return () => {
-            areasUnsubscribe();
             collectionsUnsubscribe();
+            // areasUnsubscribe might not be defined for staff, so no cleanup needed
         }
     };
 
