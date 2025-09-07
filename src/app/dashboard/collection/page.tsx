@@ -65,96 +65,86 @@ export default function CollectionPage() {
   const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All Areas" },
   ]);
-  const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[] | null>(null);
-  const [staffAdminId, setStaffAdminId] = useState<string | null>(null);
   const { user, userRole, loading: authLoading } = useAuth();
 
-  // Effect to fetch area options based on user role
-  useEffect(() => {
-    if (authLoading || !user) return;
 
-    if (userRole === 'Admin') {
-      const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-      const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
-        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
-        setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
-      }, (error) => {
-        console.error("Error fetching areas: ", error);
-        toast({ variant: "destructive", title: "Failed to fetch areas" });
-      });
-      return () => unsubscribe();
-    } else if (userRole === 'Staff') {
-      const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-      const unsubscribe = onSnapshot(staffQuery, (snapshot) => {
-        if (!snapshot.empty) {
-          const staffDoc = snapshot.docs[0];
-          const staffData = staffDoc.data() as Staff;
-          const assignedAreas = staffData.area;
-          setStaffAdminId(staffData.adminId);
-          setStaffAssignedAreas(assignedAreas);
-          const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
-          setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
-        } else {
-            setStaffAssignedAreas([]); // No areas assigned
-        }
-      }, (error) => {
-        console.error("Error fetching staff data: ", error);
-        toast({ variant: "destructive", title: "Failed to fetch staff details" });
-      });
-      return () => unsubscribe();
-    }
-  }, [user, userRole, authLoading, toast]);
-
-
-  // Effect to fetch collections based on role and filters
   useEffect(() => {
     if (authLoading || !user) {
         if(!authLoading) setLoading(false);
         return;
     }
 
-    // For staff, wait until assigned areas are determined
-    if (userRole === 'Staff' && staffAssignedAreas === null) {
-      setLoading(true);
-      return;
-    }
-
     setLoading(true);
-    let collectionsQuery;
+    let unsubscribe: () => void = () => {};
 
-    if (userRole === 'Admin') {
-        collectionsQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
-    } else if (userRole === 'Staff' && staffAdminId) {
-        if (staffAssignedAreas && staffAssignedAreas.length > 0) {
-            collectionsQuery = query(
-                collection(db, "customers"),
-                where("userId", "==", staffAdminId),
-                where("area", "in", staffAssignedAreas)
-            );
+    const setupSubscription = async () => {
+        let collectionsQuery;
+        let adminIdForQuery = null;
+
+        if (userRole === 'Admin') {
+            adminIdForQuery = user.uid;
+            collectionsQuery = query(collection(db, "customers"), where("userId", "==", adminIdForQuery));
+
+            const areasQuery = query(collection(db, "areas"), where("userId", "==", adminIdForQuery));
+            onSnapshot(areasQuery, (snapshot) => {
+                const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+                setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+            });
+
+        } else if (userRole === 'Staff') {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+
+            if (!staffSnapshot.empty) {
+                const staffDoc = staffSnapshot.docs[0];
+                const staffData = staffDoc.data() as Staff;
+                const assignedAreas = staffData.area || [];
+                adminIdForQuery = staffData.adminId;
+                
+                const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
+                setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
+
+                if (adminIdForQuery && assignedAreas.length > 0) {
+                     collectionsQuery = query(
+                        collection(db, "customers"),
+                        where("userId", "==", adminIdForQuery),
+                        where("area", "in", assignedAreas)
+                    );
+                } else {
+                    setCollections([]);
+                    setLoading(false);
+                    return; 
+                }
+            } else {
+                 setAreaOptions([{ value: "all", label: "All Areas" }]);
+                 setCollections([]);
+                 setLoading(false);
+                 return;
+            }
         } else {
-            setCollections([]);
             setLoading(false);
             return;
         }
-    } else {
-        setLoading(false);
-        return;
+
+        if (collectionsQuery) {
+            unsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
+                const collectionsData = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
+                    .filter(customer => customer.balanceAmount > 0);
+                setCollections(collectionsData);
+                setLoading(false);
+            }, (error) => {
+                console.error("Error fetching collections:", error);
+                toast({ variant: "destructive", title: "Failed to fetch collections" });
+                setLoading(false);
+            });
+        }
     }
-    
-    const unsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
-      const collectionsData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
-        .filter(customer => customer.balanceAmount > 0);
-      setCollections(collectionsData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching collections:", error);
-      toast({ variant: "destructive", title: "Failed to fetch collections" });
-      setLoading(false);
-    });
+
+    setupSubscription();
 
     return () => unsubscribe();
-  }, [user, userRole, authLoading, toast, staffAssignedAreas, staffAdminId]);
+  }, [user, userRole, authLoading, toast]);
 
 
   const filteredCollections = useMemo(() => {
