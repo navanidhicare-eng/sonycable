@@ -62,8 +62,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authLoading) {
-      setFirestoreLoading(true);
-      return;
+      return; // Wait until auth state is confirmed
     }
     if (!currentUser || !userRole) {
       setFirestoreLoading(false);
@@ -71,67 +70,65 @@ export default function DashboardPage() {
     }
     
     setFirestoreLoading(true);
-    const settlementsRef = collection(db, "settlements");
-    let q;
 
-    if (userRole === "Admin") {
-      q = query(settlementsRef);
-       const fetchStats = async () => {
-            try {
-                const customersSnapshot = await getDocs(query(collection(db, "customers"), where("userId", "==", currentUser.uid)));
-                const packagesSnapshot = await getDocs(query(collection(db, "packages"), where("userId", "==", currentUser.uid)));
-                const staffSnapshot = await getDocs(query(collection(db, "staff"), where("adminId", "==", currentUser.uid)));
-                setStats({
-                    totalRevenue: 0,
-                    activeCustomers: customersSnapshot.size,
-                    activePackages: packagesSnapshot.size,
-                    collectionAgents: staffSnapshot.size,
-                    todaysCollection: 0,
-                    monthlyCollection: 0,
-                });
-            } catch (error) {
-                console.error("Error fetching stats:", error);
-                 toast({
-                    variant: "destructive",
-                    title: "Error fetching stats",
-                    description: "Could not fetch dashboard statistics.",
-                });
-            }
-        };
-        fetchStats();
-    } else if (userRole === "Staff") {
-      q = query(settlementsRef, where("staffId", "==", currentUser.uid));
-       const fetchStaffDetails = async () => {
+    const fetchData = async () => {
+      let q;
+      if (userRole === "Admin") {
+        q = query(collection(db, "settlements"));
+        try {
+            const customersSnapshot = await getDocs(query(collection(db, "customers"), where("userId", "==", currentUser.uid)));
+            const packagesSnapshot = await getDocs(query(collection(db, "packages"), where("userId", "==", currentUser.uid)));
+            const staffSnapshot = await getDocs(query(collection(db, "staff"), where("adminId", "==", currentUser.uid)));
+            setStats({
+                totalRevenue: 0,
+                activeCustomers: customersSnapshot.size,
+                activePackages: packagesSnapshot.size,
+                collectionAgents: staffSnapshot.size,
+                todaysCollection: 0,
+                monthlyCollection: 0,
+            });
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+            toast({
+                variant: "destructive",
+                title: "Error fetching stats",
+                description: "Could not fetch dashboard statistics.",
+            });
+        }
+      } else if (userRole === "Staff") {
+        q = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
         const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
         const staffSnapshot = await getDocs(staffQuery);
         if (!staffSnapshot.empty) {
             const staffData = staffSnapshot.docs[0].data();
             setStaffName(staffData.name);
         }
+        setStaffWallet({ walletAmount: 0, commissionAmount: 0 });
+      } else {
+         setFirestoreLoading(false);
+         return;
       }
-      fetchStaffDetails();
-      setStaffWallet({ walletAmount: 0, commissionAmount: 0 });
-    } else {
-      setFirestoreLoading(false);
-      return;
-    }
 
-    const unsubscribeFirestore = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
-      requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setSettlementRequests(requests);
-      setFirestoreLoading(false);
-    }, (error) => {
-        console.error("Firestore snapshot error:", error);
-        toast({
-            variant: "destructive",
-            title: "Error fetching data",
-            description: "Could not fetch settlement requests. Check permissions.",
-        });
-        setFirestoreLoading(false);
-    });
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
+        requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setSettlementRequests(requests);
+        setFirestoreLoading(false); // Set loading to false after all data is fetched
+      }, (error) => {
+          console.error("Firestore snapshot error:", error);
+          toast({
+              variant: "destructive",
+              title: "Error fetching data",
+              description: "Could not fetch settlement requests. Check permissions.",
+          });
+          setFirestoreLoading(false);
+      });
 
-    return () => unsubscribeFirestore();
+      return () => unsubscribe();
+    };
+
+    fetchData();
+
   }, [currentUser, userRole, authLoading, toast]);
 
 
@@ -386,7 +383,11 @@ export default function DashboardPage() {
     if (userRole === 'Admin') return <AdminDashboard />;
     if (userRole === 'Staff') return <StaffDashboard />;
 
-    return null;
+    return (
+        <div className="text-center">
+            <p>Welcome! Your role is not fully configured.</p>
+        </div>
+    );
   };
 
   return (
@@ -398,7 +399,7 @@ export default function DashboardPage() {
              <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
                 Dashboard
              </h1>
-             {userRole && (
+             {userRole && !firestoreLoading && (
                 <Badge variant={userRole === "Admin" ? "default" : "secondary"} className="text-lg">
                    <ShieldCheck className="mr-2 h-5 w-5" />
                    {userRole} Role
@@ -406,7 +407,7 @@ export default function DashboardPage() {
             )}
           </div>
           <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-            {getWelcomeMessage()}
+             { !firestoreLoading && getWelcomeMessage() }
           </p>
         </header>
 
