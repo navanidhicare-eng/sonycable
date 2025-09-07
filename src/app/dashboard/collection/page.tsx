@@ -72,8 +72,9 @@ export default function CollectionPage() {
   const { user, userRole, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading || !user) {
-        if(!authLoading) setLoading(false);
+    if (authLoading) return;
+    if (!user) {
+        setLoading(false);
         return;
     }
 
@@ -104,12 +105,12 @@ export default function CollectionPage() {
         }
     };
     
-    const unsubscribePrereqs = fetchPrerequisites();
+    const unsubscribePromise = fetchPrerequisites();
 
     return () => {
-       if (unsubscribePrereqs && typeof unsubscribePrereqs === 'function') {
-            (unsubscribePrereqs as Function)();
-        }
+       unsubscribePromise.then(unsubscribe => {
+        if(unsubscribe) unsubscribe();
+       })
     };
   }, [user, userRole, authLoading]);
 
@@ -123,9 +124,14 @@ export default function CollectionPage() {
     setLoading(true);
 
     const handleSnapshot = (snapshot: any) => {
-        const collectionsData = snapshot.docs
+        let collectionsData = snapshot.docs
             .map((doc: any) => ({ id: doc.id, ...doc.data() } as Collection))
             .filter((customer: any) => customer.balanceAmount > 0);
+        
+        if (userRole === 'Staff' && staffAssignedAreas) {
+             collectionsData = collectionsData.filter(customer => staffAssignedAreas.includes(customer.area));
+        }
+        
         setAllCustomers(collectionsData);
         setLoading(false);
     };
@@ -136,32 +142,12 @@ export default function CollectionPage() {
         setLoading(false);
     };
 
-    let collectionsQuery;
-
-    if (userRole === 'Admin') {
-        collectionsQuery = query(collection(db, "customers"), where("userId", "==", adminId));
-    } else if (userRole === 'Staff' && staffAssignedAreas) {
-        if (staffAssignedAreas.length > 0) {
-            collectionsQuery = query(
-                collection(db, "customers"),
-                where("userId", "==", adminId),
-                where("area", "in", staffAssignedAreas)
-            );
-        } else {
-             setAllCustomers([]);
-             setLoading(false);
-             return;
-        }
-    } else {
-        setAllCustomers([]);
-        setLoading(false);
-        return;
-    }
+    const collectionsQuery = query(collection(db, "customers"), where("userId", "==", adminId));
     
     const unsubscribe = onSnapshot(collectionsQuery, handleSnapshot, handleError);
 
     return () => unsubscribe();
-  }, [adminId, userRole, staffAssignedAreas, toast]);
+  }, [adminId, userRole, staffAssignedAreas, toast, authLoading]);
 
 
   const filteredCollections = useMemo(() => {
