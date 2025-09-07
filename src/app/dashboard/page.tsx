@@ -43,6 +43,7 @@ interface DashboardStats {
     collectionAgents: number;
     todaysCollection: number;
     monthlyCollection: number;
+    totalPending: number;
 }
 
 interface StaffData {
@@ -83,6 +84,7 @@ export default function DashboardPage() {
       collectionAgents: 0,
       todaysCollection: 0,
       monthlyCollection: 0,
+      totalPending: 0,
   });
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
   const [staffData, setStaffData] = useState<StaffData | null>(null);
@@ -128,11 +130,14 @@ export default function DashboardPage() {
                 getDocs(staffQuery),
             ]);
 
+            const totalPending = customersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
+
             setStats(prevStats => ({
                 ...prevStats,
                 activeCustomers: customersSnapshot.size,
                 activePackages: packagesSnapshot.size,
                 collectionAgents: staffSnapshot.size,
+                totalPending: totalPending,
             }));
 
             const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
@@ -571,13 +576,11 @@ export default function DashboardPage() {
         <AdminCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-                Total Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-            <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{stats.totalPending.toLocaleString()}</div>
             </CardContent>
         </Card>
         <Card>

@@ -138,6 +138,10 @@ export default function CollectionPage() {
     });
   }, [searchTerm, filterArea, allCustomers]);
 
+  const totalDue = useMemo(() => {
+    return filteredCollections.reduce((sum, customer) => sum + (customer.balanceAmount || 0), 0);
+  }, [filteredCollections]);
+
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
     setAmountCollected(customer.balanceAmount.toString());
@@ -201,8 +205,14 @@ export default function CollectionPage() {
           </header>
           <Card className="w-full max-w-4xl">
             <CardHeader>
-              <CardTitle>Outstanding Balances</CardTitle>
-              <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+                <div className="flex justify-between items-center mb-4">
+                    <CardTitle>Outstanding Balances</CardTitle>
+                    <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Total Due</p>
+                        <p className="text-2xl font-bold">₹{totalDue.toLocaleString()}</p>
+                    </div>
+                </div>
+              <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="relative w-full sm:max-w-xs">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
