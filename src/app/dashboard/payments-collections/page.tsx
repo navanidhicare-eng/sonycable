@@ -72,7 +72,7 @@ export default function PaymentsCollectionsPage() {
 
 
   useEffect(() => {
-    if (authLoading || !user) {
+    if (authLoading || !user || userRole !== 'Staff') {
       if (!authLoading) setLoading(false);
       return;
     }
@@ -123,11 +123,7 @@ export default function PaymentsCollectionsPage() {
       }
     };
 
-    if (userRole === 'Staff') {
-        fetchStaffAndCustomers();
-    } else {
-        setLoading(false);
-    }
+    fetchStaffAndCustomers();
 
     return () => {
       if (customerUnsubscribe) {
@@ -363,5 +359,3 @@ export default function PaymentsCollectionsPage() {
     </>
   );
 }
-
-    
