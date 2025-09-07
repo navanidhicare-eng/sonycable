@@ -83,6 +83,16 @@ export default function WithSidebarLayout({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+             {userRole === 'Staff' && (
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/dashboard/payments-collections">
+                        <IndianRupee />
+                        <span>Payments Collections</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            )}
             {userRole === 'Admin' && (
               <>
                 <SidebarMenuItem>
@@ -200,3 +210,5 @@ export default function WithSidebarLayout({
     </SidebarProvider>
   );
 }
+
+    
