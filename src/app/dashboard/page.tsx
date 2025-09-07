@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 
 interface SettlementRequest {
@@ -42,6 +42,12 @@ interface DashboardStats {
     monthlyCollection: number;
 }
 
+interface StaffData {
+    name: string;
+    commission: string;
+    adminId: string;
+}
+
 export default function DashboardPage() {
   const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
@@ -61,74 +67,105 @@ export default function DashboardPage() {
   const [staffName, setStaffName] = useState('');
 
   useEffect(() => {
-    if (authLoading) {
-      return; // Wait until auth state is confirmed
-    }
-    if (!currentUser || !userRole) {
+    if (authLoading) return;
+    if (!currentUser) {
       setFirestoreLoading(false);
       return;
     }
     
     setFirestoreLoading(true);
 
-    const fetchData = async () => {
-      let q;
-      if (userRole === "Admin") {
-        q = query(collection(db, "settlements"));
+    const fetchAdminData = async () => {
         try {
-            const customersSnapshot = await getDocs(query(collection(db, "customers"), where("userId", "==", currentUser.uid)));
-            const packagesSnapshot = await getDocs(query(collection(db, "packages"), where("userId", "==", currentUser.uid)));
-            const staffSnapshot = await getDocs(query(collection(db, "staff"), where("adminId", "==", currentUser.uid)));
-            setStats({
-                totalRevenue: 0,
+            const customersQuery = query(collection(db, "customers"), where("userId", "==", currentUser.uid));
+            const packagesQuery = query(collection(db, "packages"), where("userId", "==", currentUser.uid));
+            const staffQuery = query(collection(db, "staff"), where("adminId", "==", currentUser.uid));
+
+            const [customersSnapshot, packagesSnapshot, staffSnapshot] = await Promise.all([
+                getDocs(customersQuery),
+                getDocs(packagesQuery),
+                getDocs(staffQuery),
+            ]);
+
+            setStats(prevStats => ({
+                ...prevStats,
                 activeCustomers: customersSnapshot.size,
                 activePackages: packagesSnapshot.size,
                 collectionAgents: staffSnapshot.size,
-                todaysCollection: 0,
-                monthlyCollection: 0,
+            }));
+
+            const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
+            const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
+                const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
+                requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                setSettlementRequests(requests);
             });
+            
+            return [unsubscribeSettlements];
+
         } catch (error) {
-            console.error("Error fetching stats:", error);
-            toast({
-                variant: "destructive",
-                title: "Error fetching stats",
-                description: "Could not fetch dashboard statistics.",
-            });
+            console.error("Error fetching admin stats:", error);
+            toast({ variant: "destructive", title: "Error fetching stats" });
+        } finally {
+            setFirestoreLoading(false);
         }
-      } else if (userRole === "Staff") {
-        q = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
-        const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-        const staffSnapshot = await getDocs(staffQuery);
-        if (!staffSnapshot.empty) {
-            const staffData = staffSnapshot.docs[0].data();
+        return [];
+    };
+
+    const fetchStaffData = async () => {
+        try {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+            if (staffSnapshot.empty) {
+                setFirestoreLoading(false);
+                return [];
+            }
+            
+            const staffData = staffSnapshot.docs[0].data() as StaffData;
             setStaffName(staffData.name);
+            const commissionRate = parseFloat(staffData.commission.replace('%', ''));
+
+            const paymentsQuery = query(collection(db, "payments"), where("collectedBy", "==", currentUser.uid));
+            const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
+                const totalCollection = snapshot.docs.reduce((acc, doc) => acc + doc.data().amount, 0);
+                const totalCommission = (totalCollection * commissionRate) / 100;
+                setStaffWallet({ walletAmount: totalCollection, commissionAmount: totalCommission });
+            });
+
+            const settlementsQuery = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
+            const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
+                 const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
+                requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                setSettlementRequests(requests);
+            });
+
+            return [unsubscribePayments, unsubscribeSettlements];
+
+        } catch(error) {
+            console.error("Error fetching staff data:", error);
+            toast({ variant: "destructive", title: "Error fetching staff data" });
+        } finally {
+             setFirestoreLoading(false);
         }
-        setStaffWallet({ walletAmount: 0, commissionAmount: 0 });
+        return [];
+    };
+
+    let unsubscribes: (() => void)[] = [];
+    const fetchData = async () => {
+      if (userRole === "Admin") {
+        unsubscribes = await fetchAdminData() || [];
+      } else if (userRole === "Staff") {
+        unsubscribes = await fetchStaffData() || [];
       } else {
-         setFirestoreLoading(false);
-         return;
+        setFirestoreLoading(false);
       }
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
-        requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setSettlementRequests(requests);
-        setFirestoreLoading(false); // Set loading to false after all data is fetched
-      }, (error) => {
-          console.error("Firestore snapshot error:", error);
-          toast({
-              variant: "destructive",
-              title: "Error fetching data",
-              description: "Could not fetch settlement requests. Check permissions.",
-          });
-          setFirestoreLoading(false);
-      });
-
-      return () => unsubscribe();
     };
 
     fetchData();
-
+    
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+    };
   }, [currentUser, userRole, authLoading, toast]);
 
 
@@ -150,6 +187,11 @@ export default function DashboardPage() {
     const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
 
     try {
+      const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+      const staffSnapshot = await getDocs(staffQuery);
+      if(staffSnapshot.empty) throw new Error("Staff member not found");
+      const adminId = staffSnapshot.docs[0].data().adminId;
+
       await addDoc(collection(db, "settlements"), {
         staffId: currentUser.uid,
         staffName: staffName || 'Staff Member',
@@ -158,6 +200,7 @@ export default function DashboardPage() {
         amountToSend: amountToSend,
         status: 'pending',
         createdAt: new Date(),
+        adminId: adminId,
       });
 
       toast({
@@ -316,8 +359,7 @@ export default function DashboardPage() {
 
   const StaffDashboard = () => {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
-     const isWalletCleared = !settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid) && settlementRequests.length > 0;
-
+     
      const { walletAmount, commissionAmount } = staffWallet;
 
      return (
@@ -360,7 +402,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)} disabled={hasPendingRequest || walletAmount === 0}>
-                    {hasPendingRequest ? 'Approval Pending' : (isWalletCleared ? 'Settled' : 'Send to Admin')}
+                    {hasPendingRequest ? 'Approval Pending' : 'Send to Admin'}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                    {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}

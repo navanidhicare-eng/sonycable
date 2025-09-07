@@ -67,9 +67,9 @@ export default function CollectionPage() {
     { value: "all", label: "All Areas" },
   ]);
   const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[] | null>(null);
+  const [adminId, setAdminId] = useState<string | null>(null);
   
   const { user, userRole, loading: authLoading } = useAuth();
-
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -80,6 +80,7 @@ export default function CollectionPage() {
     const fetchPrerequisites = async () => {
         setLoading(true);
         if (userRole === 'Admin') {
+            setAdminId(user.uid);
             const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
             const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
                 const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
@@ -94,6 +95,7 @@ export default function CollectionPage() {
                 const staffData = staffSnapshot.docs[0].data() as Staff;
                 const assignedAreas = staffData.area || [];
                 setStaffAssignedAreas(assignedAreas);
+                setAdminId(staffData.adminId);
                 const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
             } else {
@@ -110,16 +112,16 @@ export default function CollectionPage() {
             (unsubscribePrereqs as Function)();
         }
     };
-  }, [user, userRole, authLoading, toast]);
+  }, [user, userRole, authLoading]);
 
 
   useEffect(() => {
-    if (authLoading || !user || (userRole === 'Staff' && staffAssignedAreas === null)) {
-        return;
+    if (!adminId) {
+      if (!authLoading) setLoading(false);
+      return;
     }
-
+    
     setLoading(true);
-    let collectionsQuery;
 
     const handleSnapshot = (snapshot: any) => {
         const collectionsData = snapshot.docs
@@ -135,32 +137,24 @@ export default function CollectionPage() {
         setLoading(false);
     };
 
+    let collectionsQuery;
+
     if (userRole === 'Admin') {
-        collectionsQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
+        collectionsQuery = query(collection(db, "customers"), where("userId", "==", adminId));
     } else if (userRole === 'Staff' && staffAssignedAreas) {
         if (staffAssignedAreas.length > 0) {
-             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-             getDocs(staffQuery).then(staffSnapshot => {
-                 if(!staffSnapshot.empty) {
-                     const staffData = staffSnapshot.docs[0].data() as Staff;
-                     const adminIdForQuery = staffData.adminId;
-                      if(adminIdForQuery) {
-                        const q = query(
-                            collection(db, "customers"),
-                            where("userId", "==", adminIdForQuery),
-                            where("area", "in", staffAssignedAreas)
-                        );
-                         onSnapshot(q, handleSnapshot, handleError);
-                      }
-                 }
-             })
-             return;
+            collectionsQuery = query(
+                collection(db, "customers"),
+                where("userId", "==", adminId),
+                where("area", "in", staffAssignedAreas)
+            );
         } else {
              setAllCustomers([]);
              setLoading(false);
              return;
         }
     } else {
+        setAllCustomers([]);
         setLoading(false);
         return;
     }
@@ -168,7 +162,7 @@ export default function CollectionPage() {
     const unsubscribe = onSnapshot(collectionsQuery, handleSnapshot, handleError);
 
     return () => unsubscribe();
-  }, [user, userRole, authLoading, staffAssignedAreas, toast]);
+  }, [adminId, userRole, staffAssignedAreas, authLoading, toast]);
 
 
   const filteredCollections = useMemo(() => {
@@ -194,7 +188,7 @@ export default function CollectionPage() {
   };
 
   const handleConfirmCollection = async () => {
-    if (!amountCollected || !currentCustomer || !user) return;
+    if (!amountCollected || !currentCustomer || !user || !adminId) return;
     
     const collectedAmount = parseFloat(amountCollected);
     const newBalance = currentCustomer.balanceAmount - collectedAmount;
@@ -212,6 +206,7 @@ export default function CollectionPage() {
             method: paymentMethod,
             collectedBy: user?.uid,
             collectionDate: new Date(),
+            adminId: adminId,
         });
 
         toast({
@@ -389,3 +384,5 @@ export default function CollectionPage() {
     </>
   );
 }
+
+    
