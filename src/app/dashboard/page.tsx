@@ -23,6 +23,7 @@ import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, 
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SettlementRequest {
   id: string;
@@ -58,6 +59,13 @@ interface Customer {
   mobile: string;
   customerId: string;
   area: string;
+  stbId: string;
+}
+
+interface RechargePackage {
+  id: string;
+  packageName: string;
+  packageAmount: string;
 }
 
 export default function DashboardPage() {
@@ -78,7 +86,7 @@ export default function DashboardPage() {
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
   const [staffData, setStaffData] = useState<StaffData | null>(null);
 
-  // States for Customer Search Dialog
+  // States for Customer Search Dialog (Collections)
   const [isCustomerSearchDialogOpen, setIsCustomerSearchDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchedCustomer, setSearchedCustomer] = useState<Customer | null>(null);
@@ -89,6 +97,13 @@ export default function DashboardPage() {
   const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false);
   const [amountCollected, setAmountCollected] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+
+  // States for Recharge Dialog
+  const [isRechargeSearchDialogOpen, setIsRechargeSearchDialogOpen] = useState(false);
+  const [isRechargeDialogOpen, setIsRechargeDialogOpen] = useState(false);
+  const [packages, setPackages] = useState<RechargePackage[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [paymentReceivedForRecharge, setPaymentReceivedForRecharge] = useState(true);
 
 
   useEffect(() => {
@@ -150,6 +165,12 @@ export default function DashboardPage() {
             setStaffData(staffDocData);
             const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
 
+            const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
+            const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
+                const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
+                setPackages(packagesData);
+            });
+
             // Fetch approved settlements to find the last settlement date
             const approvedSettlementsQuery = query(
                 collection(db, "settlements"),
@@ -187,7 +208,7 @@ export default function DashboardPage() {
                 setSettlementRequests(requests);
             });
 
-            return [unsubscribePayments, unsubscribeSettlements];
+            return [unsubscribePayments, unsubscribeSettlements, unsubscribePackages];
 
         } catch(error) {
             console.error("Error fetching staff data:", error);
@@ -283,7 +304,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleCustomerSearch = async () => {
+  const handleCustomerSearch = async (type: 'collection' | 'recharge') => {
     if (!searchQuery.trim() || !staffData) return;
     setIsSearching(true);
     setSearchError("");
@@ -298,18 +319,23 @@ export default function DashboardPage() {
 
         const trimmedSearchQuery = searchQuery.trim();
         const foundCustomer = allAdminCustomers.find(c => 
-            (c.customerId && c.customerId.trim() === trimmedSearchQuery) || 
-            (c.mobile && c.mobile.trim() === trimmedSearchQuery)
+            (c.customerId && c.customerId.trim().toLowerCase() === trimmedSearchQuery.toLowerCase()) || 
+            (c.mobile && c.mobile.trim() === trimmedSearchQuery) ||
+            (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery.toLowerCase()) ||
+            (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery.toLowerCase()))
         );
 
         if (foundCustomer) {
             if (staffData.area.includes(foundCustomer.area)) {
                 setSearchedCustomer(foundCustomer);
+                 if (type === 'recharge') {
+                    openRechargeDialog(foundCustomer);
+                }
             } else {
                 setSearchError("Customer found, but they are not in your assigned area.");
             }
         } else {
-            setSearchError("Customer not found in your assigned areas or invalid ID/Mobile.");
+            setSearchError("Customer not found in your assigned areas or invalid ID/Mobile/Name.");
         }
     } catch (error) {
         console.error("Error searching customer:", error);
@@ -324,6 +350,15 @@ export default function DashboardPage() {
     setPaymentMethod("cash");
     setIsCollectDialogOpen(true);
   };
+  
+  const openRechargeDialog = (customer: Customer) => {
+    setSearchedCustomer(customer);
+    setSelectedPackage(null);
+    setPaymentReceivedForRecharge(true);
+    setIsRechargeDialogOpen(true);
+    setIsRechargeSearchDialogOpen(false);
+  };
+
 
   const handleConfirmCollection = async () => {
     if (!amountCollected || !searchedCustomer || !currentUser || !staffData) return;
@@ -354,6 +389,7 @@ export default function DashboardPage() {
         });
 
         setIsCollectDialogOpen(false);
+        setIsCustomerSearchDialogOpen(false);
         setSearchedCustomer(null);
         setSearchQuery("");
 
@@ -366,6 +402,74 @@ export default function DashboardPage() {
         });
     }
   };
+  
+    const handleRecharge = async () => {
+    if (!selectedPackage || !searchedCustomer || !currentUser || !staffData) return;
+    
+    const pkg = packages.find(p => p.id === selectedPackage);
+    if (!pkg) {
+      toast({ variant: "destructive", title: "Package not found" });
+      return;
+    }
+
+    const rechargeAmount = parseFloat(pkg.packageAmount);
+    let description;
+    const customerDocRef = doc(db, "customers", searchedCustomer.id);
+
+    try {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 30);
+        const expiryTimestamp = Timestamp.fromDate(expiryDate);
+
+        if (paymentReceivedForRecharge) {
+            await updateDoc(customerDocRef, {
+                expiryDate: expiryTimestamp,
+                lastRechargeDate: Timestamp.now(),
+            });
+            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ₹${rechargeAmount}. Payment received.`;
+        } else {
+            const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
+            const newBalance = currentBalance + rechargeAmount;
+            await updateDoc(customerDocRef, {
+                balanceAmount: newBalance,
+                expiryDate: expiryTimestamp,
+                lastRechargeDate: Timestamp.now(),
+            });
+            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName}. ₹${rechargeAmount} added to collection balance.`;
+        }
+
+        await addDoc(collection(db, "recharges"), {
+            customerId: searchedCustomer.id,
+            customerName: searchedCustomer.name,
+            packageId: pkg.id,
+            packageName: pkg.packageName,
+            amount: rechargeAmount,
+            paymentReceived: paymentReceivedForRecharge,
+            rechargeDate: new Date(),
+            rechargedBy: currentUser.uid, // staff uid
+            adminId: staffData.adminId, // admin uid
+        });
+      
+        toast({
+            title: "Recharge Successful",
+            description: description,
+        });
+
+        setIsRechargeDialogOpen(false);
+        setSelectedPackage(null);
+        setPaymentReceivedForRecharge(true);
+        setSearchedCustomer(null);
+
+    } catch (error) {
+        console.error("Recharge failed:", error);
+         toast({
+            variant: "destructive",
+            title: "Recharge Failed",
+            description: "An error occurred while processing the recharge.",
+        });
+    }
+  };
+
 
   const AdminCollectionCard = () => (
     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -403,6 +507,26 @@ export default function DashboardPage() {
         </CardContent>
     </Card>
   );
+  
+  const StaffRechargeCard = () => (
+    <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer" onClick={() => setIsRechargeSearchDialogOpen(true)}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                Recharge
+            </CardTitle>
+            <CreditCard className="h-4 w-4 text-white" />
+        </CardHeader>
+        <CardContent>
+            <div className="flex items-center justify-between">
+                <p className="text-xs">
+                    Recharge a customer account
+                </p>
+                <ArrowRight className="h-5 w-5" />
+            </div>
+        </CardContent>
+    </Card>
+  );
+
 
    const SettlementRequestsCard = () => {
     const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
@@ -507,24 +631,7 @@ export default function DashboardPage() {
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors">
-            <Link href="/dashboard/recharge-staff" className="block h-full">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                        Recharge
-                    </CardTitle>
-                    <CreditCard className="h-4 w-4 text-white" />
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs">
-                            Go to recharge page
-                        </p>
-                        <ArrowRight className="h-5 w-5" />
-                    </div>
-                </CardContent>
-            </Link>
-        </Card>
+        <StaffRechargeCard />
         <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -592,6 +699,13 @@ export default function DashboardPage() {
         </div>
     );
   };
+  
+    const cleanupSearchDialog = (setDialogOpen: (val: boolean) => void) => {
+        setDialogOpen(false);
+        setSearchedCustomer(null);
+        setSearchQuery("");
+        setSearchError("");
+    };
 
   return (
     <>
@@ -641,12 +755,8 @@ export default function DashboardPage() {
     </Dialog>
 
     <Dialog open={isCustomerSearchDialogOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-            setSearchedCustomer(null);
-            setSearchQuery("");
-            setSearchError("");
-        }
-        setIsCustomerSearchDialogOpen(isOpen);
+        if (!isOpen) cleanupSearchDialog(setIsCustomerSearchDialogOpen);
+        else setIsCustomerSearchDialogOpen(true);
     }}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -662,12 +772,12 @@ export default function DashboardPage() {
                     </Label>
                     <Input
                         id="search"
-                        placeholder="Customer ID or Mobile..."
+                        placeholder="Customer ID, Mobile, Name..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
-                <Button type="submit" size="sm" className="px-3" onClick={handleCustomerSearch} disabled={isSearching}>
+                <Button type="submit" size="sm" className="px-3" onClick={() => handleCustomerSearch('collection')} disabled={isSearching}>
                     {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                     <span className="sr-only">Search</span>
                 </Button>
@@ -678,6 +788,7 @@ export default function DashboardPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>{searchedCustomer.name}</CardTitle>
+                             <p className="text-sm text-muted-foreground">Area: {searchedCustomer.area}</p>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-lg font-bold">
@@ -692,12 +803,52 @@ export default function DashboardPage() {
                 )}
             </div>
             <DialogFooter className="sm:justify-start">
-                <Button type="button" variant="secondary" onClick={() => setIsCustomerSearchDialogOpen(false)}>
+                <Button type="button" variant="secondary" onClick={() => cleanupSearchDialog(setIsCustomerSearchDialogOpen)}>
                     Close
                 </Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
+    
+    <Dialog open={isRechargeSearchDialogOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) cleanupSearchDialog(setIsRechargeSearchDialogOpen);
+        else setIsRechargeSearchDialogOpen(true);
+    }}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Recharge Customer</DialogTitle>
+                <DialogDescription>
+                    Enter Customer ID, Mobile, STB ID or Name to find a customer to recharge.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center space-x-2">
+                <div className="grid flex-1 gap-2">
+                    <Label htmlFor="recharge-search" className="sr-only">
+                        Search
+                    </Label>
+                    <Input
+                        id="recharge-search"
+                        placeholder="Customer ID, Mobile, Name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <Button type="submit" size="sm" className="px-3" onClick={() => handleCustomerSearch('recharge')} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="sr-only">Search</span>
+                </Button>
+            </div>
+             <div className="mt-4 space-y-2">
+                {searchError && <p className="text-sm font-medium text-destructive">{searchError}</p>}
+            </div>
+            <DialogFooter className="sm:justify-start">
+                <Button type="button" variant="secondary" onClick={() => cleanupSearchDialog(setIsRechargeSearchDialogOpen)}>
+                    Close
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
 
     {searchedCustomer && (
         <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
@@ -749,6 +900,52 @@ export default function DashboardPage() {
           </DialogContent>
         </Dialog>
       )}
+      
+       {searchedCustomer && (
+         <Dialog open={isRechargeDialogOpen} onOpenChange={(isOpen) => {
+            if(!isOpen) setSearchedCustomer(null);
+            setIsRechargeDialogOpen(isOpen);
+         }}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
+                <DialogDescription>
+                  Select a package to continue with the recharge. Current balance: ₹{searchedCustomer.balanceAmount}.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="package" className="text-right">
+                    Package
+                  </Label>
+                  <Select onValueChange={setSelectedPackage}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select a package" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {packages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          {pkg.packageName} - ₹{pkg.packageAmount}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2 justify-center">
+                    <Checkbox 
+                      id="payment-received-recharge" 
+                      checked={paymentReceivedForRecharge} 
+                      onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
+                    />
+                    <Label htmlFor="payment-received-recharge">Payment Received (amount will not be added to balance)</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
+              </DialogFooter>
+            </DialogContent>
+        </Dialog>
+       )}
     </>
   );
 }
