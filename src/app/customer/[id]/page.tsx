@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Network, Send, MessageSquareWarning } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, onSnapshot, query, where, addDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where, addDoc } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -101,56 +101,53 @@ export default function CustomerPublicPage() {
 
     setLoading(true);
 
-    let customerUnsubscribe: () => void = () => {};
-    let paymentsUnsubscribe: () => void = () => {};
-    let rechargesUnsubscribe: () => void = () => {};
-    let packagesUnsubscribe: () => void = () => {};
-
     const customerDocRef = doc(db, "customers", customerId);
 
-    customerUnsubscribe = onSnapshot(customerDocRef, (docSnap) => {
+    const customerUnsubscribe = onSnapshot(customerDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const customerData = { id: docSnap.id, ...docSnap.data() } as Customer;
         setCustomer(customerData);
 
-        // Once we have the customer, we can fetch everything else.
         if (customerData.userId) {
           const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
           const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
           const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
 
-          paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
-            const payments = snapshot.docs.map(doc => ({
-              id: doc.id,
-              date: doc.data().collectionDate.toDate().toISOString(),
-              description: `Payment via ${doc.data().method}`,
-              amount: doc.data().amount,
-              method: doc.data().method,
-              type: 'Payment'
-            } as Transaction));
-            setPaymentHistory(payments);
-          });
+          const unsubscribes = [
+            onSnapshot(paymentsQuery, (snapshot) => {
+              const payments = snapshot.docs.map(doc => ({
+                id: doc.id,
+                date: doc.data().collectionDate.toDate().toISOString(),
+                description: `Payment via ${doc.data().method}`,
+                amount: doc.data().amount,
+                method: doc.data().method,
+                type: 'Payment'
+              } as Transaction));
+              setPaymentHistory(payments);
+            }),
+            onSnapshot(rechargesQuery, (snapshot) => {
+              const recharges = snapshot.docs.map(doc => ({
+                id: doc.id,
+                date: doc.data().rechargeDate.toDate().toISOString(),
+                description: `Recharge - ${doc.data().packageName}`,
+                amount: doc.data().amount,
+                packageName: doc.data().packageName,
+                status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
+                type: 'Recharge'
+              } as Transaction));
+              setRechargeHistory(recharges);
+            }),
+            onSnapshot(packagesQuery, (snapshot) => {
+              const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
+              setPackages(packagesData);
+            })
+          ];
 
-          rechargesUnsubscribe = onSnapshot(rechargesQuery, (snapshot) => {
-            const recharges = snapshot.docs.map(doc => ({
-              id: doc.id,
-              date: doc.data().rechargeDate.toDate().toISOString(),
-              description: `Recharge - ${doc.data().packageName}`,
-              amount: doc.data().amount,
-              packageName: doc.data().packageName,
-              status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
-              type: 'Recharge'
-            } as Transaction));
-            setRechargeHistory(recharges);
-          });
+          Promise.all(recharges).then(() => setLoading(false)); // A simplistic way to check if all data is loaded.
 
-          packagesUnsubscribe = onSnapshot(packagesQuery, (snapshot) => {
-            const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
-            setPackages(packagesData);
-            setLoading(false); // Set loading to false after all data is fetched
-          }, () => { setLoading(false); });
+          return () => unsubscribes.forEach(unsub => unsub());
         } else {
-            setLoading(false);
+          setLoading(false);
         }
       } else {
         toast({ variant: "destructive", title: "Customer not found" });
@@ -162,12 +159,7 @@ export default function CustomerPublicPage() {
       setLoading(false);
     });
 
-    return () => {
-      customerUnsubscribe();
-      paymentsUnsubscribe();
-      rechargesUnsubscribe();
-      packagesUnsubscribe();
-    };
+    return () => customerUnsubscribe();
   }, [customerId, toast]);
 
   const handleRechargeRequest = async () => {
@@ -412,4 +404,3 @@ export default function CustomerPublicPage() {
   );
 }
 
-    
