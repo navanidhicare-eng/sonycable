@@ -322,22 +322,25 @@ export default function DashboardPage() {
         
         const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
-        const trimmedSearchQuery = searchQuery.trim();
-        const foundCustomer = allAdminCustomers.find(c => 
-            (c.customerId && c.customerId.trim().toLowerCase() === trimmedSearchQuery.toLowerCase()) || 
-            (c.mobile && c.mobile.trim() === trimmedSearchQuery) ||
-            (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery.toLowerCase()) ||
-            (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery.toLowerCase()))
-        );
+        const trimmedSearchQuery = searchQuery.trim().toLowerCase();
+        
+        const foundCustomer = allAdminCustomers.find(c => {
+            const matchesSearchTerm = 
+                (c.customerId && c.customerId.trim().toLowerCase() === trimmedSearchQuery) || 
+                (c.mobile && c.mobile.trim() === searchQuery.trim()) ||
+                (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery) ||
+                (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery));
+            
+            const isInAssignedArea = staffData.area.includes(c.area);
+
+            return matchesSearchTerm && isInAssignedArea;
+        });
+
 
         if (foundCustomer) {
-            if (staffData.area.includes(foundCustomer.area)) {
-                setSearchedCustomer(foundCustomer);
-                 if (type === 'recharge') {
-                    openRechargeDialog(foundCustomer);
-                }
-            } else {
-                setSearchError("Customer found, but they are not in your assigned area.");
+            setSearchedCustomer(foundCustomer);
+            if (type === 'recharge') {
+                openRechargeDialog(foundCustomer);
             }
         } else {
             setSearchError("Customer not found in your assigned areas or invalid ID/Mobile/Name.");
