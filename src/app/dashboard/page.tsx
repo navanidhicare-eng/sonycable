@@ -401,14 +401,35 @@ export default function DashboardPage() {
 
 
   const handleCustomerSearch = async (type: 'collection' | 'recharge') => {
-    if (!searchQuery.trim() || !staffData) return;
+    if (!searchQuery.trim()) return;
+    
     setIsSearching(true);
     setSearchError("");
     setSearchedCustomer(null);
 
     try {
+        let currentStaffData = staffData;
+        if (!currentStaffData && currentUser) {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+            if (!staffSnapshot.empty) {
+                currentStaffData = staffSnapshot.docs[0].data() as StaffData;
+                setStaffData(currentStaffData);
+            } else {
+                 setSearchError("Could not find your staff profile.");
+                 setIsSearching(false);
+                 return;
+            }
+        }
+
+        if (!currentStaffData) {
+            setSearchError("Could not verify your staff details.");
+            setIsSearching(false);
+            return;
+        }
+
         const customersRef = collection(db, "customers");
-        const q = query(customersRef, where("userId", "==", staffData.adminId));
+        const q = query(customersRef, where("userId", "==", currentStaffData.adminId));
         const querySnapshot = await getDocs(q);
         
         const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
@@ -422,7 +443,7 @@ export default function DashboardPage() {
                 (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery) ||
                 (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery));
             
-            const isInAssignedArea = staffData.area.includes(c.area);
+            const isInAssignedArea = currentStaffData!.area.includes(c.area);
 
             return matchesSearchTerm && isInAssignedArea;
         });
