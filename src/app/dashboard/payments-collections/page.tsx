@@ -122,7 +122,8 @@ export default function PaymentsCollectionsPage() {
   const filteredCollections = useMemo(() => {
     let customersToFilter = allCustomers.filter(c => c.balanceAmount > 0);
     
-    if (userRole === 'Staff') {
+    // Only filter by assigned areas if the staff member has assigned areas
+    if (staffAssignedAreas.length > 0) {
         customersToFilter = customersToFilter.filter(c => staffAssignedAreas.includes(c.area));
     }
     
@@ -138,7 +139,7 @@ export default function PaymentsCollectionsPage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea, allCustomers, userRole, staffAssignedAreas]);
+  }, [searchTerm, filterArea, allCustomers, staffAssignedAreas]);
 
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
