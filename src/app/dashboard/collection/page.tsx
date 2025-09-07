@@ -78,7 +78,6 @@ export default function CollectionPage() {
     }
 
     const fetchPrerequisites = async () => {
-        setLoading(true);
         if (userRole === 'Admin') {
             setAdminId(user.uid);
             const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
@@ -162,7 +161,7 @@ export default function CollectionPage() {
     const unsubscribe = onSnapshot(collectionsQuery, handleSnapshot, handleError);
 
     return () => unsubscribe();
-  }, [adminId, userRole, staffAssignedAreas, authLoading, toast]);
+  }, [adminId, userRole, staffAssignedAreas, toast]);
 
 
   const filteredCollections = useMemo(() => {
