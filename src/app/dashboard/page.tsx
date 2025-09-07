@@ -711,7 +711,7 @@ export default function DashboardPage() {
 
 
   const AdminDashboard = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:col-span-3">
         <RechargeRequestsCard />
         <SettlementRequestsCard />
         <AdminCollectionCard />
@@ -780,10 +780,11 @@ export default function DashboardPage() {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
      
      const { walletAmount, commissionAmount } = staffWallet;
+     const isCollectionAgent = userRole === 'Collection Agent';
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        { userRole !== 'Collection Agent' && <StaffRechargeCard /> }
+        { !isCollectionAgent && <StaffRechargeCard /> }
         <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
