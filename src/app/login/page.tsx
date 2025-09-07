@@ -88,7 +88,7 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Firebase Auth Error:", error);
         
-        let errorMessage = "Invalid username or password. Please try again.";
+        let errorMessage = "An error occurred during login.";
         if(error.code === 'auth/user-not-found' || error.message === 'auth/unauthorized-user') {
             errorMessage = "No authorized user found with this email.";
         } else if (error.code === 'auth/wrong-password') {
