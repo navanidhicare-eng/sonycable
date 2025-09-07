@@ -54,6 +54,9 @@ interface Customer {
   id: string;
   name: string;
   balanceAmount: number;
+  mobile: string;
+  customerId: string;
+  area: string;
 }
 
 export default function DashboardPage() {
@@ -252,34 +255,40 @@ export default function DashboardPage() {
   }
 
   const handleCustomerSearch = async () => {
-      if (!searchQuery.trim() || !staffData) return;
-      setIsSearching(true);
-      setSearchError("");
-      setSearchedCustomer(null);
+    if (!searchQuery.trim() || !staffData) return;
+    setIsSearching(true);
+    setSearchError("");
+    setSearchedCustomer(null);
 
-      try {
-          const customersRef = collection(db, "customers");
-          const q = query(customersRef, 
-              where("userId", "==", staffData.adminId),
-              where("area", "in", staffData.area)
-          );
+    try {
+        const customersRef = collection(db, "customers");
+        // Query for all customers under the admin
+        const q = query(customersRef, where("userId", "==", staffData.adminId));
+        const querySnapshot = await getDocs(q);
+        
+        const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
-          const querySnapshot = await getDocs(q);
-          const allCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-          
-          const found = allCustomers.find(c => c.id === searchQuery || (c as any).mobile === searchQuery);
+        // Find the customer on the client side
+        const foundCustomer = allAdminCustomers.find(c => 
+            c.customerId === searchQuery || c.mobile === searchQuery
+        );
 
-          if (found) {
-              setSearchedCustomer(found);
-          } else {
-              setSearchError("Customer not found in your assigned areas or invalid ID/Mobile.");
-          }
-      } catch (error) {
-          console.error("Error searching customer:", error);
-          setSearchError("An error occurred while searching.");
-      } finally {
-          setIsSearching(false);
-      }
+        if (foundCustomer) {
+            // Security check: ensure the found customer is in the staff's assigned areas
+            if (staffData.area.includes(foundCustomer.area)) {
+                setSearchedCustomer(foundCustomer);
+            } else {
+                setSearchError("Customer found, but they are not in your assigned area.");
+            }
+        } else {
+            setSearchError("Customer not found in your assigned areas or invalid ID/Mobile.");
+        }
+    } catch (error) {
+        console.error("Error searching customer:", error);
+        setSearchError("An error occurred while searching.");
+    } finally {
+        setIsSearching(false);
+    }
   };
 
 
@@ -588,5 +597,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
