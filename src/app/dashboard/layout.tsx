@@ -117,19 +117,15 @@ export default function WithSidebarLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              </>
-            )}
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/collection">
-                  <IndianRupee />
-                  <span>Collection</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            {userRole === 'Admin' && (
-              <>
-                <SidebarMenuItem>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/dashboard/collection">
+                        <IndianRupee />
+                        <span>Collection</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link href="/dashboard/packages">
                       <Package />
@@ -169,24 +165,24 @@ export default function WithSidebarLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/dashboard/complaints">
+                        <MessageSquareWarning />
+                        <span>Complaints</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/dashboard/offers">
+                        <Megaphone />
+                        <span>Offers</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
               </>
             )}
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/complaints">
-                  <MessageSquareWarning />
-                  <span>Complaints</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/dashboard/offers">
-                  <Megaphone />
-                  <span>Offers</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>

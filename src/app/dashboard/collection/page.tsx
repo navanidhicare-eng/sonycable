@@ -66,10 +66,9 @@ export default function CollectionPage() {
   const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All Areas" },
   ]);
-  const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[]>([]);
-  const [adminId, setAdminId] = useState<string | null>(null);
-  
   const { user, userRole, loading: authLoading } = useAuth();
+  const [adminId, setAdminId] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -82,31 +81,15 @@ export default function CollectionPage() {
                 const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
             });
-            return () => unsubscribe();
-        } else if (userRole === 'Staff') {
-            const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-            const staffSnapshot = await getDocs(staffQuery);
-
-            if (!staffSnapshot.empty) {
-                const staffData = staffSnapshot.docs[0].data() as Staff;
-                const assignedAreas = staffData.area || [];
-                setStaffAssignedAreas(assignedAreas);
-                setAdminId(staffData.adminId);
-                const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
-                setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
-            } else {
-                 setAreaOptions([{ value: "all", label: "All Areas" }]);
-                 setStaffAssignedAreas([]);
-            }
-        }
+            return unsubscribe;
+        } 
     };
     
-    const unsubscribePromise = fetchPrerequisites();
+    let unsubscribe: (() => void) | undefined;
+    fetchPrerequisites().then(unsub => unsubscribe = unsub);
 
     return () => {
-       unsubscribePromise.then(unsubscribe => {
-           if (unsubscribe) unsubscribe();
-       });
+       if (unsubscribe) unsubscribe();
     };
   }, [user, userRole, authLoading]);
 
@@ -140,10 +123,6 @@ export default function CollectionPage() {
 
   const filteredCollections = useMemo(() => {
     let customersWithBalance = allCustomers.filter(c => c.balanceAmount > 0);
-
-    if (userRole === 'Staff' && staffAssignedAreas.length > 0) {
-        customersWithBalance = customersWithBalance.filter(customer => staffAssignedAreas.includes(customer.area));
-    }
     
     return customersWithBalance.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
@@ -157,7 +136,7 @@ export default function CollectionPage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea, allCustomers, userRole, staffAssignedAreas]);
+  }, [searchTerm, filterArea, allCustomers]);
 
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
