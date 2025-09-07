@@ -262,23 +262,20 @@ export default function DashboardPage() {
   );
 
   const StaffCollectionCard = () => (
-     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-        <Link href="/dashboard/payments-collections" className="block h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                    My Collections
-                </CardTitle>
-                <IndianRupee className="h-4 w-4 text-primary-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between">
-                    <p className="text-xs">
-                        View customers with outstanding balance
-                    </p>
-                    <ArrowRight className="h-5 w-5" />
-                </div>
-            </CardContent>
-        </Link>
+     <Card className="bg-primary text-primary-foreground">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+                My Collections
+            </CardTitle>
+            <IndianRupee className="h-4 w-4 text-primary-foreground" />
+        </CardHeader>
+        <CardContent>
+            <div className="flex items-center justify-between">
+                <p className="text-xs">
+                    View customers with outstanding balance
+                </p>
+            </div>
+        </CardContent>
     </Card>
   );
 
@@ -502,6 +499,8 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
 
     
 
