@@ -121,6 +121,20 @@ export default function CollectionPage() {
     setLoading(true);
     let collectionsQuery;
 
+    const handleSnapshot = (snapshot: any) => {
+        const collectionsData = snapshot.docs
+            .map((doc: any) => ({ id: doc.id, ...doc.data() } as Collection))
+            .filter((customer: any) => customer.balanceAmount > 0);
+        setAllCustomers(collectionsData);
+        setLoading(false);
+    };
+
+    const handleError = (error: any) => {
+        console.error("Error fetching collections:", error);
+        toast({ variant: "destructive", title: "Failed to fetch collections" });
+        setLoading(false);
+    };
+
     if (userRole === 'Admin') {
         collectionsQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
     } else if (userRole === 'Staff' && staffAssignedAreas) {
@@ -151,20 +165,6 @@ export default function CollectionPage() {
         return;
     }
     
-    const handleSnapshot = (snapshot: any) => {
-        const collectionsData = snapshot.docs
-            .map((doc: any) => ({ id: doc.id, ...doc.data() } as Collection))
-            .filter((customer: any) => customer.balanceAmount > 0);
-        setAllCustomers(collectionsData);
-        setLoading(false);
-    };
-
-    const handleError = (error: any) => {
-        console.error("Error fetching collections:", error);
-        toast({ variant: "destructive", title: "Failed to fetch collections" });
-        setLoading(false);
-    };
-
     const unsubscribe = onSnapshot(collectionsQuery, handleSnapshot, handleError);
 
     return () => unsubscribe();
