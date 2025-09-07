@@ -20,10 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Search, Loader2, Upload } from "lucide-react";
+import { PlusCircle, Search, Loader2, Upload, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, Timestamp, writeBatch, doc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Timestamp, writeBatch, doc, getDocs, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -61,6 +61,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -225,6 +226,56 @@ export default function CustomersPage() {
     document.body.removeChild(link);
   }
 
+  const handleSyncAreas = async () => {
+    if (!user) return;
+    setIsSyncing(true);
+    try {
+      // 1. Get all unique area names from customers
+      const uniqueCustomerAreas = new Set(customers.map(c => c.area.trim()).filter(Boolean));
+
+      // 2. Get all existing area names from the areas collection
+      const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
+      const areasSnapshot = await getDocs(areasQuery);
+      const existingAreas = new Set(areasSnapshot.docs.map(doc => doc.data().name.trim()));
+
+      // 3. Find which areas are new
+      const newAreas = [...uniqueCustomerAreas].filter(area => !existingAreas.has(area));
+
+      if (newAreas.length === 0) {
+        toast({ title: "Areas Synced", description: "All customer areas are already up to date." });
+        return;
+      }
+
+      // 4. Add new areas to the 'areas' collection
+      const batch = writeBatch(db);
+      newAreas.forEach(areaName => {
+        const newAreaRef = doc(collection(db, "areas"));
+        batch.set(newAreaRef, {
+          name: areaName,
+          description: "Auto-synced from customers",
+          createdAt: new Date(),
+          userId: user.uid,
+        });
+      });
+      await batch.commit();
+      
+      toast({
+        title: "Sync Successful",
+        description: `${newAreas.length} new area(s) have been added.`
+      });
+
+    } catch (error) {
+       console.error("Error syncing areas:", error);
+       toast({
+         variant: "destructive",
+         title: "Sync Failed",
+         description: "An error occurred while syncing areas.",
+       });
+    } finally {
+        setIsSyncing(false);
+    }
+  };
+
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground">
@@ -239,6 +290,10 @@ export default function CustomersPage() {
             </p>
           </div>
           <div className="flex gap-2 mt-4 sm:mt-0">
+             <Button variant="outline" onClick={handleSyncAreas} disabled={isSyncing}>
+                {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Sync Areas
+              </Button>
              <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -362,5 +417,3 @@ export default function CustomersPage() {
     </>
   );
 }
-
-    
