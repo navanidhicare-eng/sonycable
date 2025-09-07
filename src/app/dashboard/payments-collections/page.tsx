@@ -72,62 +72,80 @@ export default function PaymentsCollectionsPage() {
 
 
   useEffect(() => {
-    if (authLoading || !user) return;
-    
-    const fetchStaffDetails = async () => {
-        const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-        const staffSnapshot = await getDocs(staffQuery);
-        if (!staffSnapshot.empty) {
-            const staffData = staffSnapshot.docs[0].data() as Staff;
-            setAdminId(staffData.adminId);
-            setStaffAssignedAreas(staffData.area);
-            const areaOpts = staffData.area.map(a => ({ value: a, label: a }));
-            setAreaOptions([{ value: "all", label: "All Areas" }, ...areaOpts]);
-        }
-    };
-    
-    if(userRole === 'Staff') {
-        fetchStaffDetails();
-    }
-  }, [user, userRole, authLoading]);
-
-
-  useEffect(() => {
-    if (!adminId) {
+    if (authLoading || !user) {
       if (!authLoading) setLoading(false);
       return;
     }
-    
-    setLoading(true);
 
-    const collectionsQuery = query(
-        collection(db, "customers"), 
-        where("userId", "==", adminId)
-    );
-    
-    const unsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
-        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
-        setAllCustomers(collectionsData);
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching collections:", error);
-        toast({ variant: "destructive", title: "Failed to fetch collections" });
-        setLoading(false);
-    });
+    let customerUnsubscribe: (() => void) | undefined;
 
-    return () => unsubscribe();
-  }, [adminId, toast, authLoading]);
+    const fetchStaffAndCustomers = async () => {
+      setLoading(true);
+      try {
+        const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+        const staffSnapshot = await getDocs(staffQuery);
+
+        if (!staffSnapshot.empty) {
+          const staffData = staffSnapshot.docs[0].data() as Staff;
+          const fetchedAdminId = staffData.adminId;
+          const fetchedAreas = staffData.area;
+
+          setAdminId(fetchedAdminId);
+          setStaffAssignedAreas(fetchedAreas);
+          const areaOpts = fetchedAreas.map(a => ({ value: a, label: a }));
+          setAreaOptions([{ value: "all", label: "All Areas" }, ...areaOpts]);
+
+          if (fetchedAdminId) {
+            const collectionsQuery = query(
+              collection(db, "customers"),
+              where("userId", "==", fetchedAdminId)
+            );
+
+            customerUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
+              const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
+              setAllCustomers(collectionsData);
+              setLoading(false);
+            }, (error) => {
+              console.error("Error fetching collections:", error);
+              toast({ variant: "destructive", title: "Failed to fetch collections" });
+              setLoading(false);
+            });
+          } else {
+             setLoading(false);
+          }
+        } else {
+             setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching staff details:", error);
+        toast({ variant: "destructive", title: "Failed to load staff data" });
+        setLoading(false);
+      }
+    };
+
+    if (userRole === 'Staff') {
+        fetchStaffAndCustomers();
+    } else {
+        setLoading(false);
+    }
+
+    return () => {
+      if (customerUnsubscribe) {
+        customerUnsubscribe();
+      }
+    };
+  }, [user, userRole, authLoading, toast]);
 
 
   const filteredCollections = useMemo(() => {
-    let customersToFilter = allCustomers.filter(c => c.balanceAmount > 0);
-    
-    // Only filter by assigned areas if the staff member has assigned areas
+    let customersWithBalance = allCustomers.filter(c => c.balanceAmount > 0);
+
+    let customersInAssignedAreas = customersWithBalance;
     if (staffAssignedAreas.length > 0) {
-        customersToFilter = customersToFilter.filter(c => staffAssignedAreas.includes(c.area));
+        customersInAssignedAreas = customersWithBalance.filter(c => staffAssignedAreas.includes(c.area));
     }
     
-    return customersToFilter.filter((collection) => {
+    return customersInAssignedAreas.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
@@ -345,3 +363,5 @@ export default function PaymentsCollectionsPage() {
     </>
   );
 }
+
+    
