@@ -269,8 +269,10 @@ export default function DashboardPage() {
         const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
         // Find the customer on the client side
+        const trimmedSearchQuery = searchQuery.trim();
         const foundCustomer = allAdminCustomers.find(c => 
-            c.customerId === searchQuery || c.mobile === searchQuery
+            (c.customerId && c.customerId.trim() === trimmedSearchQuery) || 
+            (c.mobile && c.mobile.trim() === trimmedSearchQuery)
         );
 
         if (foundCustomer) {
