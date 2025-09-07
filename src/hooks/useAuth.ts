@@ -12,13 +12,15 @@ export function useAuth() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
+      setUser(currentUser);
+      if (currentUser && typeof window !== "undefined") {
         const role = localStorage.getItem("userRole");
         setUserRole(role);
       } else {
-        setUser(null);
         setUserRole(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("userRole");
+        }
       }
       setLoading(false);
     });

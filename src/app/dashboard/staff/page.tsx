@@ -25,12 +25,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-// Note: Deleting users requires Admin SDK on a backend. The client-side delete is not recommended.
-// For this implementation, we will only delete from Firestore. A backend function is needed for full cleanup.
 
 interface Staff {
   id: string;
@@ -57,23 +55,20 @@ export default function StaffPage() {
 
   useEffect(() => {
     if (authLoading) {
-      // Wait for auth to complete before doing anything
       return;
     }
     if (!user) {
-      // If no user, no need to fetch, set loading to false
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    // Auth is complete and we have a user, now we can query firestore
     const q = query(collection(db, "staff"), where("adminId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
       staffData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
       setStaffList(staffData);
-      setLoading(false); // <--- This was the missing piece
+      setLoading(false);
     }, (error) => {
       console.error("Error fetching staff:", error);
       toast({
@@ -81,7 +76,7 @@ export default function StaffPage() {
         title: "Failed to fetch staff",
         description: "Could not retrieve staff data. Check permissions.",
       });
-      setLoading(false); // Also set loading to false on error
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -96,12 +91,8 @@ export default function StaffPage() {
     if (!staffToDelete) return;
 
     try {
-      // Delete from Firestore
       await deleteDoc(doc(db, "staff", staffToDelete.id));
 
-      // IMPORTANT: Deleting from Firebase Auth requires a backend function (e.g., Cloud Function)
-      // with the Admin SDK for security reasons. Client-side deletion is not secure.
-      // This part is mocked.
       console.log(`Deletion requested for user UID: ${staffToDelete.uid}. Implement backend function to complete.`);
 
       toast({

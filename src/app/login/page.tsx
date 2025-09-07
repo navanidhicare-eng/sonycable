@@ -74,7 +74,6 @@ export default function LoginPage() {
             } else if (isStaff) {
               localStorage.setItem("userRole", "Staff");
             } else {
-              // If not admin and not in staff collection, treat as unauthorized
               throw new Error("auth/unauthorized-user");
             }
         }
