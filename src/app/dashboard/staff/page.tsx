@@ -207,16 +207,16 @@ export default function StaffPage() {
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the staff member
             <span className="font-bold"> {staffToDelete?.name}</span>'s account and remove their data from our servers.
+          </AlertDialogDescription>
             <div className="mt-4 p-3 bg-destructive/10 border-l-4 border-destructive text-destructive-foreground rounded-r-lg">
                 <div className="flex items-center gap-2">
                     <ShieldAlert className="h-5 w-5" />
-                    <h3 className="font-semibold">Security Warning</h3>
+                    <div className="font-semibold">Security Warning</div>
                 </div>
                 <p className="text-xs mt-1">
                     Deleting the user from Firebase Authentication requires backend logic and is not performed from the client. The user will be deleted from the Staff list, but their login credentials might remain active.
                 </p>
             </div>
-          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
