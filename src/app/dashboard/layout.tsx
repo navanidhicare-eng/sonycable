@@ -26,7 +26,7 @@ import {
   UserPlus,
   Megaphone,
   LogOut,
-  Calculator,
+Calculator,
   BellRing,
   Shield,
 } from 'lucide-react';
@@ -210,5 +210,3 @@ export default function WithSidebarLayout({
     </SidebarProvider>
   );
 }
-
-    

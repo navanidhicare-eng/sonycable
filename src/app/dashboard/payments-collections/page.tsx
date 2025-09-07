@@ -43,7 +43,7 @@ interface Collection {
     mobile: string;
     stbId: string;
     area: string;
-    balanceAmount: number;
+    balanceAmount: number | string; // Allow both for safety
     customerId: string;
 }
 
@@ -72,13 +72,13 @@ export default function PaymentsCollectionsPage() {
 
 
   useEffect(() => {
-    if (authLoading || !user || userRole !== 'Staff') {
+    if (authLoading || !user) {
       if (!authLoading) setLoading(false);
       return;
     }
-
+    
     let customerUnsubscribe: (() => void) | undefined;
-
+    
     const fetchStaffAndCustomers = async () => {
       setLoading(true);
       try {
@@ -114,6 +114,7 @@ export default function PaymentsCollectionsPage() {
              setLoading(false);
           }
         } else {
+             console.log("No staff document found for UID:", user.uid);
              setLoading(false);
         }
       } catch (error) {
@@ -130,17 +131,20 @@ export default function PaymentsCollectionsPage() {
         customerUnsubscribe();
       }
     };
-  }, [user, userRole, authLoading, toast]);
+  }, [user, authLoading, toast]);
 
 
   const filteredCollections = useMemo(() => {
-    let customersWithBalance = allCustomers.filter(c => c.balanceAmount > 0);
+    // 1. Filter customers with a positive balance, converting amount to number for safety.
+    let customersWithBalance = allCustomers.filter(c => parseFloat(String(c.balanceAmount)) > 0);
 
+    // 2. Filter by staff's assigned areas.
     let customersInAssignedAreas = customersWithBalance;
     if (staffAssignedAreas.length > 0) {
         customersInAssignedAreas = customersWithBalance.filter(c => staffAssignedAreas.includes(c.area));
     }
     
+    // 3. Filter by search term and selected area dropdown.
     return customersInAssignedAreas.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
@@ -157,7 +161,7 @@ export default function PaymentsCollectionsPage() {
 
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
-    setAmountCollected(customer.balanceAmount.toString());
+    setAmountCollected(String(customer.balanceAmount));
     setPaymentMethod("cash");
     setIsCollectDialogOpen(true);
   };
@@ -166,7 +170,8 @@ export default function PaymentsCollectionsPage() {
     if (!amountCollected || !currentCustomer || !user || !adminId) return;
     
     const collectedAmount = parseFloat(amountCollected);
-    const newBalance = currentCustomer.balanceAmount - collectedAmount;
+    const currentBalance = parseFloat(String(currentCustomer.balanceAmount));
+    const newBalance = currentBalance - collectedAmount;
 
     try {
         const customerDocRef = doc(db, "customers", currentCustomer.id);
