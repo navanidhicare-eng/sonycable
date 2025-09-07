@@ -20,14 +20,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Search, Loader2, Upload, RefreshCw } from "lucide-react";
+import { PlusCircle, Search, Loader2, Upload, RefreshCw, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, Timestamp, writeBatch, doc, getDocs, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Timestamp, writeBatch, doc, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Papa from "papaparse";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Customer {
   id: string;
@@ -62,6 +72,8 @@ export default function CustomersPage() {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -275,6 +287,34 @@ export default function CustomersPage() {
         setIsSyncing(false);
     }
   };
+  
+  const openDeleteDialog = (customer: Customer) => {
+    setCustomerToDelete(customer);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+
+    try {
+      await deleteDoc(doc(db, "customers", customerToDelete.id));
+      toast({
+        title: "Customer Deleted",
+        description: `${customerToDelete.name} has been removed successfully.`,
+      });
+    } catch (error) {
+      console.error("Error deleting customer: ", error);
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: "An error occurred while deleting the customer.",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setCustomerToDelete(null);
+    }
+  };
+
 
   return (
     <>
@@ -379,6 +419,7 @@ export default function CustomersPage() {
                     <TableHead>STB ID</TableHead>
                     <TableHead>Customer ID</TableHead>
                     <TableHead>Last Recharge</TableHead>
+                    <TableHead>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -395,12 +436,22 @@ export default function CustomersPage() {
                         <TableCell>{customer.stbId}</TableCell>
                         <TableCell>{customer.customerId}</TableCell>
                         <TableCell>{formatDate(customer.lastRechargeDate)}</TableCell>
+                        <TableCell className="flex gap-1">
+                            <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                    <Pencil className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(customer)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </TableCell>
                         </TableRow>
                     ))
                     ) : (
                     <TableRow>
                         <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="h-24 text-center"
                         >
                         No results found.
@@ -414,6 +465,24 @@ export default function CustomersPage() {
         </Card>
       </div>
     </main>
+
+    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the customer 
+            <span className="font-bold"> {customerToDelete?.name}</span>'s data.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteCustomer} className="bg-destructive hover:bg-destructive/90">
+            Delete Customer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
