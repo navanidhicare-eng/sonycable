@@ -162,16 +162,19 @@ export default function DashboardPage() {
                 const dates = approvedSettlementsSnapshot.docs.map(doc => doc.data().createdAt.toDate());
                 lastSettlementDate = new Date(Math.max(...dates.map(date => date.getTime())));
             }
-
-            // Watch for new payments and calculate wallet based on last settlement date
+            
             const paymentsQuery = query(
               collection(db, "payments"),
-              where("collectedBy", "==", currentUser.uid),
-              ...(lastSettlementDate ? [where("collectionDate", ">", lastSettlementDate)] : [])
+              where("collectedBy", "==", currentUser.uid)
             );
 
             const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
-                const totalCollection = snapshot.docs.reduce((acc, doc) => acc + doc.data().amount, 0);
+                const paymentsAfterSettlement = snapshot.docs.filter(doc => {
+                    if (!lastSettlementDate) return true;
+                    return doc.data().collectionDate.toDate() > lastSettlementDate;
+                });
+                
+                const totalCollection = paymentsAfterSettlement.reduce((acc, doc) => acc + doc.data().amount, 0);
                 const totalCommission = (totalCollection * commissionRate) / 100;
                 setStaffWallet({ walletAmount: totalCollection, commissionAmount: totalCommission });
             });
