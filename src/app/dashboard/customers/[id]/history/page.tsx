@@ -150,26 +150,34 @@ export default function CustomerHistoryPage() {
 
   const handleShare = async () => {
     if (!customer) return;
-    const shareData = {
-      title: `Payment for ${customer.name}`,
-      text: `Please make your payment for SONY CABLE. Customer ID: ${customer.customerId}`,
-      url: window.location.href, // Or a specific payment link
-    };
+
+    const qrContent = `Customer Name: ${customer.name}\nCustomer ID: ${customer.customerId}\nBalance: ${customer.balanceAmount}`;
+    
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(shareData.url);
-        toast({
-          title: "Link Copied",
-          description: "Payment link has been copied to your clipboard.",
-        });
-      }
+        const qrCodeDataUrl = await QRCode.toDataURL(qrContent, { errorCorrectionLevel: 'H' });
+        const response = await fetch(qrCodeDataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `${customer.name}-QR.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: `QR Code for ${customer.name}`,
+                text: `Here is the QR code for ${customer.name} (ID: ${customer.customerId}).`,
+            });
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Sharing Not Supported",
+                description: "Your browser does not support sharing files.",
+            });
+        }
     } catch (error) {
+      console.error("Error sharing QR code:", error)
       toast({
         variant: "destructive",
         title: "Sharing Failed",
-        description: "Could not share the payment link.",
+        description: "Could not share the QR code.",
       });
     }
   };
@@ -257,7 +265,7 @@ export default function CustomerHistoryPage() {
                     </Button>
                     <Button variant="outline" onClick={handleShare}>
                         <Share2 className="mr-2 h-4 w-4" />
-                        Share Link
+                        Share QR
                     </Button>
                 </div>
             </div>
