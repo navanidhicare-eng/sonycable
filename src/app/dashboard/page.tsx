@@ -715,59 +715,59 @@ export default function DashboardPage() {
         <RechargeRequestsCard />
         <SettlementRequestsCard />
         <AdminCollectionCard />
-        <Card>
+        <Card className="bg-red-100 text-red-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            <CircleDollarSign className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
             <div className="text-2xl font-bold">₹{stats.totalPending.toLocaleString()}</div>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-green-100 text-green-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
                 Active Customers
             </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
             <div className="text-2xl font-bold">{stats.activeCustomers}</div>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-blue-100 text-blue-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
             <div className="text-2xl font-bold">{stats.activePackages}</div>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-yellow-100 text-yellow-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
                 All Collection Agents
             </CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <UserCheck className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
             <div className="text-2xl font-bold">{stats.collectionAgents}</div>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-indigo-100 text-indigo-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            <CircleDollarSign className="h-4 w-4 text-indigo-500" />
             </CardHeader>
             <CardContent>
             <div className="text-2xl font-bold">₹{stats.todaysCollection.toLocaleString()}</div>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-purple-100 text-purple-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Month's Collection</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+            <CircleDollarSign className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
             <div className="text-2xl font-bold">₹{stats.monthlyCollection.toLocaleString()}</div>
