@@ -58,6 +58,7 @@ export default function DashboardPage() {
       monthlyCollection: 0,
   });
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
+  const [staffName, setStaffName] = useState('');
 
   useEffect(() => {
     if (authLoading) {
@@ -79,11 +80,12 @@ export default function DashboardPage() {
             try {
                 const customersSnapshot = await getDocs(query(collection(db, "customers"), where("userId", "==", currentUser.uid)));
                 const packagesSnapshot = await getDocs(query(collection(db, "packages"), where("userId", "==", currentUser.uid)));
+                const staffSnapshot = await getDocs(query(collection(db, "staff"), where("adminId", "==", currentUser.uid)));
                 setStats({
                     totalRevenue: 0,
                     activeCustomers: customersSnapshot.size,
                     activePackages: packagesSnapshot.size,
-                    collectionAgents: 0,
+                    collectionAgents: staffSnapshot.size,
                     todaysCollection: 0,
                     monthlyCollection: 0,
                 });
@@ -100,6 +102,15 @@ export default function DashboardPage() {
     } else if (userRole === "Staff") {
       q = query(settlementsRef, where("staffId", "==", currentUser.uid));
        // TODO: Replace with actual logic to calculate staff wallet
+      const fetchStaffDetails = async () => {
+        const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+        const staffSnapshot = await getDocs(staffQuery);
+        if (!staffSnapshot.empty) {
+            const staffData = staffSnapshot.docs[0].data();
+            setStaffName(staffData.name);
+        }
+      }
+      fetchStaffDetails();
       setStaffWallet({ walletAmount: 0, commissionAmount: 0 });
     } else {
       setFirestoreLoading(false);
@@ -130,7 +141,7 @@ export default function DashboardPage() {
       return "Welcome, Admin!";
     }
     if (userRole === "Staff") {
-      return `Welcome, ${currentUser?.displayName || 'Staff'}!`;
+      return `Welcome, ${staffName || 'Staff'}!`;
     }
     return "Welcome to your SONY CABLE dashboard.";
   };
@@ -145,7 +156,7 @@ export default function DashboardPage() {
     try {
       await addDoc(collection(db, "settlements"), {
         staffId: currentUser.uid,
-        staffName: currentUser.displayName || 'Staff Member',
+        staffName: staffName || 'Staff Member',
         amount: collectionAmount,
         commission: commissionReceived ? commissionAmount : 0,
         amountToSend: amountToSend,
