@@ -90,7 +90,7 @@ export default function CollectionPage() {
             if (!staffSnapshot.empty) {
                 const staffData = staffSnapshot.docs[0].data() as Staff;
                 const assignedAreas = staffData.area || [];
-                setStaffAssignedAreas(assignedAreas);
+                setStaffAssignedAreas(assignedAreas); // This line was missing
                 setAdminId(staffData.adminId);
                 const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
@@ -361,3 +361,5 @@ export default function CollectionPage() {
     </>
   );
 }
+
+    
