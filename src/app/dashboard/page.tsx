@@ -166,11 +166,15 @@ export default function DashboardPage() {
             setStaffData(staffDocData);
             const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
 
-            const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
-            const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
-                const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
-                setPackages(packagesData);
-            });
+            if (userRole !== 'Collection Agent') {
+                const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
+                const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
+                    const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
+                    setPackages(packagesData);
+                });
+                return [unsubscribePackages]; // Keep it in an array to match return type
+            }
+            
 
             // Fetch approved settlements to find the last settlement date
             const approvedSettlementsQuery = query(
@@ -209,7 +213,7 @@ export default function DashboardPage() {
                 setSettlementRequests(requests);
             });
 
-            return [unsubscribePayments, unsubscribeSettlements, unsubscribePackages];
+            return [unsubscribePayments, unsubscribeSettlements];
 
         } catch(error) {
             console.error("Error fetching staff data:", error);
@@ -223,9 +227,9 @@ export default function DashboardPage() {
     let unsubscribes: (() => void)[] = [];
     const fetchData = async () => {
       if (userRole === "Admin") {
-        unsubscribes = await fetchAdminData() || [];
+        unsubscribes = (await fetchAdminData()) || [];
       } else if (userRole) { // Check if userRole is not null/empty
-        unsubscribes = await fetchStaffData() || [];
+        unsubscribes = (await fetchStaffData()) || [];
       } else {
         setFirestoreLoading(false);
       }
@@ -902,7 +906,7 @@ export default function DashboardPage() {
         </Dialog>
       )}
       
-       {searchedCustomer && (
+       {searchedCustomer && userRole !== 'Collection Agent' && (
          <Dialog open={isRechargeDialogOpen} onOpenChange={(isOpen) => {
             if(!isOpen) setSearchedCustomer(null);
             setIsRechargeDialogOpen(isOpen);

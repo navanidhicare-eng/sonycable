@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,36 +13,32 @@ export function useAuth() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
+      setLoading(true);
       if (currentUser) {
-        // Fetch role from localStorage first for faster UI update
-        const cachedRole = localStorage.getItem("userRole");
-        if (cachedRole) {
-          setUserRole(cachedRole);
-        }
-
-        // Then, verify and fetch the latest role from Firestore
+        setUser(currentUser);
         let finalRole = null;
         if (currentUser.email === 'psdgandepalli@gmail.com') {
           finalRole = 'Admin';
         } else {
-          const staffDocRef = doc(db, 'staff', currentUser.uid);
-          const staffDocSnap = await getDoc(staffDocRef);
-          if (staffDocSnap.exists()) {
-            finalRole = staffDocSnap.data().role || null;
+          const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+          const staffSnapshot = await getDocs(staffQuery);
+          if (!staffSnapshot.empty) {
+            const staffData = staffSnapshot.docs[0].data();
+            finalRole = staffData.role || null;
           }
         }
         
         setUserRole(finalRole);
         
-        if (finalRole) {
-          localStorage.setItem("userRole", finalRole);
-        } else {
-          // If no role is found in Firestore, clear it from local storage
-          localStorage.removeItem("userRole");
+        if (typeof window !== "undefined") {
+            if (finalRole) {
+                localStorage.setItem("userRole", finalRole);
+            } else {
+                localStorage.removeItem("userRole");
+            }
         }
-
       } else {
+        setUser(null);
         setUserRole(null);
         if (typeof window !== "undefined") {
           localStorage.removeItem("userRole");
