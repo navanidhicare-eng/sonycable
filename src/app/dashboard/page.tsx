@@ -627,6 +627,38 @@ export default function DashboardPage() {
   );
 
 
+   const RechargeRequestsCard = () => {
+    if (rechargeRequests.length === 0) return null;
+
+    return (
+        <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+                <CardTitle>Recharge Requests</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {rechargeRequests.map(req => (
+                    <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-3 gap-2">
+                        <div>
+                            <p className="font-semibold">{req.customerName}</p>
+                            <p className="text-sm text-muted-foreground">
+                                Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span>
+                            </p>
+                        </div>
+                        <div className="flex gap-2 self-end sm:self-center">
+                            <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
+                                Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
+                                Reject
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+   };
+   
    const SettlementRequestsCard = () => {
     const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
     if(pendingRequests.length === 0) return null;
@@ -649,38 +681,6 @@ export default function DashboardPage() {
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                             Approve
                         </Button>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-    );
-   };
-   
-   const RechargeRequestsCard = () => {
-    if(rechargeRequests.length === 0) return null;
-
-    return (
-         <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-                <CardTitle>Recharge Requests</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {rechargeRequests.map(req => (
-                    <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-3 gap-2">
-                        <div>
-                            <p className="font-semibold">{req.customerName}</p>
-                            <p className="text-sm text-muted-foreground">
-                                Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span>
-                            </p>
-                        </div>
-                        <div className="flex gap-2 self-end sm:self-center">
-                            <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
-                                Approve
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
-                                Reject
-                            </Button>
-                        </div>
                     </div>
                 ))}
             </CardContent>
