@@ -191,7 +191,7 @@ export default function DashboardPage() {
             setStaffData(staffDocData);
             const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
 
-            if (userRole !== 'Collection Agent') {
+            if (userRole?.toLowerCase().replace(/\s/g, '') !== 'collectionagent') {
                 const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
                 const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
                     const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
@@ -780,7 +780,7 @@ export default function DashboardPage() {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
      
      const { walletAmount, commissionAmount } = staffWallet;
-     const isCollectionAgent = userRole === 'Collection Agent';
+     const isCollectionAgent = userRole?.toLowerCase().replace(/\s/g, '') === 'collectionagent';
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1054,7 +1054,7 @@ export default function DashboardPage() {
         </Dialog>
       )}
       
-       {searchedCustomer && userRole !== 'Collection Agent' && (
+       {searchedCustomer && userRole?.toLowerCase().replace(/\s/g, '') !== 'collectionagent' && (
          <Dialog open={isRechargeDialogOpen} onOpenChange={(isOpen) => {
             if(!isOpen) setSearchedCustomer(null);
             setIsRechargeDialogOpen(isOpen);

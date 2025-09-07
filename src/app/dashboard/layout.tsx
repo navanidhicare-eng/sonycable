@@ -58,7 +58,7 @@ export default function WithSidebarLayout({
     }
   };
   
-  const isCollectionAgent = userRole === 'Collection Agent';
+  const isCollectionAgent = userRole?.toLowerCase().replace(/\s/g, '') === 'collectionagent';
 
   return (
     <SidebarProvider>
