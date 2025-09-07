@@ -25,16 +25,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Search, User } from "lucide-react";
+import { PlusCircle, Search, User, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 
-// In a real app, you might fetch this list from your customers data
-const mockCustomers = [
-  { id: "cust1", name: "Suresh Kumar", stbId: "STB12345", mobile: "9876543210", customerId: "CUST9876" },
-  { id: "cust2", name: "Rajesh Sharma", stbId: "STB67890", mobile: "9988776655", customerId: "CUST5432" },
-  { id: "cust3", name: "Anitha Reddy", stbId: "STB54321", mobile: "9123456789", customerId: "CUST1234" },
-  { id: "cust4", name: "Vijay Varma", stbId: "STB11223", mobile: "9000011111", customerId: "CUST4321" },
-];
+interface Customer {
+  id: string;
+  name: string;
+  stbId: string;
+  mobile: string;
+  customerId: string;
+  adminId: string;
+}
 
 const formSchema = z.object({
   complaintDetails: z.string().min(10, "Please provide at least 10 characters for the complaint."),
@@ -46,38 +50,63 @@ export default function AddComplaintPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [foundCustomer, setFoundCustomer] = useState<(typeof mockCustomers[0]) | null>(null);
+  const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null);
   const [searchError, setSearchError] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
 
-  const handleCustomerSearch = () => {
+  const handleCustomerSearch = async () => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Not Authenticated" });
+        return;
+    }
     setSearchError("");
     setFoundCustomer(null);
     if (!searchTerm.trim()) {
       setSearchError("Please enter a search term.");
       return;
     }
+    setIsSearching(true);
+    
     const searchTermLower = searchTerm.toLowerCase();
-    const customer = mockCustomers.find(
-      (c) =>
-        c.name.toLowerCase().includes(searchTermLower) ||
-        c.mobile.includes(searchTerm) ||
-        c.stbId.toLowerCase().includes(searchTermLower) ||
-        c.customerId.toLowerCase().includes(searchTermLower)
+    const customerQuery = query(
+      collection(db, "customers"),
+      where("userId", "==", user.uid)
     );
 
-    if (customer) {
-      setFoundCustomer(customer);
-    } else {
-      setSearchError("Customer not found. Please check the details and try again.");
+    try {
+        const querySnapshot = await getDocs(customerQuery);
+        const allCustomers = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Customer));
+        
+        const customer = allCustomers.find(
+             (c) =>
+                c.name.toLowerCase().includes(searchTermLower) ||
+                c.mobile.includes(searchTerm) ||
+                c.stbId.toLowerCase().includes(searchTermLower) ||
+                c.customerId.toLowerCase().includes(searchTermLower)
+        );
+
+        if (customer) {
+            setFoundCustomer(customer);
+        } else {
+            setSearchError("Customer not found. Please check the details and try again.");
+        }
+    } catch(error) {
+         setSearchError("An error occurred while searching for the customer.");
+         console.error("Customer search error:", error);
+    } finally {
+        setIsSearching(false);
     }
   };
 
-  function onSubmit(data: FormValues) {
-    if (!foundCustomer) {
+  async function onSubmit(data: FormValues) {
+    if (!foundCustomer || !user) {
       toast({
         variant: "destructive",
         title: "No Customer Selected",
@@ -85,13 +114,34 @@ export default function AddComplaintPage() {
       });
       return;
     }
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "complaints"), {
+        customerId: foundCustomer.id,
+        customerName: foundCustomer.name,
+        stbId: foundCustomer.stbId,
+        complaint: data.complaintDetails,
+        status: "Pending",
+        createdAt: new Date(),
+        userId: user.uid,
+      });
 
-    console.log({ customerId: foundCustomer.id, ...data });
-    toast({
-      title: "Complaint Registered",
-      description: `Complaint for ${foundCustomer.name} has been successfully registered.`,
-    });
-    router.push("/dashboard/complaints");
+      toast({
+        title: "Complaint Registered",
+        description: `Complaint for ${foundCustomer.name} has been successfully registered.`,
+      });
+      router.push("/dashboard/complaints");
+
+    } catch (error) {
+       console.error("Error registering complaint:", error);
+       toast({
+        variant: "destructive",
+        title: "Failed to Register",
+        description: "An error occurred while registering the complaint.",
+      });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -114,8 +164,8 @@ export default function AddComplaintPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        <Button type="button" onClick={handleCustomerSearch}>
-                            <Search className="mr-2 h-4 w-4" />
+                        <Button type="button" onClick={handleCustomerSearch} disabled={isSearching}>
+                            {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                             Search
                         </Button>
                     </div>
@@ -150,9 +200,9 @@ export default function AddComplaintPage() {
                         </FormItem>
                     )}
                     />
-                    <Button type="submit" className="w-full" disabled={!foundCustomer}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Register Complaint
+                    <Button type="submit" className="w-full" disabled={!foundCustomer || isSubmitting || authLoading}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        {isSubmitting ? "Registering..." : "Register Complaint"}
                     </Button>
                 </form>
             </Form>

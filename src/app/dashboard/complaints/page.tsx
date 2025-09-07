@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -16,14 +16,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -33,58 +25,90 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
-const mockComplaints = [
-  {
-    id: "comp1",
-    date: "2024-07-28",
-    customerName: "Suresh Kumar",
-    stbId: "STB12345",
-    complaint: "No signal since morning.",
-    status: "Pending",
-  },
-  {
-    id: "comp2",
-    date: "2024-07-27",
-    customerName: "Anitha Reddy",
-    stbId: "STB54321",
-    complaint: "Some channels are not working.",
-    status: "Resolved",
-  },
-];
+interface Complaint {
+  id: string;
+  createdAt: Timestamp;
+  customerName: string;
+  stbId: string;
+  complaint: string;
+  status: "Pending" | "Resolved";
+  resolutionNotes?: string;
+  userId: string;
+}
 
 export default function ComplaintsPage() {
-  const [complaints, setComplaints] = useState(mockComplaints);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
-  const [currentComplaint, setCurrentComplaint] = useState(null);
+  const [currentComplaint, setCurrentComplaint] = useState<Complaint | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
-  const [userRole, setUserRole] = useState("");
+  const { user, userRole, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("userRole");
-      setUserRole(role || "");
+    if (authLoading || !user) {
+      if(!authLoading) setLoading(false);
+      return;
     }
-  }, []);
+    
+    setLoading(true);
+    const complaintsQuery = query(collection(db, "complaints"), where("userId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
+      const complaintsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
+      complaintsData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setComplaints(complaintsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching complaints:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch complaints",
+        description: "Could not retrieve complaint data.",
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
 
 
-  const openResolveDialog = (complaint) => {
+  const openResolveDialog = (complaint: Complaint) => {
     setCurrentComplaint(complaint);
     setResolutionNotes("");
     setIsResolveDialogOpen(true);
   };
 
-  const handleResolveComplaint = () => {
+  const handleResolveComplaint = async () => {
     if (!currentComplaint) return;
     
-    // Update the status of the complaint in the list
-    setComplaints(complaints.map(c => 
-      c.id === currentComplaint.id ? { ...c, status: 'Resolved' } : c
-    ));
-    
-    // Close the dialog
-    setIsResolveDialogOpen(false);
-    setCurrentComplaint(null);
+    try {
+        const complaintDocRef = doc(db, "complaints", currentComplaint.id);
+        await updateDoc(complaintDocRef, {
+            status: "Resolved",
+            resolutionNotes: resolutionNotes,
+        });
+
+        toast({
+            title: "Complaint Resolved",
+            description: "The complaint has been marked as resolved.",
+        });
+
+        setIsResolveDialogOpen(false);
+        setCurrentComplaint(null);
+    } catch(error) {
+        console.error("Error resolving complaint:", error);
+        toast({
+            variant: "destructive",
+            title: "Resolution Failed",
+            description: "Could not update the complaint status.",
+        });
+    }
   };
 
 
@@ -113,47 +137,61 @@ export default function ComplaintsPage() {
               <CardTitle>Complaint List</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Complaint</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {complaints.map((complaint) => (
-                    <TableRow key={complaint.id}>
-                      <TableCell>{new Date(complaint.date).toLocaleDateString('en-CA')}</TableCell>
-                      <TableCell className="font-medium">
-                        <div>{complaint.customerName}</div>
-                        <div className="text-xs text-muted-foreground">{complaint.stbId}</div>
-                        </TableCell>
-                      <TableCell>{complaint.complaint}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            complaint.status === "Pending"
-                              ? "destructive"
-                              : "default"
-                          }
-                        >
-                          {complaint.status}
-                        </Badge>
-                      </TableCell>
-                       <TableCell>
-                        {userRole === 'Admin' && complaint.status === 'Pending' && (
-                          <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
-                            Resolve
-                          </Button>
-                        )}
-                      </TableCell>
+               {loading || authLoading ? (
+                 <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                 </div>
+               ) : (
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Complaint</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                    {complaints.length > 0 ? (
+                        complaints.map((complaint) => (
+                        <TableRow key={complaint.id}>
+                            <TableCell>{complaint.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
+                            <TableCell className="font-medium">
+                            <div>{complaint.customerName}</div>
+                            <div className="text-xs text-muted-foreground">{complaint.stbId}</div>
+                            </TableCell>
+                            <TableCell>{complaint.complaint}</TableCell>
+                            <TableCell>
+                            <Badge
+                                variant={
+                                complaint.status === "Pending"
+                                    ? "destructive"
+                                    : "default"
+                                }
+                            >
+                                {complaint.status}
+                            </Badge>
+                            </TableCell>
+                            <TableCell>
+                            {userRole === 'Admin' && complaint.status === 'Pending' && (
+                                <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
+                                Resolve
+                                </Button>
+                            )}
+                            </TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                No complaints found.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+               )}
             </CardContent>
           </Card>
         </div>
