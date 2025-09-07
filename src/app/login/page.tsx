@@ -57,23 +57,25 @@ export default function LoginPage() {
         const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
 
-        const isAdmin = user.email === 'psdgandepalli@gmail.com';
-        let isStaff = false;
-
-        if (!isAdmin) {
+        let userRole = null;
+        if (user.email === 'psdgandepalli@gmail.com') {
+            userRole = "Admin";
+        } else {
              const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
              const staffSnapshot = await getDocs(staffQuery);
              if (!staffSnapshot.empty) {
-                 isStaff = true;
+                 // Get the specific role from the staff document
+                 const staffData = staffSnapshot.docs[0].data();
+                 userRole = staffData.role || "Staff"; // Default to "Staff" if role is not set
              }
         }
 
         if (typeof window !== "undefined") {
-            if (isAdmin) {
-              localStorage.setItem("userRole", "Admin");
-            } else if (isStaff) {
-              localStorage.setItem("userRole", "Staff");
+            if (userRole) {
+              localStorage.setItem("userRole", userRole);
             } else {
+              // If no role is found, sign out and show error
+              auth.signOut();
               throw new Error("auth/unauthorized-user");
             }
         }

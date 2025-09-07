@@ -35,21 +35,15 @@ import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function WithSidebarLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [userRole, setUserRole] = useState('');
+  const { userRole } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const role = localStorage.getItem('userRole');
-      setUserRole(role || '');
-    }
-  }, []);
 
   const handleLogout = async () => {
     try {
@@ -62,6 +56,8 @@ export default function WithSidebarLayout({
       console.error("Failed to log out", error);
     }
   };
+  
+  const isCollectionAgent = userRole === 'Collection Agent';
 
   return (
     <SidebarProvider>
@@ -83,16 +79,18 @@ export default function WithSidebarLayout({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-             {userRole === 'Staff' && (
+             {userRole && userRole !== 'Admin' && (
                <>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                        <Link href="/dashboard">
-                        <CreditCard />
-                        <span>Recharge</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
+                {!isCollectionAgent && (
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                            <Link href="/dashboard/recharge">
+                            <CreditCard />
+                            <span>Recharge</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                )}
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild>
                         <Link href="/dashboard/payments-collections">

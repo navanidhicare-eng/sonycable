@@ -50,6 +50,7 @@ interface StaffData {
     commission: string;
     adminId: string;
     area: string[];
+    role: string;
 }
 
 interface Customer {
@@ -223,7 +224,7 @@ export default function DashboardPage() {
     const fetchData = async () => {
       if (userRole === "Admin") {
         unsubscribes = await fetchAdminData() || [];
-      } else if (userRole === "Staff") {
+      } else if (userRole) { // Check if userRole is not null/empty
         unsubscribes = await fetchStaffData() || [];
       } else {
         setFirestoreLoading(false);
@@ -242,7 +243,7 @@ export default function DashboardPage() {
     if (userRole === "Admin") {
       return "Welcome, Admin!";
     }
-    if (userRole === "Staff") {
+    if (userRole) {
       return `Welcome, ${staffData?.name || 'Staff'}!`;
     }
     return "Welcome to your SONY CABLE dashboard.";
@@ -631,7 +632,7 @@ export default function DashboardPage() {
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StaffRechargeCard />
+        { userRole !== 'Collection Agent' && <StaffRechargeCard /> }
         <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -691,7 +692,7 @@ export default function DashboardPage() {
     }
     
     if (userRole === 'Admin') return <AdminDashboard />;
-    if (userRole === 'Staff') return <StaffDashboard />;
+    if (userRole) return <StaffDashboard />; // Simplified check for any staff role
 
     return (
         <div className="text-center">
@@ -719,7 +720,7 @@ export default function DashboardPage() {
              {userRole && !firestoreLoading && (
                 <Badge variant={userRole === "Admin" ? "default" : "secondary"} className="text-lg">
                    <ShieldCheck className="mr-2 h-5 w-5" />
-                   {userRole} Role
+                   {userRole}
                 </Badge>
             )}
           </div>
