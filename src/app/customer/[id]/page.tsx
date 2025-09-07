@@ -113,6 +113,16 @@ export default function CustomerPublicPage() {
           const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
           const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
 
+          let paymentsLoaded = false;
+          let rechargesLoaded = false;
+          let packagesLoaded = false;
+
+          const checkAllLoaded = () => {
+            if (paymentsLoaded && rechargesLoaded && packagesLoaded) {
+              setLoading(false);
+            }
+          };
+
           const unsubscribes = [
             onSnapshot(paymentsQuery, (snapshot) => {
               const payments = snapshot.docs.map(doc => ({
@@ -124,6 +134,8 @@ export default function CustomerPublicPage() {
                 type: 'Payment'
               } as Transaction));
               setPaymentHistory(payments);
+              paymentsLoaded = true;
+              checkAllLoaded();
             }),
             onSnapshot(rechargesQuery, (snapshot) => {
               const recharges = snapshot.docs.map(doc => ({
@@ -136,14 +148,16 @@ export default function CustomerPublicPage() {
                 type: 'Recharge'
               } as Transaction));
               setRechargeHistory(recharges);
+              rechargesLoaded = true;
+              checkAllLoaded();
             }),
             onSnapshot(packagesQuery, (snapshot) => {
               const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
               setPackages(packagesData);
+              packagesLoaded = true;
+              checkAllLoaded();
             })
           ];
-
-          Promise.all(recharges).then(() => setLoading(false)); // A simplistic way to check if all data is loaded.
 
           return () => unsubscribes.forEach(unsub => unsub());
         } else {
