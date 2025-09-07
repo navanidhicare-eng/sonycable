@@ -101,8 +101,7 @@ export default function DashboardPage() {
         fetchStats();
     } else if (userRole === "Staff") {
       q = query(settlementsRef, where("staffId", "==", currentUser.uid));
-       // TODO: Replace with actual logic to calculate staff wallet
-      const fetchStaffDetails = async () => {
+       const fetchStaffDetails = async () => {
         const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
         const staffSnapshot = await getDocs(staffQuery);
         if (!staffSnapshot.empty) {
@@ -439,3 +438,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
