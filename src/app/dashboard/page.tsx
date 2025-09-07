@@ -32,7 +32,7 @@ interface SettlementRequest {
   commission: number;
   amountToSend: number;
   status: 'pending' | 'approved';
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 interface DashboardStats {
@@ -122,7 +122,7 @@ export default function DashboardPage() {
             const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
             const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
                 const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
-                requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
                 setSettlementRequests(requests);
             });
             
@@ -150,17 +150,37 @@ export default function DashboardPage() {
             setStaffData(staffDocData);
             const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
 
-            const paymentsQuery = query(collection(db, "payments"), where("collectedBy", "==", currentUser.uid));
+            // Fetch approved settlements to find the last settlement date
+            const approvedSettlementsQuery = query(
+                collection(db, "settlements"),
+                where("staffId", "==", currentUser.uid),
+                where("status", "==", "approved")
+            );
+            const approvedSettlementsSnapshot = await getDocs(approvedSettlementsQuery);
+            let lastSettlementDate: Date | null = null;
+            if (!approvedSettlementsSnapshot.empty) {
+                const dates = approvedSettlementsSnapshot.docs.map(doc => doc.data().createdAt.toDate());
+                lastSettlementDate = new Date(Math.max(...dates.map(date => date.getTime())));
+            }
+
+            // Watch for new payments and calculate wallet based on last settlement date
+            const paymentsQuery = query(
+              collection(db, "payments"),
+              where("collectedBy", "==", currentUser.uid),
+              ...(lastSettlementDate ? [where("collectionDate", ">", lastSettlementDate)] : [])
+            );
+
             const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
                 const totalCollection = snapshot.docs.reduce((acc, doc) => acc + doc.data().amount, 0);
                 const totalCommission = (totalCollection * commissionRate) / 100;
                 setStaffWallet({ walletAmount: totalCollection, commissionAmount: totalCommission });
             });
 
-            const settlementsQuery = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
-            const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
+
+            const allSettlementsQuery = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
+            const unsubscribeSettlements = onSnapshot(allSettlementsQuery, (snapshot) => {
                  const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
-                requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
                 setSettlementRequests(requests);
             });
 
@@ -711,5 +731,7 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
 
     
