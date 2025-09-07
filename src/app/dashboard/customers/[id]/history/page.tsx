@@ -25,8 +25,11 @@ import { ArrowLeft, QrCode, Share2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from '@/hooks/useAuth';
+import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
+
 
 interface Customer {
   id: string;
@@ -35,6 +38,7 @@ interface Customer {
   area: string;
   stbId: string;
   customerId: string;
+  balanceAmount: number;
 }
 
 interface Transaction {
@@ -60,15 +64,13 @@ export default function CustomerHistoryPage() {
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-        setLoading(false);
+    if (authLoading || !customerId) {
+        if(!authLoading) setLoading(false);
         return;
     };
-
-    if (customerId) {
-      const getCustomerData = async () => {
-        setLoading(true);
+    
+    setLoading(true);
+    const getCustomerData = async () => {
         const docRef = doc(db, "customers", customerId);
         try {
             const docSnap = await getDoc(docRef);
@@ -78,22 +80,72 @@ export default function CustomerHistoryPage() {
                 toast({
                     variant: "destructive",
                     title: "Customer not found",
-                    description: "No customer data was found for this ID.",
                 });
             }
         } catch(error) {
              toast({
                 variant: "destructive",
                 title: "Failed to fetch customer",
-                description: "Could not retrieve customer data. Check permissions.",
             });
-        } finally {
-            setLoading(false);
         }
-      };
-      getCustomerData();
+    };
+
+    const getTransactionData = async () => {
+        const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
+        const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
+
+        const paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
+            const payments = snapshot.docs.map(doc => ({
+                id: doc.id,
+                date: doc.data().collectionDate.toDate().toISOString(),
+                description: `Payment via ${doc.data().method}`,
+                amount: doc.data().amount,
+                method: doc.data().method,
+                type: 'Payment'
+            } as Transaction));
+            setPaymentHistory(payments);
+        });
+
+        const rechargesUnsubscribe = onSnapshot(rechargesQuery, (snapshot) => {
+            const recharges = snapshot.docs.map(doc => ({
+                id: doc.id,
+                date: doc.data().rechargeDate.toDate().toISOString(),
+                description: `Recharge - ${doc.data().packageName}`,
+                amount: doc.data().amount,
+                packageName: doc.data().packageName,
+                status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
+                type: 'Recharge'
+            } as Transaction));
+            setRechargeHistory(recharges);
+        });
+        
+        return () => {
+            paymentsUnsubscribe();
+            rechargesUnsubscribe();
+        }
     }
+
+    const runAsync = async () => {
+        await getCustomerData();
+        const unsub = await getTransactionData();
+        setLoading(false);
+        return unsub;
+    }
+    
+    let unsubscribe: (() => void) | undefined;
+    runAsync().then(unsub => unsubscribe = unsub);
+
+    return () => {
+      if(unsubscribe) unsubscribe();
+    };
+
   }, [customerId, toast, user, authLoading]);
+
+  useEffect(() => {
+    const combined = [...paymentHistory, ...rechargeHistory];
+    combined.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setAllTransactions(combined);
+  }, [paymentHistory, rechargeHistory]);
 
 
   const handleShare = async () => {
@@ -122,12 +174,35 @@ export default function CustomerHistoryPage() {
     }
   };
 
-  const handleDownloadQR = () => {
+  const handleDownloadQR = async () => {
     if (!customer) return;
-    toast({
-      title: "QR Code Download",
-      description: "QR Code download initiated (mock).",
-    });
+
+    const qrContent = `Customer Name: ${customer.name}\nCustomer ID: ${customer.customerId}\nBalance: ${customer.balanceAmount}`;
+    try {
+      const qrCodeDataUrl = await QRCode.toDataURL(qrContent, { errorCorrectionLevel: 'H' });
+      
+      const pdf = new jsPDF();
+      
+      pdf.setFontSize(20);
+      pdf.text("SONY CABLE NETWORK", 105, 20, { align: 'center' });
+
+      pdf.setFontSize(12);
+      pdf.text(`Customer Name: ${customer.name}`, 20, 40);
+      pdf.text(`Customer ID: ${customer.customerId}`, 20, 50);
+      pdf.text(`Balance Amount: Rs. ${customer.balanceAmount}`, 20, 60);
+
+      pdf.addImage(qrCodeDataUrl, 'PNG', 65, 80, 80, 80);
+      
+      pdf.save(`${customer.name}-Details.pdf`);
+
+    } catch (err) {
+      console.error(err)
+      toast({
+        variant: "destructive",
+        title: "QR Generation Failed",
+        description: "Could not generate the QR code.",
+      });
+    }
   };
 
   if (loading || authLoading) {
