@@ -66,7 +66,9 @@ export default function PaymentsCollectionsPage() {
   const { user, userRole, loading: authLoading } = useAuth();
   const [adminId, setAdminId] = useState<string | null>(null);
   const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[]>([]);
-  const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([]);
+  const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
+    { value: "all", label: "All Areas" },
+  ]);
 
 
   useEffect(() => {
@@ -118,13 +120,13 @@ export default function PaymentsCollectionsPage() {
 
 
   const filteredCollections = useMemo(() => {
-    let customersWithBalance = allCustomers.filter(c => c.balanceAmount > 0);
+    let customersToFilter = allCustomers.filter(c => c.balanceAmount > 0);
     
     if (userRole === 'Staff') {
-        customersWithBalance = customersWithBalance.filter(c => staffAssignedAreas.includes(c.area));
+        customersToFilter = customersToFilter.filter(c => staffAssignedAreas.includes(c.area));
     }
     
-    return customersWithBalance.filter((collection) => {
+    return customersToFilter.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
