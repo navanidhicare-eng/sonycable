@@ -107,10 +107,10 @@ export default function AddStaffPage() {
     }
     setIsSubmitting(true);
     try {
-      const staffQuery = query(collection(db, "staff"), where("email", "==", data.email), where("adminId", "==", user.uid));
+      const staffQuery = query(collection(db, "staff"), where("email", "==", data.email));
       const staffSnapshot = await getDocs(staffQuery);
       if (!staffSnapshot.empty) {
-        toast({ variant: "destructive", title: "User Exists", description: "A staff member with this email already exists." });
+        toast({ variant: "destructive", title: "User Exists", description: "A staff member with this email already exists under some admin." });
         setIsSubmitting(false);
         return;
       }
