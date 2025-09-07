@@ -60,11 +60,14 @@ export default function CollectionPage() {
   const [amountCollected, setAmountCollected] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const { toast } = useToast();
-  const [collections, setCollections] = useState<Collection[]>([]);
+  
+  const [allCustomers, setAllCustomers] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All Areas" },
   ]);
+  const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[] | null>(null);
+  
   const { user, userRole, loading: authLoading } = useAuth();
 
 
@@ -74,81 +77,102 @@ export default function CollectionPage() {
         return;
     }
 
-    setLoading(true);
-    let unsubscribe: () => void = () => {};
-
-    const setupSubscription = async () => {
-        let collectionsQuery;
-        let adminIdForQuery = null;
-
+    const fetchPrerequisites = async () => {
+        setLoading(true);
         if (userRole === 'Admin') {
-            adminIdForQuery = user.uid;
-            collectionsQuery = query(collection(db, "customers"), where("userId", "==", adminIdForQuery));
-
-            const areasQuery = query(collection(db, "areas"), where("userId", "==", adminIdForQuery));
-            onSnapshot(areasQuery, (snapshot) => {
+            const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
+            const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
                 const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
             });
-
+            return unsubscribe;
         } else if (userRole === 'Staff') {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
             const staffSnapshot = await getDocs(staffQuery);
 
             if (!staffSnapshot.empty) {
-                const staffDoc = staffSnapshot.docs[0];
-                const staffData = staffDoc.data() as Staff;
+                const staffData = staffSnapshot.docs[0].data() as Staff;
                 const assignedAreas = staffData.area || [];
-                adminIdForQuery = staffData.adminId;
-                
+                setStaffAssignedAreas(assignedAreas);
                 const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
-
-                if (adminIdForQuery && assignedAreas.length > 0) {
-                     collectionsQuery = query(
-                        collection(db, "customers"),
-                        where("userId", "==", adminIdForQuery),
-                        where("area", "in", assignedAreas)
-                    );
-                } else {
-                    setCollections([]);
-                    setLoading(false);
-                    return; 
-                }
             } else {
                  setAreaOptions([{ value: "all", label: "All Areas" }]);
-                 setCollections([]);
-                 setLoading(false);
-                 return;
+                 setStaffAssignedAreas([]);
             }
-        } else {
-            setLoading(false);
-            return;
         }
+    };
+    
+    const unsubscribePrereqs = fetchPrerequisites();
 
-        if (collectionsQuery) {
-            unsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
-                const collectionsData = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() } as Collection))
-                    .filter(customer => customer.balanceAmount > 0);
-                setCollections(collectionsData);
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching collections:", error);
-                toast({ variant: "destructive", title: "Failed to fetch collections" });
-                setLoading(false);
-            });
+    return () => {
+       if (unsubscribePrereqs && typeof unsubscribePrereqs === 'function') {
+            (unsubscribePrereqs as Function)();
         }
-    }
-
-    setupSubscription();
-
-    return () => unsubscribe();
+    };
   }, [user, userRole, authLoading, toast]);
 
 
+  useEffect(() => {
+    if (authLoading || !user || (userRole === 'Staff' && staffAssignedAreas === null)) {
+        return;
+    }
+
+    setLoading(true);
+    let collectionsQuery;
+
+    if (userRole === 'Admin') {
+        collectionsQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
+    } else if (userRole === 'Staff' && staffAssignedAreas) {
+        if (staffAssignedAreas.length > 0) {
+             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+             getDocs(staffQuery).then(staffSnapshot => {
+                 if(!staffSnapshot.empty) {
+                     const staffData = staffSnapshot.docs[0].data() as Staff;
+                     const adminIdForQuery = staffData.adminId;
+                      if(adminIdForQuery) {
+                        const q = query(
+                            collection(db, "customers"),
+                            where("userId", "==", adminIdForQuery),
+                            where("area", "in", staffAssignedAreas)
+                        );
+                         onSnapshot(q, handleSnapshot, handleError);
+                      }
+                 }
+             })
+             return;
+        } else {
+             setAllCustomers([]);
+             setLoading(false);
+             return;
+        }
+    } else {
+        setLoading(false);
+        return;
+    }
+    
+    const handleSnapshot = (snapshot: any) => {
+        const collectionsData = snapshot.docs
+            .map((doc: any) => ({ id: doc.id, ...doc.data() } as Collection))
+            .filter((customer: any) => customer.balanceAmount > 0);
+        setAllCustomers(collectionsData);
+        setLoading(false);
+    };
+
+    const handleError = (error: any) => {
+        console.error("Error fetching collections:", error);
+        toast({ variant: "destructive", title: "Failed to fetch collections" });
+        setLoading(false);
+    };
+
+    const unsubscribe = onSnapshot(collectionsQuery, handleSnapshot, handleError);
+
+    return () => unsubscribe();
+  }, [user, userRole, authLoading, staffAssignedAreas, toast]);
+
+
   const filteredCollections = useMemo(() => {
-    return collections.filter((collection) => {
+    return allCustomers.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
@@ -160,7 +184,7 @@ export default function CollectionPage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea, collections]);
+  }, [searchTerm, filterArea, allCustomers]);
 
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
@@ -206,7 +230,6 @@ export default function CollectionPage() {
             description: "An error occurred while recording the payment.",
         });
     }
-
   };
 
   return (
