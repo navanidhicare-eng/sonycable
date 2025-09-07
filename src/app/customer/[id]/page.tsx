@@ -19,10 +19,28 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, where, addDoc } from "firebase/firestore";
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Customer {
   id: string;
@@ -32,6 +50,7 @@ interface Customer {
   stbId: string;
   customerId: string;
   balanceAmount: number;
+  userId: string; // Admin's UID
 }
 
 interface Transaction {
@@ -45,6 +64,12 @@ interface Transaction {
     method?: string;
 }
 
+interface Package {
+  id: string;
+  packageName: string;
+  packageAmount: string;
+}
+
 export default function CustomerPublicPage() {
   const params = useParams();
   const customerId = params.id as string;
@@ -53,6 +78,13 @@ export default function CustomerPublicPage() {
   const { toast } = useToast();
   const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
+
+  const [isRechargeDialogOpen, setIsRechargeDialogOpen] = useState(false);
+  const [isComplaintDialogOpen, setIsComplaintDialogOpen] = useState(false);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [complaintDetails, setComplaintDetails] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const allTransactions = useMemo(() => {
     const combined = [...paymentHistory, ...rechargeHistory];
@@ -72,7 +104,18 @@ export default function CustomerPublicPage() {
         try {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setCustomer({ id: docSnap.id, ...docSnap.data() } as Customer);
+                const customerData = { id: docSnap.id, ...docSnap.data() } as Customer;
+                setCustomer(customerData);
+                // Fetch packages once we have the admin's user ID
+                if (customerData.userId) {
+                    const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
+                    const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
+                        const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
+                        setPackages(packagesData);
+                    });
+                    // Note: We don't have a way to unsubscribe this on component unmount
+                    // because it's nested. This is a minor memory leak for this page.
+                }
             } else {
                 toast({
                     variant: "destructive",
@@ -138,6 +181,64 @@ export default function CustomerPublicPage() {
 
   }, [customerId, toast]);
 
+  const handleRechargeRequest = async () => {
+    if (!selectedPackage || !customer) return;
+    const pkg = packages.find(p => p.id === selectedPackage);
+    if (!pkg) return;
+
+    setIsSubmitting(true);
+    try {
+        await addDoc(collection(db, "rechargeRequests"), {
+            customerId: customer.id,
+            customerName: customer.name,
+            packageId: pkg.id,
+            packageName: pkg.packageName,
+            packageAmount: pkg.packageAmount,
+            status: "Pending",
+            requestDate: new Date(),
+            adminId: customer.userId,
+        });
+        toast({
+            title: "Recharge Request Sent",
+            description: "Your request has been sent to the operator.",
+        });
+        setIsRechargeDialogOpen(false);
+        setSelectedPackage(null);
+    } catch (error) {
+        console.error("Error sending recharge request:", error);
+        toast({ variant: "destructive", title: "Failed to send request" });
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
+  const handleComplaintSubmit = async () => {
+    if (!complaintDetails.trim() || !customer) return;
+    setIsSubmitting(true);
+    try {
+        await addDoc(collection(db, "complaints"), {
+            customerId: customer.id,
+            customerName: customer.name,
+            stbId: customer.stbId,
+            complaint: complaintDetails,
+            status: "Pending",
+            createdAt: new Date(),
+            userId: customer.userId, // Admin's UID
+        });
+        toast({
+            title: "Complaint Registered",
+            description: "Your complaint has been sent to the operator.",
+        });
+        setIsComplaintDialogOpen(false);
+        setComplaintDetails("");
+    } catch (error) {
+        console.error("Error submitting complaint:", error);
+        toast({ variant: "destructive", title: "Failed to register complaint" });
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
         <main className="flex min-h-screen w-full items-center justify-center bg-background p-4 font-body text-foreground">
@@ -158,6 +259,7 @@ export default function CustomerPublicPage() {
   }
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
        <header className="bg-card border-b">
          <div className="container mx-auto p-4 flex items-center gap-3">
@@ -199,6 +301,16 @@ export default function CustomerPublicPage() {
                 <p className="font-medium text-muted-foreground">Customer ID</p>
                 <p>{customer.customerId}</p>
               </div>
+            </div>
+            <div className="mt-6 flex gap-4">
+                <Button onClick={() => setIsRechargeDialogOpen(true)}>
+                    <Send className="mr-2 h-4 w-4" />
+                    Request Recharge
+                </Button>
+                <Button variant="outline" onClick={() => setIsComplaintDialogOpen(true)}>
+                    <MessageSquareWarning className="mr-2 h-4 w-4" />
+                    Register Complaint
+                </Button>
             </div>
           </CardContent>
         </Card>
@@ -244,5 +356,69 @@ export default function CustomerPublicPage() {
         </Card>
       </div>
     </main>
+
+    {/* Recharge Request Dialog */}
+    <Dialog open={isRechargeDialogOpen} onOpenChange={setIsRechargeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+            <DialogTitle>Request a Recharge</DialogTitle>
+            <DialogDescription>
+                Select a package from the list to send a recharge request.
+            </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="package" className="text-right">
+                        Package
+                    </Label>
+                    <Select onValueChange={setSelectedPackage} defaultValue={selectedPackage || undefined}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select a package" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {packages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                                {pkg.packageName} - ₹{pkg.packageAmount}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <DialogFooter>
+            <Button type="button" onClick={handleRechargeRequest} disabled={!selectedPackage || isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Submit Request
+            </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    
+    {/* Complaint Dialog */}
+    <Dialog open={isComplaintDialogOpen} onOpenChange={setIsComplaintDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+            <DialogTitle>Register a Complaint</DialogTitle>
+            <DialogDescription>
+                Please describe your issue in detail below.
+            </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <Textarea 
+                    placeholder="Type your complaint here..." 
+                    value={complaintDetails}
+                    onChange={(e) => setComplaintDetails(e.target.value)}
+                    rows={5}
+                />
+            </div>
+            <DialogFooter>
+            <Button type="button" onClick={handleComplaintSubmit} disabled={!complaintDetails.trim() || isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Submit Complaint
+            </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }

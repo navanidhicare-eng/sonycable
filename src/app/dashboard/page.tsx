@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp, writeBatch, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -34,6 +34,16 @@ interface SettlementRequest {
   amountToSend: number;
   status: 'pending' | 'approved';
   createdAt: Timestamp;
+}
+
+interface RechargeRequest {
+    id: string;
+    customerName: string;
+    packageName: string;
+    packageAmount: string;
+    status: 'Pending' | 'Completed';
+    requestDate: Timestamp;
+    customerId: string;
 }
 
 interface DashboardStats {
@@ -76,6 +86,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
   const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
+  const [rechargeRequests, setRechargeRequests] = useState<RechargeRequest[]>([]);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
       totalRevenue: 0,
@@ -119,6 +130,7 @@ export default function DashboardPage() {
     setFirestoreLoading(true);
 
     const fetchAdminData = async () => {
+        let unsubscribes: (() => void)[] = [];
         try {
             const customersQuery = query(collection(db, "customers"), where("userId", "==", currentUser.uid));
             const packagesQuery = query(collection(db, "packages"), where("userId", "==", currentUser.uid));
@@ -141,13 +153,20 @@ export default function DashboardPage() {
             }));
 
             const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
+            const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", currentUser.uid), where("status", "==", "Pending"));
+            
             const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
                 const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
                 requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
                 setSettlementRequests(requests);
             });
+            const unsubscribeRechargeRequests = onSnapshot(rechargeRequestQuery, (snapshot) => {
+                const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
+                requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
+                setRechargeRequests(requests);
+            });
             
-            return [unsubscribeSettlements];
+            unsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests);
 
         } catch (error) {
             console.error("Error fetching admin stats:", error);
@@ -155,10 +174,11 @@ export default function DashboardPage() {
         } finally {
             setFirestoreLoading(false);
         }
-        return [];
+        return unsubscribes;
     };
 
     const fetchStaffData = async () => {
+        let unsubscribes: (() => void)[] = [];
         try {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
             const staffSnapshot = await getDocs(staffQuery);
@@ -177,7 +197,7 @@ export default function DashboardPage() {
                     const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
                     setPackages(packagesData);
                 });
-                return [unsubscribePackages]; // Keep it in an array to match return type
+                unsubscribes.push(unsubscribePackages);
             }
             
 
@@ -218,7 +238,7 @@ export default function DashboardPage() {
                 setSettlementRequests(requests);
             });
 
-            return [unsubscribePayments, unsubscribeSettlements];
+            unsubscribes.push(unsubscribePayments, unsubscribeSettlements);
 
         } catch(error) {
             console.error("Error fetching staff data:", error);
@@ -226,15 +246,15 @@ export default function DashboardPage() {
         } finally {
              setFirestoreLoading(false);
         }
-        return [];
+        return unsubscribes;
     };
 
-    let unsubscribes: (() => void)[] = [];
+    let allUnsubscribes: (() => void)[] = [];
     const fetchData = async () => {
       if (userRole === "Admin") {
-        unsubscribes = (await fetchAdminData()) || [];
+        allUnsubscribes = (await fetchAdminData()) || [];
       } else if (userRole) { // Check if userRole is not null/empty
-        unsubscribes = (await fetchStaffData()) || [];
+        allUnsubscribes = (await fetchStaffData()) || [];
       } else {
         setFirestoreLoading(false);
       }
@@ -243,7 +263,7 @@ export default function DashboardPage() {
     fetchData();
     
     return () => {
-      unsubscribes.forEach(unsub => unsub());
+      allUnsubscribes.forEach(unsub => unsub());
     };
   }, [currentUser, userRole, authLoading, toast]);
 
@@ -312,7 +332,73 @@ export default function DashboardPage() {
             description: "Could not approve the settlement. Please try again.",
         });
     }
-  }
+  };
+
+  const handleApproveRechargeRequest = async (request: RechargeRequest) => {
+    try {
+      const batch = writeBatch(db);
+
+      // Update customer's expiry date
+      const customerDocRef = doc(db, "customers", request.customerId);
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+      batch.update(customerDocRef, { 
+          lastRechargeDate: Timestamp.now(),
+          expiryDate: Timestamp.fromDate(expiryDate)
+      });
+      
+      // Add to recharges collection
+      const rechargesColRef = collection(db, "recharges");
+      batch.set(doc(rechargesColRef), {
+          customerId: request.customerId,
+          customerName: request.customerName,
+          packageName: request.packageName,
+          amount: parseFloat(request.packageAmount),
+          paymentReceived: true, // Assuming payment is collected for requests
+          rechargeDate: Timestamp.now(),
+          rechargedBy: currentUser?.uid, // Admin who approved
+          adminId: currentUser?.uid,
+      });
+
+      // Update the request status
+      const requestDocRef = doc(db, "rechargeRequests", request.id);
+      batch.update(requestDocRef, { status: "Completed" });
+
+      await batch.commit();
+
+      toast({
+        title: "Recharge Approved",
+        description: `${request.customerName} has been recharged with ${request.packageName}.`
+      });
+
+    } catch (error) {
+        console.error("Error approving recharge request:", error);
+        toast({
+            variant: "destructive",
+            title: "Approval Failed",
+            description: "Could not approve the recharge request.",
+        });
+    }
+  };
+  
+  const handleRejectRechargeRequest = async (requestId: string) => {
+    try {
+        const requestDocRef = doc(db, "rechargeRequests", requestId);
+        await deleteDoc(requestDocRef);
+        toast({
+            title: "Request Rejected",
+            description: "The recharge request has been rejected and removed.",
+        });
+    } catch (error) {
+         console.error("Error rejecting recharge request:", error);
+        toast({
+            variant: "destructive",
+            title: "Rejection Failed",
+            description: "Could not reject the recharge request.",
+        });
+    }
+  };
+
 
   const handleCustomerSearch = async (type: 'collection' | 'recharge') => {
     if (!searchQuery.trim() || !staffData) return;
@@ -569,9 +655,43 @@ export default function DashboardPage() {
         </Card>
     );
    };
+   
+   const RechargeRequestsCard = () => {
+    if(rechargeRequests.length === 0) return null;
+
+    return (
+         <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+                <CardTitle>Recharge Requests</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {rechargeRequests.map(req => (
+                    <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-3 gap-2">
+                        <div>
+                            <p className="font-semibold">{req.customerName}</p>
+                            <p className="text-sm text-muted-foreground">
+                                Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span>
+                            </p>
+                        </div>
+                        <div className="flex gap-2 self-end sm:self-center">
+                            <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
+                                Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
+                                Reject
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+   };
+
 
   const AdminDashboard = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:col-span-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <RechargeRequestsCard />
         <SettlementRequestsCard />
         <AdminCollectionCard />
         <Card>
