@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
 
 interface SettlementRequest {
   id: string;
@@ -46,6 +47,13 @@ interface StaffData {
     name: string;
     commission: string;
     adminId: string;
+    area: string[];
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  balanceAmount: number;
 }
 
 export default function DashboardPage() {
@@ -64,7 +72,15 @@ export default function DashboardPage() {
       monthlyCollection: 0,
   });
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
-  const [staffName, setStaffName] = useState('');
+  const [staffData, setStaffData] = useState<StaffData | null>(null);
+
+  // States for Customer Search Dialog
+  const [isCustomerSearchDialogOpen, setIsCustomerSearchDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchedCustomer, setSearchedCustomer] = useState<Customer | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -121,9 +137,9 @@ export default function DashboardPage() {
                 return [];
             }
             
-            const staffData = staffSnapshot.docs[0].data() as StaffData;
-            setStaffName(staffData.name);
-            const commissionRate = parseFloat(staffData.commission.replace('%', ''));
+            const staffDocData = staffSnapshot.docs[0].data() as StaffData;
+            setStaffData(staffDocData);
+            const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
 
             const paymentsQuery = query(collection(db, "payments"), where("collectedBy", "==", currentUser.uid));
             const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
@@ -174,33 +190,28 @@ export default function DashboardPage() {
       return "Welcome, Admin!";
     }
     if (userRole === "Staff") {
-      return `Welcome, ${staffName || 'Staff'}!`;
+      return `Welcome, ${staffData?.name || 'Staff'}!`;
     }
     return "Welcome to your SONY CABLE dashboard.";
   };
 
   const handleSettleCollection = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !staffData) return;
     
     const collectionAmount = staffWallet.walletAmount;
     const commissionAmount = staffWallet.commissionAmount;
     const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
 
     try {
-      const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-      const staffSnapshot = await getDocs(staffQuery);
-      if(staffSnapshot.empty) throw new Error("Staff member not found");
-      const adminId = staffSnapshot.docs[0].data().adminId;
-
       await addDoc(collection(db, "settlements"), {
         staffId: currentUser.uid,
-        staffName: staffName || 'Staff Member',
+        staffName: staffData.name || 'Staff Member',
         amount: collectionAmount,
         commission: commissionReceived ? commissionAmount : 0,
         amountToSend: amountToSend,
         status: 'pending',
         createdAt: new Date(),
-        adminId: adminId,
+        adminId: staffData.adminId,
       });
 
       toast({
@@ -240,6 +251,38 @@ export default function DashboardPage() {
     }
   }
 
+  const handleCustomerSearch = async () => {
+      if (!searchQuery.trim() || !staffData) return;
+      setIsSearching(true);
+      setSearchError("");
+      setSearchedCustomer(null);
+
+      try {
+          const customersRef = collection(db, "customers");
+          const q = query(customersRef, 
+              where("userId", "==", staffData.adminId),
+              where("area", "in", staffData.area)
+          );
+
+          const querySnapshot = await getDocs(q);
+          const allCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+          
+          const found = allCustomers.find(c => c.id === searchQuery || (c as any).mobile === searchQuery);
+
+          if (found) {
+              setSearchedCustomer(found);
+          } else {
+              setSearchError("Customer not found in your assigned areas or invalid ID/Mobile.");
+          }
+      } catch (error) {
+          console.error("Error searching customer:", error);
+          setSearchError("An error occurred while searching.");
+      } finally {
+          setIsSearching(false);
+      }
+  };
+
+
   const AdminCollectionCard = () => (
     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
         <Link href="/dashboard/collection" className="block h-full">
@@ -262,7 +305,7 @@ export default function DashboardPage() {
   );
 
   const StaffCollectionCard = () => (
-     <Card className="bg-primary text-primary-foreground">
+     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => setIsCustomerSearchDialogOpen(true)}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
                 My Collections
@@ -270,11 +313,9 @@ export default function DashboardPage() {
             <IndianRupee className="h-4 w-4 text-primary-foreground" />
         </CardHeader>
         <CardContent>
-            <div className="flex items-center justify-between">
-                <p className="text-xs">
-                    View customers with outstanding balance
-                </p>
-            </div>
+            <p className="text-xs">
+                View customers with outstanding balance
+            </p>
         </CardContent>
     </Card>
   );
@@ -496,12 +537,56 @@ export default function DashboardPage() {
         </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <Dialog open={isCustomerSearchDialogOpen} onOpenChange={setIsCustomerSearchDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Find Customer Balance</DialogTitle>
+                <DialogDescription>
+                    Enter Customer ID or Mobile Number to find their pending balance.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center space-x-2">
+                <div className="grid flex-1 gap-2">
+                    <Label htmlFor="search" className="sr-only">
+                        Search
+                    </Label>
+                    <Input
+                        id="search"
+                        placeholder="Customer ID or Mobile..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <Button type="submit" size="sm" className="px-3" onClick={handleCustomerSearch} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="sr-only">Search</span>
+                </Button>
+            </div>
+             <div className="mt-4 space-y-2">
+                {searchError && <p className="text-sm font-medium text-destructive">{searchError}</p>}
+                {searchedCustomer && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{searchedCustomer.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-lg font-bold">
+                                Pending Balance: <span className="text-primary">₹{searchedCustomer.balanceAmount.toLocaleString()}</span>
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+            <DialogFooter className="sm:justify-start">
+                <Button type="button" variant="secondary" onClick={() => setIsCustomerSearchDialogOpen(false)}>
+                    Close
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </>
   );
 }
-
-    
-
-    
 
     
