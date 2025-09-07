@@ -26,8 +26,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Network, LogIn } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -35,11 +36,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-const staffCredentials = [
-    { email: "staf@gmail.com", password: "password123"},
-    { mobile: "9010737882", password: "12345678"},
-]
 
 export default function LoginPage() {
   const router = useRouter();
@@ -57,18 +53,32 @@ export default function LoginPage() {
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     
-    const isAdmin = data.email.toLowerCase() === 'psdgandepalli@gmail.com';
-    const isStaff = staffCredentials.some(cred => cred.email === data.email.toLowerCase() || cred.mobile === data.email);
-
     try {
-        await signInWithEmailAndPassword(auth, data.email, data.password);
+        const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+        const user = userCredential.user;
+
+        const isAdmin = user.email === 'psdgandepalli@gmail.com';
+        let isStaff = false;
+
+        if (!isAdmin) {
+             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+             const staffSnapshot = await getDocs(staffQuery);
+             if (!staffSnapshot.empty) {
+                 isStaff = true;
+             }
+        }
+
         if (typeof window !== "undefined") {
             if (isAdmin) {
               localStorage.setItem("userRole", "Admin");
             } else if (isStaff) {
               localStorage.setItem("userRole", "Staff");
+            } else {
+              // If not admin and not in staff collection, treat as unauthorized
+              throw new Error("auth/unauthorized-user");
             }
         }
+        
         toast({
             title: "Login Successful",
             description: "Redirecting to dashboard...",
@@ -79,8 +89,8 @@ export default function LoginPage() {
         console.error("Firebase Auth Error:", error);
         
         let errorMessage = "Invalid username or password. Please try again.";
-        if(error.code === 'auth/user-not-found') {
-            errorMessage = "No user found with this email.";
+        if(error.code === 'auth/user-not-found' || error.message === 'auth/unauthorized-user') {
+            errorMessage = "No authorized user found with this email.";
         } else if (error.code === 'auth/wrong-password') {
             errorMessage = "Incorrect password. Please try again.";
         } else if (error.code === 'auth/invalid-credential') {
@@ -113,10 +123,10 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email / Mobile</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter your email or mobile"
+                        placeholder="Enter your email"
                         {...field}
                       />
                     </FormControl>
