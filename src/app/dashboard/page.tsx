@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface SettlementRequest {
   id: string;
@@ -83,6 +84,11 @@ export default function DashboardPage() {
   const [searchedCustomer, setSearchedCustomer] = useState<Customer | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+
+  // States for Collection Dialog
+  const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false);
+  const [amountCollected, setAmountCollected] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
 
 
   useEffect(() => {
@@ -262,13 +268,11 @@ export default function DashboardPage() {
 
     try {
         const customersRef = collection(db, "customers");
-        // Query for all customers under the admin
         const q = query(customersRef, where("userId", "==", staffData.adminId));
         const querySnapshot = await getDocs(q);
         
         const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
-        // Find the customer on the client side
         const trimmedSearchQuery = searchQuery.trim();
         const foundCustomer = allAdminCustomers.find(c => 
             (c.customerId && c.customerId.trim() === trimmedSearchQuery) || 
@@ -276,7 +280,6 @@ export default function DashboardPage() {
         );
 
         if (foundCustomer) {
-            // Security check: ensure the found customer is in the staff's assigned areas
             if (staffData.area.includes(foundCustomer.area)) {
                 setSearchedCustomer(foundCustomer);
             } else {
@@ -293,6 +296,53 @@ export default function DashboardPage() {
     }
   };
 
+  const openCollectDialog = (customer: Customer) => {
+    setAmountCollected(String(customer.balanceAmount));
+    setPaymentMethod("cash");
+    setIsCollectDialogOpen(true);
+  };
+
+  const handleConfirmCollection = async () => {
+    if (!amountCollected || !searchedCustomer || !currentUser || !staffData) return;
+    
+    const collectedAmount = parseFloat(amountCollected);
+    const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
+    const newBalance = currentBalance - collectedAmount;
+
+    try {
+        const customerDocRef = doc(db, "customers", searchedCustomer.id);
+        await updateDoc(customerDocRef, {
+            balanceAmount: newBalance
+        });
+
+        await addDoc(collection(db, "payments"), {
+            customerId: searchedCustomer.id,
+            customerName: searchedCustomer.name,
+            amount: collectedAmount,
+            method: paymentMethod,
+            collectedBy: currentUser.uid,
+            collectionDate: new Date(),
+            adminId: staffData.adminId,
+        });
+
+        toast({
+            title: "Collection Recorded",
+            description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
+        });
+
+        setIsCollectDialogOpen(false);
+        setSearchedCustomer(null);
+        setSearchQuery("");
+
+    } catch (error) {
+        console.error("Error recording collection:", error);
+        toast({
+            variant: "destructive",
+            title: "Collection Failed",
+            description: "An error occurred while recording the payment.",
+        });
+    }
+  };
 
   const AdminCollectionCard = () => (
     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -549,7 +599,14 @@ export default function DashboardPage() {
         </DialogContent>
     </Dialog>
 
-    <Dialog open={isCustomerSearchDialogOpen} onOpenChange={setIsCustomerSearchDialogOpen}>
+    <Dialog open={isCustomerSearchDialogOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+            setSearchedCustomer(null);
+            setSearchQuery("");
+            setSearchError("");
+        }
+        setIsCustomerSearchDialogOpen(isOpen);
+    }}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>Find Customer Balance</DialogTitle>
@@ -581,10 +638,14 @@ export default function DashboardPage() {
                         <CardHeader>
                             <CardTitle>{searchedCustomer.name}</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                             <p className="text-lg font-bold">
                                 Pending Balance: <span className="text-primary">₹{searchedCustomer.balanceAmount.toLocaleString()}</span>
                             </p>
+                            <Button className="w-full" onClick={() => openCollectDialog(searchedCustomer)}>
+                                <HandCoins className="mr-2 h-4 w-4" />
+                                Collect
+                            </Button>
                         </CardContent>
                     </Card>
                 )}
@@ -596,6 +657,59 @@ export default function DashboardPage() {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    {searchedCustomer && (
+        <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Collect from {searchedCustomer.name}</DialogTitle>
+              <DialogDescription>
+                Record the payment collected from the customer. Amount due: ₹
+                {searchedCustomer.balanceAmount}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="amount" className="text-right">
+                  Amount (₹)
+                </Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={amountCollected}
+                  onChange={(e) => setAmountCollected(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Method</Label>
+                <RadioGroup
+                  defaultValue="cash"
+                  className="col-span-3 flex items-center gap-4"
+                  onValueChange={setPaymentMethod}
+                  value={paymentMethod}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cash" id="r-cash-dash" />
+                    <Label htmlFor="r-cash-dash">Cash</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="upi" id="r-upi-dash" />
+                    <Label htmlFor="r-upi-dash">UPI</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={handleConfirmCollection}>
+                Confirm Collection
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
+
+    
