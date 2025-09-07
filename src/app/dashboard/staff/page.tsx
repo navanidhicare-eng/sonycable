@@ -65,10 +65,20 @@ export default function StaffPage() {
     setLoading(true);
     const q = query(collection(db, "staff"), where("adminId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
-      staffData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
-      setStaffList(staffData);
-      setLoading(false);
+      try {
+        const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+        staffData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+        setStaffList(staffData);
+      } catch (error) {
+         console.error("Error processing staff data:", error);
+         toast({
+            variant: "destructive",
+            title: "Data Processing Error",
+            description: "Could not process staff data.",
+        });
+      } finally {
+        setLoading(false);
+      }
     }, (error) => {
       console.error("Error fetching staff:", error);
       toast({
