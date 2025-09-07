@@ -66,13 +66,14 @@ export default function StaffPage() {
       return;
     }
 
+    setLoading(true);
     // Auth is complete and we have a user, now we can query firestore
     const q = query(collection(db, "staff"), where("adminId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
       staffData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
       setStaffList(staffData);
-      setLoading(false);
+      setLoading(false); // <--- This was the missing piece
     }, (error) => {
       console.error("Error fetching staff:", error);
       toast({
@@ -80,7 +81,7 @@ export default function StaffPage() {
         title: "Failed to fetch staff",
         description: "Could not retrieve staff data. Check permissions.",
       });
-      setLoading(false);
+      setLoading(false); // Also set loading to false on error
     });
 
     return () => unsubscribe();
