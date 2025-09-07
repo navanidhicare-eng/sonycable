@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -302,17 +303,17 @@ export default function CustomerPublicPage() {
                 <p>{customer.customerId}</p>
               </div>
             </div>
-            <div className="mt-6 flex gap-4">
-                <Button onClick={() => setIsRechargeDialogOpen(true)}>
-                    <Send className="mr-2 h-4 w-4" />
-                    Request Recharge
-                </Button>
-                <Button variant="outline" onClick={() => setIsComplaintDialogOpen(true)}>
-                    <MessageSquareWarning className="mr-2 h-4 w-4" />
-                    Register Complaint
-                </Button>
-            </div>
           </CardContent>
+           <CardFooter className="flex gap-4">
+              <Button onClick={() => setIsRechargeDialogOpen(true)}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Request Recharge
+              </Button>
+              <Button variant="outline" onClick={() => setIsComplaintDialogOpen(true)}>
+                  <MessageSquareWarning className="mr-2 h-4 w-4" />
+                  Register Complaint
+              </Button>
+          </CardFooter>
         </Card>
 
         <Card>
