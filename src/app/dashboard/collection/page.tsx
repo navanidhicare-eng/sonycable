@@ -74,15 +74,15 @@ export default function CollectionPage() {
   useEffect(() => {
     if (authLoading || !user) return;
 
-    let unsubscribe: (() => void) | null = null;
     const fetchPrerequisites = async () => {
         if (userRole === 'Admin') {
             setAdminId(user.uid);
             const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-            unsubscribe = onSnapshot(areasQuery, (snapshot) => {
+            const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
                 const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
             });
+            return () => unsubscribe();
         } else if (userRole === 'Staff') {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
             const staffSnapshot = await getDocs(staffQuery);
@@ -90,7 +90,7 @@ export default function CollectionPage() {
             if (!staffSnapshot.empty) {
                 const staffData = staffSnapshot.docs[0].data() as Staff;
                 const assignedAreas = staffData.area || [];
-                setStaffAssignedAreas(assignedAreas); // This line was missing
+                setStaffAssignedAreas(assignedAreas);
                 setAdminId(staffData.adminId);
                 const assignedAreaOptions = assignedAreas.map(area => ({ value: area, label: area }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...assignedAreaOptions]);
@@ -101,10 +101,12 @@ export default function CollectionPage() {
         }
     };
     
-    fetchPrerequisites();
+    const unsubscribePromise = fetchPrerequisites();
 
     return () => {
-       if (unsubscribe) unsubscribe();
+       unsubscribePromise.then(unsubscribe => {
+           if (unsubscribe) unsubscribe();
+       });
     };
   }, [user, userRole, authLoading]);
 
@@ -361,5 +363,3 @@ export default function CollectionPage() {
     </>
   );
 }
-
-    
