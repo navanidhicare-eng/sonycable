@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -507,6 +507,24 @@ export default function DashboardPage() {
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors">
+            <Link href="/dashboard/recharge-staff" className="block h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                        Recharge
+                    </CardTitle>
+                    <CreditCard className="h-4 w-4 text-white" />
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs">
+                            Go to recharge page
+                        </p>
+                        <ArrowRight className="h-5 w-5" />
+                    </div>
+                </CardContent>
+            </Link>
+        </Card>
         <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -734,7 +752,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
-
-    

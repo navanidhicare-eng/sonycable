@@ -87,6 +87,14 @@ export default function WithSidebarLayout({
                <>
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild>
+                        <Link href="/dashboard/recharge-staff">
+                        <CreditCard />
+                        <span>Recharge</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
                         <Link href="/dashboard/payments-collections">
                         <IndianRupee />
                         <span>Payments Collections</span>
