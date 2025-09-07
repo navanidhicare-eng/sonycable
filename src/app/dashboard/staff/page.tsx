@@ -56,12 +56,17 @@ export default function StaffPage() {
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      // Wait for auth to complete before doing anything
+      return;
+    }
     if (!user) {
+      // If no user, no need to fetch, set loading to false
       setLoading(false);
       return;
     }
 
+    // Auth is complete and we have a user, now we can query firestore
     const q = query(collection(db, "staff"), where("adminId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
