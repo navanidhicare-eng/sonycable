@@ -66,27 +66,23 @@ export default function CollectionPage() {
   const [areaOptions, setAreaOptions] = useState<{ value: string; label: string }[]>([
     { value: "all", label: "All Areas" },
   ]);
-  const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[] | null>(null);
+  const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[]>([]);
   const [adminId, setAdminId] = useState<string | null>(null);
   
   const { user, userRole, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-        setLoading(false);
-        return;
-    }
+    if (authLoading || !user) return;
 
+    let unsubscribe: (() => void) | null = null;
     const fetchPrerequisites = async () => {
         if (userRole === 'Admin') {
             setAdminId(user.uid);
             const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-            const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
+            unsubscribe = onSnapshot(areasQuery, (snapshot) => {
                 const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
                 setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
             });
-            return unsubscribe;
         } else if (userRole === 'Staff') {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
             const staffSnapshot = await getDocs(staffQuery);
@@ -105,12 +101,10 @@ export default function CollectionPage() {
         }
     };
     
-    const unsubscribePromise = fetchPrerequisites();
+    fetchPrerequisites();
 
     return () => {
-       unsubscribePromise.then(unsubscribe => {
-        if(unsubscribe) unsubscribe();
-       })
+       if (unsubscribe) unsubscribe();
     };
   }, [user, userRole, authLoading]);
 
@@ -123,35 +117,33 @@ export default function CollectionPage() {
     
     setLoading(true);
 
-    const handleSnapshot = (snapshot: any) => {
-        let collectionsData = snapshot.docs
-            .map((doc: any) => ({ id: doc.id, ...doc.data() } as Collection))
-            .filter((customer: any) => customer.balanceAmount > 0);
-        
-        if (userRole === 'Staff' && staffAssignedAreas) {
-             collectionsData = collectionsData.filter(customer => staffAssignedAreas.includes(customer.area));
-        }
-        
+    const collectionsQuery = query(
+        collection(db, "customers"), 
+        where("userId", "==", adminId)
+    );
+    
+    const unsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
+        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
         setAllCustomers(collectionsData);
         setLoading(false);
-    };
-
-    const handleError = (error: any) => {
+    }, (error) => {
         console.error("Error fetching collections:", error);
         toast({ variant: "destructive", title: "Failed to fetch collections" });
         setLoading(false);
-    };
-
-    const collectionsQuery = query(collection(db, "customers"), where("userId", "==", adminId));
-    
-    const unsubscribe = onSnapshot(collectionsQuery, handleSnapshot, handleError);
+    });
 
     return () => unsubscribe();
-  }, [adminId, userRole, staffAssignedAreas, toast, authLoading]);
+  }, [adminId, toast, authLoading]);
 
 
   const filteredCollections = useMemo(() => {
-    return allCustomers.filter((collection) => {
+    let customersWithBalance = allCustomers.filter(c => c.balanceAmount > 0);
+
+    if (userRole === 'Staff' && staffAssignedAreas.length > 0) {
+        customersWithBalance = customersWithBalance.filter(customer => staffAssignedAreas.includes(customer.area));
+    }
+    
+    return customersWithBalance.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
@@ -163,7 +155,7 @@ export default function CollectionPage() {
 
       return matchesSearch && matchesArea;
     });
-  }, [searchTerm, filterArea, allCustomers]);
+  }, [searchTerm, filterArea, allCustomers, userRole, staffAssignedAreas]);
 
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
@@ -369,5 +361,3 @@ export default function CollectionPage() {
     </>
   );
 }
-
-    
