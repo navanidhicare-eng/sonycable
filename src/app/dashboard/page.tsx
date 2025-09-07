@@ -103,7 +103,7 @@ export default function DashboardPage() {
   const [isRechargeDialogOpen, setIsRechargeDialogOpen] = useState(false);
   const [packages, setPackages] = useState<RechargePackage[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [paymentReceivedForRecharge, setPaymentReceivedForRecharge] = useState(true);
+  const [paymentReceivedForRecharge, setPaymentReceivedForRecharge] = useState(false);
 
 
   useEffect(() => {
@@ -354,7 +354,7 @@ export default function DashboardPage() {
   const openRechargeDialog = (customer: Customer) => {
     setSearchedCustomer(customer);
     setSelectedPackage(null);
-    setPaymentReceivedForRecharge(true);
+    setPaymentReceivedForRecharge(false);
     setIsRechargeDialogOpen(true);
     setIsRechargeSearchDialogOpen(false);
   };
@@ -457,7 +457,7 @@ export default function DashboardPage() {
 
         setIsRechargeDialogOpen(false);
         setSelectedPackage(null);
-        setPaymentReceivedForRecharge(true);
+        setPaymentReceivedForRecharge(false);
         setSearchedCustomer(null);
 
     } catch (error) {
