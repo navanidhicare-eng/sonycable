@@ -29,6 +29,7 @@ import {
 Calculator,
   BellRing,
   Shield,
+  Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -140,6 +141,14 @@ export default function WithSidebarLayout({
                     <Link href="/dashboard/roles">
                       <Shield />
                       <span>Roles</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/dashboard/staff-wallets">
+                      <Wallet />
+                      <span>Staff Wallets</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
