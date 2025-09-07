@@ -21,7 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ArrowLeft, QrCode, Share2, Loader2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Link2, Loader2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -29,6 +29,7 @@ import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/fire
 import { useAuth } from '@/hooks/useAuth';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 
 interface Customer {
@@ -59,9 +60,16 @@ export default function CustomerHistoryPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+
+  const allTransactions = useMemo(() => {
+    const combined = [...paymentHistory, ...rechargeHistory];
+    combined.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return combined;
+  }, [paymentHistory, rechargeHistory]);
   
   useEffect(() => {
     if (authLoading || !customerId) {
@@ -141,76 +149,56 @@ export default function CustomerHistoryPage() {
 
   }, [customerId, toast, user, authLoading]);
 
-  useEffect(() => {
-    const combined = [...paymentHistory, ...rechargeHistory];
-    combined.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setAllTransactions(combined);
-  }, [paymentHistory, rechargeHistory]);
-
-
-  const handleShare = async () => {
+  const handleCopyLink = () => {
     if (!customer) return;
-
-    const qrContent = `Customer Name: ${customer.name}\nCustomer ID: ${customer.customerId}\nBalance: ${customer.balanceAmount}`;
-    
-    try {
-        const qrCodeDataUrl = await QRCode.toDataURL(qrContent, { errorCorrectionLevel: 'H' });
-        const response = await fetch(qrCodeDataUrl);
-        const blob = await response.blob();
-        const file = new File([blob], `${customer.name}-QR.png`, { type: 'image/png' });
-
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: `QR Code for ${customer.name}`,
-                text: `Here is the QR code for ${customer.name} (ID: ${customer.customerId}).`,
-            });
-        } else {
-             toast({
-                variant: "destructive",
-                title: "Sharing Not Supported",
-                description: "Your browser does not support sharing files.",
-            });
-        }
-    } catch (error) {
-      console.error("Error sharing QR code:", error)
-      toast({
-        variant: "destructive",
-        title: "Sharing Failed",
-        description: "Could not share the QR code.",
-      });
-    }
+    const publicUrl = `${window.location.origin}/customer/${customer.id}`;
+    navigator.clipboard.writeText(publicUrl).then(() => {
+        toast({
+            title: "Link Copied",
+            description: "Customer portal link copied to clipboard.",
+        });
+    }).catch(err => {
+        console.error("Failed to copy link:", err);
+        toast({
+            variant: "destructive",
+            title: "Copy Failed",
+            description: "Could not copy the link.",
+        });
+    });
   };
 
-  const handleDownloadQR = async () => {
+  const handleGenerateAndShowQR = async () => {
     if (!customer) return;
-
-    const qrContent = `Customer Name: ${customer.name}\nCustomer ID: ${customer.customerId}\nBalance: ${customer.balanceAmount}`;
+    const publicUrl = `${window.location.origin}/customer/${customer.id}`;
     try {
-      const qrCodeDataUrl = await QRCode.toDataURL(qrContent, { errorCorrectionLevel: 'H' });
-      
-      const pdf = new jsPDF();
-      
-      pdf.setFontSize(20);
-      pdf.text("SONY CABLE NETWORK", 105, 20, { align: 'center' });
-
-      pdf.setFontSize(12);
-      pdf.text(`Customer Name: ${customer.name}`, 20, 40);
-      pdf.text(`Customer ID: ${customer.customerId}`, 20, 50);
-      pdf.text(`Balance Amount: Rs. ${customer.balanceAmount}`, 20, 60);
-
-      pdf.addImage(qrCodeDataUrl, 'PNG', 65, 80, 80, 80);
-      
-      pdf.save(`${customer.name}-Details.pdf`);
-
+      const url = await QRCode.toDataURL(publicUrl, { errorCorrectionLevel: 'H', width: 256 });
+      setQrCodeDataUrl(url);
+      setIsQrDialogOpen(true);
     } catch (err) {
-      console.error(err)
+      console.error("QR Generation Failed:", err);
       toast({
         variant: "destructive",
         title: "QR Generation Failed",
         description: "Could not generate the QR code.",
       });
     }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!customer || !qrCodeDataUrl) return;
+    
+    const pdf = new jsPDF();
+    pdf.setFontSize(20);
+    pdf.text("SONY CABLE NETWORK", 105, 20, { align: 'center' });
+
+    pdf.setFontSize(12);
+    pdf.text(`Customer Name: ${customer.name}`, 20, 40);
+    pdf.text(`Customer ID: ${customer.customerId}`, 20, 50);
+    pdf.text(`Balance Amount: Rs. ${customer.balanceAmount}`, 20, 60);
+
+    pdf.addImage(qrCodeDataUrl, 'PNG', 65, 80, 80, 80);
+    
+    pdf.save(`${customer.name}-Details.pdf`);
   };
 
   if (loading || authLoading) {
@@ -239,6 +227,7 @@ export default function CustomerHistoryPage() {
   }
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
         <div className="mb-8">
@@ -259,13 +248,9 @@ export default function CustomerHistoryPage() {
                     </CardDescription>
                 </div>
                 <div className="mt-4 flex gap-2 sm:mt-0">
-                    <Button variant="outline" onClick={handleDownloadQR}>
+                    <Button variant="outline" onClick={handleGenerateAndShowQR}>
                         <QrCode className="mr-2 h-4 w-4" />
-                        Download QR
-                    </Button>
-                    <Button variant="outline" onClick={handleShare}>
-                        <Share2 className="mr-2 h-4 w-4" />
-                        Share QR
+                        Show QR Code
                     </Button>
                 </div>
             </div>
@@ -420,5 +405,30 @@ export default function CustomerHistoryPage() {
         </Tabs>
       </div>
     </main>
+
+    <Dialog open={isQrDialogOpen} onOpenChange={setIsQrDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>QR Code for {customer.name}</DialogTitle>
+                <DialogDescription>
+                    Scan this code to view the customer's public details page.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center py-4">
+                {qrCodeDataUrl && <img src={qrCodeDataUrl} alt="QR Code" />}
+            </div>
+            <DialogFooter className="gap-2 sm:justify-end">
+                <Button variant="outline" onClick={handleCopyLink}>
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Copy Link
+                </Button>
+                <Button onClick={handleDownloadPdf}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
