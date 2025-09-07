@@ -126,7 +126,7 @@ export default function AddStaffPage() {
         role: data.role,
         commission: data.commission,
         email: data.email,
-        adminId: user.uid, 
+        adminId: user.uid,
         createdAt: new Date(),
       });
 
