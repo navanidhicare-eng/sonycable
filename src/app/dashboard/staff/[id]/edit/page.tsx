@@ -31,6 +31,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, query, where, onSnapshot } from "firebase/firestore";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
@@ -38,11 +39,17 @@ const formSchema = z.object({
   area: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "You have to select at least one area.",
   }),
+  role: z.string({ required_error: "Please select a role." }),
   commission: z.string().min(1, "Commission is required."),
   email: z.string().email("Please enter a valid email address.").optional(), // Email is not editable
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+interface Role {
+    id: string;
+    name: string;
+}
 
 export default function EditStaffPage() {
   const { toast } = useToast();
@@ -51,6 +58,7 @@ export default function EditStaffPage() {
   const staffId = params.id as string;
   
   const [areas, setAreas] = useState<{ id: string; label: string }[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const { user, loading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -80,6 +88,7 @@ export default function EditStaffPage() {
                     staffName: staffData.name,
                     mobileNumber: staffData.mobile,
                     area: staffData.area || [],
+                    role: staffData.role,
                     commission: staffData.commission,
                     email: staffData.email
                 });
@@ -103,19 +112,21 @@ export default function EditStaffPage() {
     if (authLoading || !user) return;
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
+    const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
         const areasData = snapshot.docs.map(doc => ({ id: doc.id, label: doc.data().name }));
         setAreas(areasData);
-    }, (error) => {
-        console.error("Error fetching areas: ", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to fetch areas",
-            description: "Could not load areas for assignment.",
-        });
     });
 
-    return () => unsubscribe();
+    const rolesQuery = query(collection(db, "roles"), where("userId", "==", user.uid));
+    const rolesUnsubscribe = onSnapshot(rolesQuery, (snapshot) => {
+        const rolesData = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+        setRoles(rolesData);
+    });
+
+    return () => {
+        areasUnsubscribe();
+        rolesUnsubscribe();
+    };
   }, [user, authLoading, toast]);
 
 
@@ -127,6 +138,7 @@ export default function EditStaffPage() {
         name: data.staffName,
         mobile: data.mobileNumber,
         area: data.area,
+        role: data.role,
         commission: data.commission,
       });
 
@@ -219,6 +231,30 @@ export default function EditStaffPage() {
                     )}
                     />
                     <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assign Role</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a role for the staff" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {roles.map(role => (
+                                <SelectItem key={role.id} value={role.name}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
                     control={form.control}
                     name="area"
                     render={() => (
@@ -303,5 +339,3 @@ export default function EditStaffPage() {
     </main>
   );
 }
-
-    

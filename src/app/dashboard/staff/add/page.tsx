@@ -31,6 +31,7 @@ import { db, auth } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, addDoc, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   staffName: z.string().min(1, "Staff name is required."),
@@ -38,6 +39,7 @@ const formSchema = z.object({
   area: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "You have to select at least one area.",
   }),
+  role: z.string({ required_error: "Please select a role." }),
   commission: z.string().min(1, "Commission is required."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
@@ -45,10 +47,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface Role {
+    id: string;
+    name: string;
+}
+
 export default function AddStaffPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [areas, setAreas] = useState<{ id: string; label: string }[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const { user, loading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,19 +77,22 @@ export default function AddStaffPage() {
     if (authLoading || !user) return;
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(areasQuery, (snapshot) => {
+    const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
         const areasData = snapshot.docs.map(doc => ({ id: doc.id, label: doc.data().name }));
         setAreas(areasData);
-    }, (error) => {
-        console.error("Error fetching areas: ", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to fetch areas",
-            description: "Could not load areas for assignment.",
-        });
     });
 
-    return () => unsubscribe();
+    const rolesQuery = query(collection(db, "roles"), where("userId", "==", user.uid));
+    const rolesUnsubscribe = onSnapshot(rolesQuery, (snapshot) => {
+        const rolesData = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+        setRoles(rolesData);
+    });
+
+
+    return () => {
+        areasUnsubscribe();
+        rolesUnsubscribe();
+    };
   }, [user, authLoading, toast]);
 
 
@@ -96,7 +107,6 @@ export default function AddStaffPage() {
     }
     setIsSubmitting(true);
     try {
-       // Check if staff email already exists in Firestore 'staff' collection
       const staffQuery = query(collection(db, "staff"), where("email", "==", data.email), where("adminId", "==", user.uid));
       const staffSnapshot = await getDocs(staffQuery);
       if (!staffSnapshot.empty) {
@@ -105,19 +115,18 @@ export default function AddStaffPage() {
         return;
       }
 
-      // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const newStaffUser = userCredential.user;
 
-      // Add staff details to Firestore
       await addDoc(collection(db, "staff"), {
         uid: newStaffUser.uid,
         name: data.staffName,
         mobile: data.mobileNumber,
         area: data.area,
+        role: data.role,
         commission: data.commission,
         email: data.email,
-        adminId: user.uid, // Link to the admin who created the staff
+        adminId: user.uid, 
         createdAt: new Date(),
       });
 
@@ -180,6 +189,30 @@ export default function AddStaffPage() {
                       <FormControl>
                         <Input type="tel" placeholder="Enter mobile number" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assign Role</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a role for the staff" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roles.map(role => (
+                            <SelectItem key={role.id} value={role.name}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

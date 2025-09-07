@@ -28,6 +28,7 @@ import {
   LogOut,
   Calculator,
   BellRing,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -97,6 +98,14 @@ export default function WithSidebarLayout({
                     <Link href="/dashboard/staff">
                       <UserPlus />
                       <span>Staff</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/dashboard/roles">
+                      <Shield />
+                      <span>Roles</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -38,6 +38,7 @@ interface Staff {
   name: string;
   mobile: string;
   area: string | string[];
+  role: string;
   email: string;
   commission: string;
   createdAt: {
@@ -150,8 +151,9 @@ export default function StaffPage() {
                   <TableHead>Staff Name</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Assigned Area</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>Commission</TableHead>
-                  <TableHead>Email (Username)</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -166,6 +168,7 @@ export default function StaffPage() {
                       </TableCell>
                       <TableCell>{staff.mobile}</TableCell>
                       <TableCell>{Array.isArray(staff.area) ? staff.area.join(', ') : staff.area}</TableCell>
+                      <TableCell><Badge variant="outline">{staff.role}</Badge></TableCell>
                       <TableCell>
                         <Badge variant="secondary">{staff.commission}</Badge>
                       </TableCell>
@@ -184,7 +187,7 @@ export default function StaffPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       No staff found.
                     </TableCell>
                   </TableRow>
@@ -227,5 +230,3 @@ export default function StaffPage() {
     </>
   );
 }
-
-    
