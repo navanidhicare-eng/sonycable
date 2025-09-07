@@ -101,6 +101,14 @@ export default function WithSidebarLayout({
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                        <Link href="/dashboard/complaints-staff">
+                        <MessageSquareWarning />
+                        <span>Complaints</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
                </>
             )}
             {userRole === 'Admin' && (
