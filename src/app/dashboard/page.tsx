@@ -812,7 +812,7 @@ export default function DashboardPage() {
             <CardContent>
             <div className="text-2xl font-bold">₹{commissionAmount.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-                Your total commission this month
+                ఈ నెల మీ మొత్తం కమీషన్ (కలెక్షన్ + కొత్త కస్టమర్ల కమీషన్)
             </p>
             </CardContent>
         </Card>
