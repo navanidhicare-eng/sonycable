@@ -30,6 +30,7 @@ Calculator,
   BellRing,
   Shield,
   Wallet,
+  History,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -100,6 +101,16 @@ export default function WithSidebarLayout({
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
+                {isCollectionAgent && (
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                            <Link href="/dashboard/my-collection-history">
+                            <History />
+                            <span>My Collection History</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                )}
                  <SidebarMenuItem>
                     <SidebarMenuButton asChild>
                         <Link href="/dashboard/reminders-staff">
