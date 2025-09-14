@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -52,6 +53,8 @@ const formSchema = z.object({
   area: z.string({ required_error: "Please select an area." }),
   stbId: z.string().min(1, "STB ID is required."),
   customerId: z.string().min(1, "Customer ID is required."),
+  connectionReference: z.string().optional(),
+  monthlyCommission: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -60,9 +63,9 @@ interface Area {
     value: string;
     label: string;
 }
-interface Package {
+interface Staff {
     id: string;
-    packageName: string;
+    name: string;
 }
 
 export default function AddCustomerPage() {
@@ -71,7 +74,7 @@ export default function AddCustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const [areas, setAreas] = useState<Area[]>([]);
-  const [packages, setPackages] = useState<Package[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -81,6 +84,8 @@ export default function AddCustomerPage() {
       balanceAmount: 0,
       stbId: "",
       customerId: "",
+      connectionReference: "",
+      monthlyCommission: "",
     },
   });
 
@@ -100,17 +105,22 @@ export default function AddCustomerPage() {
         });
     });
 
-    const packagesQuery = query(collection(db, "packages"), where("userId", "==", user.uid));
-    const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
-        const packagesData = snapshot.docs.map(doc => ({ id: doc.id, packageName: doc.data().packageName }));
-        setPackages(packagesData);
+    const staffQuery = query(collection(db, "staff"), where("userId", "==", user.uid));
+    const unsubscribeStaff = onSnapshot(staffQuery, (snapshot) => {
+        const staffData = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+        setStaff(staffData);
     }, (error) => {
-        console.error("Error fetching packages: ", error);
+        console.error("Error fetching staff: ", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch staff",
+            description: "Could not load staff for selection.",
+        });
     });
 
     return () => {
       unsubscribeAreas();
-      unsubscribePackages();
+      unsubscribeStaff();
     };
   }, [user, authLoading, toast]);
 
@@ -162,6 +172,8 @@ export default function AddCustomerPage() {
         userId: user.uid,
         lastRechargeDate: data.lastRechargeDate ? Timestamp.fromDate(data.lastRechargeDate) : null,
         expiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null,
+        connectionReference: data.connectionReference || null,
+        monthlyCommission: data.monthlyCommission || null,
       });
       toast({
         title: "Customer Added",
@@ -325,6 +337,53 @@ export default function AddCustomerPage() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="connectionReference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Connection Reference</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select staff member" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {staff.map(s => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                       <FormDescription>
+                        Select the staff member who referred this new connection.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="monthlyCommission"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monthly Commission (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 5" {...field} />
+                      </FormControl>
+                       <FormDescription>
+                        Commission percentage for the referring staff member.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+
                 <Button type="submit" className="w-full" disabled={isLoading}>
                    {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -341,5 +400,6 @@ export default function AddCustomerPage() {
     </main>
   );
 }
+
 
     
