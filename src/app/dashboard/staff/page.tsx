@@ -39,6 +39,7 @@ interface Staff {
   role: string;
   email: string;
   commission: string;
+  enrollmentCommission: number;
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -157,10 +158,9 @@ export default function StaffPage() {
                 <TableRow>
                   <TableHead>Staff Name</TableHead>
                   <TableHead>Mobile</TableHead>
-                  <TableHead>Assigned Area</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Commission</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Collection Commission</TableHead>
+                  <TableHead>Enrollment Commission</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -174,12 +174,13 @@ export default function StaffPage() {
                         </Link>
                       </TableCell>
                       <TableCell>{staff.mobile}</TableCell>
-                      <TableCell>{Array.isArray(staff.area) ? staff.area.join(', ') : staff.area}</TableCell>
                       <TableCell><Badge variant="outline">{staff.role}</Badge></TableCell>
                       <TableCell>
                         <Badge variant="secondary">{staff.commission}</Badge>
                       </TableCell>
-                      <TableCell>{staff.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">₹{staff.enrollmentCommission || 0}</Badge>
+                      </TableCell>
                       <TableCell className="flex gap-2">
                         <Button variant="ghost" size="icon" asChild>
                            <Link href={`/dashboard/staff/${staff.id}/edit`}>

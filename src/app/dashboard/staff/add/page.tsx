@@ -41,6 +41,7 @@ const formSchema = z.object({
   }),
   role: z.string({ required_error: "Please select a role." }),
   commission: z.string().min(1, "Commission is required."),
+  enrollmentCommission: z.string().min(1, "Enrollment commission is required."),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
@@ -69,6 +70,7 @@ export default function AddStaffPage() {
       email: "",
       password: "",
       commission: "",
+      enrollmentCommission: "",
       area: [],
     },
   });
@@ -125,6 +127,7 @@ export default function AddStaffPage() {
         area: data.area,
         role: data.role,
         commission: data.commission,
+        enrollmentCommission: parseFloat(data.enrollmentCommission),
         email: data.email,
         adminId: user.uid,
         createdAt: new Date(),
@@ -284,6 +287,22 @@ export default function AddStaffPage() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="enrollmentCommission"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Customer Enrollment Commission (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 100" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                       <FormDescriptionComponent>
+                        Fixed, one-time amount for each new customer enrolled.
+                      </FormDescriptionComponent>
+                    </FormItem>
+                  )}
+                />
                  <FormField
                   control={form.control}
                   name="email"
@@ -326,5 +345,3 @@ export default function AddStaffPage() {
     </main>
   );
 }
-
-    

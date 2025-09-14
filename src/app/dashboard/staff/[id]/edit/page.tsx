@@ -41,6 +41,7 @@ const formSchema = z.object({
   }),
   role: z.string({ required_error: "Please select a role." }),
   commission: z.string().min(1, "Commission is required."),
+  enrollmentCommission: z.string().min(1, "Enrollment commission is required."),
   email: z.string().email("Please enter a valid email address.").optional(), // Email is not editable
 });
 
@@ -69,6 +70,7 @@ export default function EditStaffPage() {
       staffName: "",
       mobileNumber: "",
       commission: "",
+      enrollmentCommission: "",
       area: [],
     },
   });
@@ -90,6 +92,7 @@ export default function EditStaffPage() {
                     area: staffData.area || [],
                     role: staffData.role,
                     commission: staffData.commission,
+                    enrollmentCommission: staffData.enrollmentCommission,
                     email: staffData.email
                 });
             } else {
@@ -140,6 +143,7 @@ export default function EditStaffPage() {
         area: data.area,
         role: data.role,
         commission: data.commission,
+        enrollmentCommission: parseFloat(data.enrollmentCommission),
       });
 
       toast({
@@ -320,6 +324,23 @@ export default function EditStaffPage() {
                         </FormDescriptionComponent>
                         </FormItem>
                     )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="enrollmentCommission"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Customer Enrollment Commission (₹)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g., 100" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                          <FormDescriptionComponent>
+                            Fixed, one-time amount for each new customer enrolled.
+                          </FormDescriptionComponent>
+                        </FormItem>
+                      )}
                     />
                     
                     <Button type="submit" className="w-full" disabled={isLoading}>
