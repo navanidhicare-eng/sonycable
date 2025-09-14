@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,7 @@ interface DashboardStats {
 interface StaffData {
     name: string;
     commission: string;
+    enrollmentCommission?: number;
     adminId: string;
     area: string[];
     role: string;
@@ -830,6 +831,29 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground mt-2">
                    {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}
                 </p>
+            </CardContent>
+        </Card>
+        <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 text-primary" />
+                    మీ కమీషన్ ప్రయోజనాలు
+                </CardTitle>
+                <CardDescription>మీరు సంపాదించడానికి ఇక్కడ కొన్ని మార్గాలు ఉన్నాయి:</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                <div>
+                    <h4 className="font-semibold">కలెక్షన్ కమీషన్</h4>
+                    <p className="text-muted-foreground">మీరు కస్టమర్ల నుండి వసూలు చేసే మొత్తం డబ్బుపై మీకు {staffData?.commission || 'N/A'} కమీషన్ వస్తుంది.</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold">కొత్త కస్టమర్ కమీషన్</h4>
+                    <p className="text-muted-foreground">మీరు చేర్పించే ప్రతి కొత్త కస్టమర్‌కు, మీకు ఒకేసారి ₹{staffData?.enrollmentCommission?.toLocaleString() || 'N/A'} స్థిరమైన కమీషన్ లభిస్తుంది.</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold">నెలవారీ రీఛార్జ్ కమీషన్</h4>
+                    <p className="text-muted-foreground">మీరు రిఫర్ చేసిన కస్టమర్లు చేసే ప్రతి నెలవారీ రీఛార్జ్‌పై మీకు ముందుగా నిర్ణయించిన శాతం ప్రకారం కమీషన్ వస్తుంది.</p>
+                </div>
             </CardContent>
         </Card>
      </div>
