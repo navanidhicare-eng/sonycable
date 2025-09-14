@@ -103,7 +103,12 @@ export default function LoginPage() {
       await handleLogin(loginEmail, data);
     } catch (error: any) {
       // JIT Account Creation for old customers
-      if (error.code === 'auth/user-not-found' && isMobile && data.password === '12345678') {
+      const isJitCondition = 
+        (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') && 
+        isMobile && 
+        data.password === '12345678';
+
+      if (isJitCondition) {
         try {
           const customerQuery = query(
             collection(db, "customers"),
@@ -116,36 +121,32 @@ export default function LoginPage() {
             const customerDoc = customerSnapshot.docs[0];
             const customerData = customerDoc.data();
             
-            // Check if customer already has a UID
             if (!customerData.uid) {
               const userCredential = await createUserWithEmailAndPassword(auth, loginEmail, data.password);
               const newCustomerUser = userCredential.user;
 
               await updateDoc(doc(db, "customers", customerDoc.id), {
                 uid: newCustomerUser.uid,
-                passwordChangeRequired: true, // Flag for first login
+                passwordChangeRequired: true,
               });
               
               // Now that the account is created, try logging in again
               await handleLogin(loginEmail, data);
               setIsSubmitting(false);
-              return; // Exit after successful JIT login
+              return;
             }
           }
         } catch (jitError: any) {
-            // Fall through to the generic error handler if JIT creation fails
             console.error("JIT Creation/Login Error:", jitError);
         }
       }
 
       console.error("Firebase Auth Error:", error);
       let errorMessage = "An error occurred during login.";
-      if(error.code === 'auth/user-not-found' || error.message === 'auth/unauthorized-user') {
-          errorMessage = "No authorized user found with this email or mobile number.";
+       if(error.code === 'auth/user-not-found' || error.message === 'auth/unauthorized-user' || error.code === 'auth/invalid-credential') {
+          errorMessage = "Invalid credentials. Please check your details and password.";
       } else if (error.code === 'auth/wrong-password') {
           errorMessage = "Incorrect password. Please try again.";
-      } else if (error.code === 'auth/invalid-credential') {
-           errorMessage = "Invalid credentials. Please check your details and password.";
       }
 
       toast({
