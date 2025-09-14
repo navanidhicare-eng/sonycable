@@ -8,7 +8,12 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("userRole");
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +21,10 @@ export function useAuth() {
       setLoading(true);
       if (currentUser) {
         setUser(currentUser);
-        let finalRole: string | null = null;
+        // Only fetch role if it's not already set from localStorage or if user changes
+        const storedRole = typeof window !== 'undefined' ? localStorage.getItem("userRole") : null;
+        let finalRole: string | null = storedRole;
+        
         try {
           if (currentUser.email === 'psdgandepalli@gmail.com') {
             finalRole = 'Admin';
@@ -26,6 +34,8 @@ export function useAuth() {
             if (!staffSnapshot.empty) {
               const staffData = staffSnapshot.docs[0].data();
               finalRole = staffData.role || null;
+            } else if (!storedRole) { // If no staff doc and no role in storage, they are unauthorized.
+               finalRole = null;
             }
           }
           
@@ -40,7 +50,6 @@ export function useAuth() {
           }
         } catch (error) {
             console.error("Error fetching user role:", error);
-            // Keep user authenticated but with no role
             setUserRole(null);
             if (typeof window !== "undefined") {
                 localStorage.removeItem("userRole");
