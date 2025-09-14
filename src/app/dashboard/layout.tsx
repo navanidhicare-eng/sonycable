@@ -44,7 +44,7 @@ function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userRole } = useAuth();
+  const { userRole, loading: authLoading } = useAuth();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -89,7 +89,7 @@ function DashboardLayout({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-             {userRole && userRole !== 'Admin' && (
+             {!authLoading && userRole && userRole !== 'Admin' && (
                <>
                 {!isCollectionAgent && (
                     <SidebarMenuItem>
@@ -137,7 +137,7 @@ function DashboardLayout({
                 </SidebarMenuItem>
                </>
             )}
-            {userRole === 'Admin' && (
+            {!authLoading && userRole === 'Admin' && (
               <>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild onClick={handleLinkClick}>
@@ -259,7 +259,7 @@ function DashboardLayout({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <div className="p-2 md:hidden">
+        <div className="flex h-14 items-center border-b p-2 md:hidden">
             <SidebarTrigger />
         </div>
         {children}
