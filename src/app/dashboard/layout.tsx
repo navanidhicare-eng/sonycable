@@ -58,7 +58,7 @@ export default function WithSidebarLayout({
     }
   };
   
-  const isCollectionAgent = userRole?.toLowerCase().replace(/\s/g, '') === 'collectionagent';
+  const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
 
   return (
     <SidebarProvider>

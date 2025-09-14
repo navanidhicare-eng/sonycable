@@ -190,8 +190,10 @@ export default function DashboardPage() {
             const staffDocData = staffSnapshot.docs[0].data() as StaffData;
             setStaffData(staffDocData);
             const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
+            const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
 
-            if (userRole?.toLowerCase().replace(/\s/g, '') !== 'collectionagent') {
+
+            if (!isCollectionAgent) {
                 const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
                 const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
                     const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
@@ -780,7 +782,7 @@ export default function DashboardPage() {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
      
      const { walletAmount, commissionAmount } = staffWallet;
-     const isCollectionAgent = userRole?.toLowerCase().replace(/\s/g, '') === 'collectionagent';
+     const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
