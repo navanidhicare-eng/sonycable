@@ -34,13 +34,12 @@ Calculator,
   History,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
-export default function WithSidebarLayout({
+function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -71,7 +70,7 @@ export default function WithSidebarLayout({
   const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
 
   return (
-    <SidebarProvider>
+    <>
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
@@ -265,6 +264,18 @@ export default function WithSidebarLayout({
         </div>
         {children}
       </SidebarInset>
+    </>
+  );
+}
+
+export default function WithSidebarLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <SidebarProvider>
+      <DashboardLayout>{children}</DashboardLayout>
     </SidebarProvider>
   );
 }
