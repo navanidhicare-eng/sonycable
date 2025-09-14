@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -46,6 +47,13 @@ export default function WithSidebarLayout({
 }) {
   const { userRole } = useAuth();
   const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -53,6 +61,7 @@ export default function WithSidebarLayout({
       if (typeof window !== "undefined") {
         localStorage.removeItem("userRole");
       }
+      handleLinkClick(); // Close sidebar on logout as well
       router.push('/login');
     } catch (error) {
       console.error("Failed to log out", error);
@@ -74,7 +83,7 @@ export default function WithSidebarLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild onClick={handleLinkClick}>
                 <Link href="/dashboard">
                   <LayoutDashboard />
                   <span>Dashboard</span>
@@ -85,7 +94,7 @@ export default function WithSidebarLayout({
                <>
                 {!isCollectionAgent && (
                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
+                        <SidebarMenuButton asChild onClick={handleLinkClick}>
                             <Link href="/dashboard/recharge">
                             <CreditCard />
                             <span>Recharge</span>
@@ -94,7 +103,7 @@ export default function WithSidebarLayout({
                     </SidebarMenuItem>
                 )}
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/payments-collections">
                         <IndianRupee />
                         <span>Payments Collections</span>
@@ -103,7 +112,7 @@ export default function WithSidebarLayout({
                 </SidebarMenuItem>
                 {isCollectionAgent && (
                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
+                        <SidebarMenuButton asChild onClick={handleLinkClick}>
                             <Link href="/dashboard/my-collection-history">
                             <History />
                             <span>My Collection History</span>
@@ -112,7 +121,7 @@ export default function WithSidebarLayout({
                     </SidebarMenuItem>
                 )}
                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/reminders-staff">
                         <BellRing />
                         <span>Reminders</span>
@@ -120,7 +129,7 @@ export default function WithSidebarLayout({
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/complaints-staff">
                         <MessageSquareWarning />
                         <span>Complaints</span>
@@ -132,7 +141,7 @@ export default function WithSidebarLayout({
             {userRole === 'Admin' && (
               <>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/customers">
                       <Users />
                       <span>Customers</span>
@@ -140,7 +149,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/staff">
                       <UserPlus />
                       <span>Staff</span>
@@ -148,7 +157,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/roles">
                       <Shield />
                       <span>Roles</span>
@@ -156,7 +165,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/staff-wallets">
                       <Wallet />
                       <span>Staff Wallets</span>
@@ -164,7 +173,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/recharge">
                       <CreditCard />
                       <span>Recharge</span>
@@ -172,7 +181,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/collection">
                         <IndianRupee />
                         <span>Collection</span>
@@ -180,7 +189,7 @@ export default function WithSidebarLayout({
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/packages">
                       <Package />
                       <span>Packages</span>
@@ -188,7 +197,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/areas">
                       <Map />
                       <span>Areas</span>
@@ -196,7 +205,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/commission-calculator">
                       <Calculator />
                       <span>Commission Calculator</span>
@@ -204,7 +213,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/reminders">
                       <BellRing />
                       <span>Reminders</span>
@@ -212,7 +221,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/mso-payments">
                       <ArrowRightLeft />
                       <span>MSO Payments</span>
@@ -220,7 +229,7 @@ export default function WithSidebarLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/complaints">
                         <MessageSquareWarning />
                         <span>Complaints</span>
@@ -228,7 +237,7 @@ export default function WithSidebarLayout({
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/offers">
                         <Megaphone />
                         <span>Offers</span>
