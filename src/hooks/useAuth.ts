@@ -16,26 +16,37 @@ export function useAuth() {
       setLoading(true);
       if (currentUser) {
         setUser(currentUser);
-        let finalRole = null;
-        if (currentUser.email === 'psdgandepalli@gmail.com') {
-          finalRole = 'Admin';
-        } else {
-          const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-          const staffSnapshot = await getDocs(staffQuery);
-          if (!staffSnapshot.empty) {
-            const staffData = staffSnapshot.docs[0].data();
-            finalRole = staffData.role || null;
+        let finalRole: string | null = null;
+        try {
+          if (currentUser.email === 'psdgandepalli@gmail.com') {
+            finalRole = 'Admin';
+          } else {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+            if (!staffSnapshot.empty) {
+              const staffData = staffSnapshot.docs[0].data();
+              finalRole = staffData.role || null;
+            }
           }
-        }
-        
-        setUserRole(finalRole);
-        
-        if (typeof window !== "undefined") {
-            if (finalRole) {
-                localStorage.setItem("userRole", finalRole);
-            } else {
+          
+          setUserRole(finalRole);
+          
+          if (typeof window !== "undefined") {
+              if (finalRole) {
+                  localStorage.setItem("userRole", finalRole);
+              } else {
+                  localStorage.removeItem("userRole");
+              }
+          }
+        } catch (error) {
+            console.error("Error fetching user role:", error);
+            // Keep user authenticated but with no role
+            setUserRole(null);
+            if (typeof window !== "undefined") {
                 localStorage.removeItem("userRole");
             }
+        } finally {
+            setLoading(false);
         }
       } else {
         setUser(null);
@@ -43,8 +54,8 @@ export function useAuth() {
         if (typeof window !== "undefined") {
           localStorage.removeItem("userRole");
         }
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
