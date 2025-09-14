@@ -66,7 +66,7 @@ export default function WithSidebarLayout({
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <SidebarTrigger />
+            
             <Network className="h-6 w-6 text-primary" />
             <span className="text-lg font-semibold">SONY CABLE</span>
           </div>
@@ -250,7 +250,12 @@ export default function WithSidebarLayout({
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset>
+        <div className="p-2 md:hidden">
+            <SidebarTrigger />
+        </div>
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }
