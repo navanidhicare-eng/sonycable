@@ -122,7 +122,7 @@ export default function CollectionPage() {
 
 
   const filteredCollections = useMemo(() => {
-    let customersWithBalance = allCustomers.filter(c => c.balanceAmount > 0);
+    let customersWithBalance = allCustomers.filter(c => parseFloat(String(c.balanceAmount)) > 0);
     
     return customersWithBalance.filter((collection) => {
       const searchTermLower = searchTerm.toLowerCase();
