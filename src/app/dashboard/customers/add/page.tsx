@@ -32,7 +32,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Loader2, CalendarIcon } from "lucide-react";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { collection, addDoc, query, where, onSnapshot, getDocs, Timestamp } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +40,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 
 const formSchema = z.object({
@@ -70,6 +71,7 @@ interface Customer {
   lastRechargeDate?: Timestamp;
   connectionReference?: string;
   monthlyCommission?: string;
+  uid?: string;
 }
 interface Area {
     value: string;
@@ -191,13 +193,18 @@ export default function AddCustomerPage() {
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        toast({
-          variant: "destructive",
-          title: "Duplicate Customer ID",
-          description: "This Customer ID is already in use. Please choose another one.",
-        });
-        setIsSubmitting(false);
-        return;
+        const existingCustomer = querySnapshot.docs[0].data() as Customer;
+        if (!existingCustomer.uid) { // If customer exists but has no auth UID, create one.
+             // This case is for existing customers without login.
+        } else {
+            toast({
+              variant: "destructive",
+              title: "Duplicate Customer ID",
+              description: "This Customer ID is already in use. Please choose another one.",
+            });
+            setIsSubmitting(false);
+            return;
+        }
       }
       
       let expiryDate = null;
@@ -206,8 +213,29 @@ export default function AddCustomerPage() {
         expiryDate.setDate(expiryDate.getDate() + 30);
       }
 
+      // Create Firebase Auth user for the customer
+      const customerEmail = `${data.mobileNumber}@sonycable.local`;
+      const customerPassword = "12345678";
+      let customerAuthUid;
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, customerEmail, customerPassword);
+        customerAuthUid = userCredential.user.uid;
+      } catch (authError: any) {
+        if (authError.code === 'auth/email-already-in-use') {
+            toast({
+                variant: "destructive",
+                title: "Login Exists",
+                description: "A login account with this mobile number already exists.",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+        throw authError; // Re-throw other auth errors
+      }
 
       await addDoc(collection(db, "customers"), {
+        uid: customerAuthUid,
         name: data.customerName,
         mobile: data.mobileNumber,
         balanceAmount: data.balanceAmount || 0,
@@ -221,9 +249,10 @@ export default function AddCustomerPage() {
         connectionReference: data.connectionReference || null,
         monthlyCommission: data.monthlyCommission || null,
       });
+
       toast({
-        title: "Customer Added",
-        description: `${data.customerName} has been successfully added.`,
+        title: "Customer Added & Login Created",
+        description: `${data.customerName} has been successfully added. They can now log in.`,
       });
       router.push("/dashboard/customers");
     } catch (error) {

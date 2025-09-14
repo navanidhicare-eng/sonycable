@@ -31,7 +31,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }),
+  email: z.string().min(1, { message: "Email or Mobile Number is required." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
 
@@ -53,11 +53,18 @@ export default function LoginPage() {
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     
+    // Check if the input is a mobile number and construct the email
+    const isMobile = /^\d{10}$/.test(data.email);
+    const loginEmail = isMobile ? `${data.email}@sonycable.local` : data.email;
+
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+        const userCredential = await signInWithEmailAndPassword(auth, loginEmail, data.password);
         const user = userCredential.user;
 
-        let userRole = null;
+        let userRole: string | null = null;
+        let customerId: string | null = null;
+        let destination = "/dashboard"; // Default destination
+
         if (user.email === 'psdgandepalli@gmail.com') {
             userRole = "Admin";
         } else {
@@ -66,6 +73,15 @@ export default function LoginPage() {
              if (!staffSnapshot.empty) {
                  const staffData = staffSnapshot.docs[0].data();
                  userRole = staffData.role || "Staff"; // Default to "Staff" if role is not set
+             } else {
+                // If not admin or staff, check if it's a customer
+                const customerQuery = query(collection(db, "customers"), where("uid", "==", user.uid));
+                const customerSnapshot = await getDocs(customerQuery);
+                if (!customerSnapshot.empty) {
+                    userRole = "Customer";
+                    customerId = customerSnapshot.docs[0].id;
+                    destination = `/customer/${customerId}`;
+                }
              }
         }
 
@@ -80,20 +96,20 @@ export default function LoginPage() {
         
         toast({
             title: "Login Successful",
-            description: "Redirecting to dashboard...",
+            description: "Redirecting...",
         });
-        router.push("/dashboard");
+        router.push(destination);
 
     } catch (error: any) {
         console.error("Firebase Auth Error:", error);
         
         let errorMessage = "An error occurred during login.";
         if(error.code === 'auth/user-not-found' || error.message === 'auth/unauthorized-user') {
-            errorMessage = "No authorized user found with this email.";
+            errorMessage = "No authorized user found with this email or mobile number.";
         } else if (error.code === 'auth/wrong-password') {
             errorMessage = "Incorrect password. Please try again.";
         } else if (error.code === 'auth/invalid-credential') {
-             errorMessage = "Invalid credentials. Please check your email and password.";
+             errorMessage = "Invalid credentials. Please check your details and password.";
         }
 
         toast({
@@ -112,7 +128,7 @@ export default function LoginPage() {
         <CardHeader className="items-center text-center">
             <Network className="h-10 w-10 text-primary mb-2" />
           <CardTitle className="text-2xl">SONY CABLE NETWORK</CardTitle>
-          <CardDescription>Admin & Staff Login</CardDescription>
+          <CardDescription>Admin, Staff & Customer Login</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -122,10 +138,10 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email or Mobile Number</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter your email"
+                        placeholder="Enter your email or mobile"
                         {...field}
                       />
                     </FormControl>
@@ -157,3 +173,5 @@ export default function LoginPage() {
     </main>
   );
 }
+
+    
