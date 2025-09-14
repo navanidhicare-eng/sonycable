@@ -40,6 +40,20 @@ interface Settlement {
   createdAt: Timestamp;
 }
 
+interface Customer {
+    id: string;
+    connectionReference?: string;
+    monthlyCommission?: string;
+}
+
+interface Recharge {
+    id: string;
+    customerId: string;
+    amount: number;
+    rechargeDate: Timestamp;
+}
+
+
 interface StaffWalletInfo {
   staffId: string;
   staffName: string;
@@ -55,6 +69,8 @@ export default function StaffWalletsPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [recharges, setRecharges] = useState<Recharge[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,45 +84,49 @@ export default function StaffWalletsPage() {
     const staffQuery = query(collection(db, "staff"), where("adminId", "==", user.uid));
     const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", user.uid));
     const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", user.uid));
+    const customersQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
+    const rechargesQuery = query(collection(db, "recharges"), where("adminId", "==", user.uid));
 
-    const unsubStaff = onSnapshot(staffQuery, (snapshot) => {
-      setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff)));
-    }, (error) => {
-        toast({variant: "destructive", title: "Failed to load staff"});
-        console.error("Staff fetch error:", error);
-    });
 
-    const unsubPayments = onSnapshot(paymentsQuery, (snapshot) => {
-      setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment)));
-    }, (error) => {
-        toast({variant: "destructive", title: "Failed to load payments"});
-        console.error("Payments fetch error:", error);
-    });
-
-    const unsubSettlements = onSnapshot(settlementsQuery, (snapshot) => {
-      setSettlements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Settlement)));
-    }, (error) => {
-        toast({variant: "destructive", title: "Failed to load settlements"});
-        console.error("Settlements fetch error:", error);
-    });
-
-    // We can set loading to false once staff is loaded, as calculations depend on it.
-    Promise.all([new Promise(res => onSnapshot(staffQuery, res))])
-        .then(() => setLoading(false))
-        .catch(() => setLoading(false));
+    const unsubs = [
+        onSnapshot(staffQuery, (snapshot) => setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff))), (error) => {
+            toast({variant: "destructive", title: "Failed to load staff"});
+            console.error("Staff fetch error:", error);
+        }),
+        onSnapshot(paymentsQuery, (snapshot) => setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment))), (error) => {
+            toast({variant: "destructive", title: "Failed to load payments"});
+            console.error("Payments fetch error:", error);
+        }),
+        onSnapshot(settlementsQuery, (snapshot) => setSettlements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Settlement))), (error) => {
+            toast({variant: "destructive", title: "Failed to load settlements"});
+            console.error("Settlements fetch error:", error);
+        }),
+        onSnapshot(customersQuery, (snapshot) => setCustomers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer))), (error) => {
+            toast({variant: "destructive", title: "Failed to load customers"});
+            console.error("Customers fetch error:", error);
+        }),
+        onSnapshot(rechargesQuery, (snapshot) => setRecharges(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recharge))), (error) => {
+            toast({variant: "destructive", title: "Failed to load recharges"});
+            console.error("Recharges fetch error:", error);
+        })
+    ];
+    
+    Promise.all([
+        new Promise(res => onSnapshot(staffQuery, res)),
+        new Promise(res => onSnapshot(paymentsQuery, res)),
+        new Promise(res => onSnapshot(settlementsQuery, res)),
+        new Promise(res => onSnapshot(customersQuery, res)),
+        new Promise(res => onSnapshot(rechargesQuery, res)),
+    ]).finally(() => setLoading(false));
 
     return () => {
-      unsubStaff();
-      unsubPayments();
-      unsubSettlements();
+      unsubs.forEach(unsub => unsub());
     };
   }, [user, authLoading, toast]);
 
 
   const staffWalletDetails = useMemo(() => {
     return staffList.map(staff => {
-      const commissionRate = parseFloat(staff.commission.replace('%','')) || 0;
-
       // Find the last approved settlement date for this staff member
       const lastSettlementDate = settlements
         .filter(s => s.staffId === staff.uid && s.status === 'approved')
@@ -114,16 +134,34 @@ export default function StaffWalletsPage() {
           return !latest || s.createdAt.toDate() > latest ? s.createdAt.toDate() : latest;
         }, null as Date | null);
       
-      // Filter payments made by this staff after their last settlement
+      // 1. Calculate Collection Commission
+      const collectionCommissionRate = parseFloat(staff.commission.replace('%','')) || 0;
       const paymentsAfterSettlement = payments.filter(p => {
         if (p.collectedBy !== staff.uid) return false;
-        if (!lastSettlementDate) return true; // Include all if never settled
+        if (!lastSettlementDate) return true;
         return p.collectionDate.toDate() > lastSettlementDate;
       });
-
-      // Calculate total collection and commission
       const totalCollection = paymentsAfterSettlement.reduce((sum, p) => sum + p.amount, 0);
-      const totalCommission = (totalCollection * commissionRate) / 100;
+      const collectionCommission = (totalCollection * collectionCommissionRate) / 100;
+
+      // 2. Calculate New Connection Commission
+      const referredCustomers = customers.filter(c => c.connectionReference === staff.id);
+      let newConnectionCommission = 0;
+
+      referredCustomers.forEach(cust => {
+          const monthlyCommRate = parseFloat(cust.monthlyCommission || '0');
+          if (monthlyCommRate > 0) {
+              const customerRecharges = recharges.filter(r => {
+                  if (r.customerId !== cust.id) return false;
+                  if (!lastSettlementDate) return true;
+                  return r.rechargeDate.toDate() > lastSettlementDate;
+              });
+              const totalRechargeAmount = customerRecharges.reduce((sum, r) => sum + r.amount, 0);
+              newConnectionCommission += (totalRechargeAmount * monthlyCommRate) / 100;
+          }
+      });
+      
+      const totalCommission = collectionCommission + newConnectionCommission;
 
       return {
         staffId: staff.id,
@@ -133,7 +171,7 @@ export default function StaffWalletsPage() {
         commissionAmount: totalCommission,
       };
     });
-  }, [staffList, payments, settlements]);
+  }, [staffList, payments, settlements, customers, recharges]);
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -144,7 +182,7 @@ export default function StaffWalletsPage() {
               Staff Wallets
             </h1>
             <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-              View current collection balances for each staff member.
+              View current collection balances and total earned commissions for each staff member.
             </p>
           </div>
         </header>
