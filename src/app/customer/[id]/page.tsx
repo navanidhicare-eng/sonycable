@@ -20,10 +20,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network, Send, MessageSquareWarning } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { collection, doc, onSnapshot, query, where, addDoc } from "firebase/firestore";
+import { db, auth } from '@/lib/firebase';
+import { collection, doc, onSnapshot, query, where, addDoc, updateDoc } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,6 +42,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { updatePassword, getAuth } from 'firebase/auth';
+import { Input } from '@/components/ui/input';
 
 interface Customer {
   id: string;
@@ -52,6 +54,7 @@ interface Customer {
   customerId: string;
   balanceAmount: number;
   userId: string; // Admin's UID
+  passwordChangeRequired?: boolean;
 }
 
 interface Transaction {
@@ -87,6 +90,14 @@ export default function CustomerPublicPage() {
   const [complaintDetails, setComplaintDetails] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // States for password change dialog
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+
   const allTransactions = useMemo(() => {
     const combined = [...paymentHistory, ...rechargeHistory];
     combined.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -107,6 +118,10 @@ export default function CustomerPublicPage() {
       if (docSnap.exists()) {
         const customerData = { id: docSnap.id, ...docSnap.data() } as Customer;
         setCustomer(customerData);
+
+        if (customerData.passwordChangeRequired) {
+            setIsPasswordDialogOpen(true);
+        }
 
         if (customerData.userId) {
           const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
@@ -233,6 +248,48 @@ export default function CustomerPublicPage() {
         setIsSubmitting(false);
     }
   };
+
+  const handlePasswordChange = async () => {
+    setPasswordError("");
+    if (newPassword.length < 6) {
+        setPasswordError("Password must be at least 6 characters long.");
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        setPasswordError("Passwords do not match.");
+        return;
+    }
+    const currentUser = getAuth().currentUser;
+    if (!currentUser || !customer) {
+        setPasswordError("Not logged in or customer data not found.");
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        await updatePassword(currentUser, newPassword);
+        
+        const customerDocRef = doc(db, "customers", customer.id);
+        await updateDoc(customerDocRef, {
+            passwordChangeRequired: false
+        });
+
+        toast({
+            title: "Password Updated",
+            description: "Your password has been successfully updated.",
+        });
+        setIsPasswordDialogOpen(false);
+        setNewPassword("");
+        setConfirmPassword("");
+    } catch (error) {
+        console.error("Error updating password:", error);
+        toast({ variant: "destructive", title: "Password Update Failed", description: "Please log out and log in again to change your password."});
+        setPasswordError("An error occurred. Please try again.");
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -414,7 +471,54 @@ export default function CustomerPublicPage() {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    {/* Force Password Change Dialog */}
+    <Dialog open={isPasswordDialogOpen} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()} hideCloseButton={true}>
+            <DialogHeader>
+                <DialogTitle>Change Your Password</DialogTitle>
+                <DialogDescription>
+                    For your security, you must change your default password before continuing.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <div className="relative">
+                        <Input
+                            id="new-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Enter new password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                        />
+                        <Button variant="ghost" size="icon" type="button" className="absolute top-1/2 right-2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                            {showPassword ? <EyeOff /> : <Eye />}
+                        </Button>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input
+                        id="confirm-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                </div>
+                {passwordError && <p className="text-sm font-medium text-destructive">{passwordError}</p>}
+            </div>
+            <DialogFooter>
+                <Button onClick={handlePasswordChange} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Update Password
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </>
   );
 }
 
+    

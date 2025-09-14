@@ -122,7 +122,8 @@ export default function LoginPage() {
               const newCustomerUser = userCredential.user;
 
               await updateDoc(doc(db, "customers", customerDoc.id), {
-                uid: newCustomerUser.uid
+                uid: newCustomerUser.uid,
+                passwordChangeRequired: true, // Flag for first login
               });
               
               // Now that the account is created, try logging in again
@@ -208,3 +209,5 @@ export default function LoginPage() {
     </main>
   );
 }
+
+    

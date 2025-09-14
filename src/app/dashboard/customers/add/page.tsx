@@ -248,6 +248,7 @@ export default function AddCustomerPage() {
         expiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null,
         connectionReference: data.connectionReference || null,
         monthlyCommission: data.monthlyCommission || null,
+        passwordChangeRequired: true, // Flag for first login
       });
 
       toast({
