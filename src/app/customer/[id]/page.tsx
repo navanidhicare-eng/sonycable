@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, where, addDoc, updateDoc } from "firebase/firestore";
@@ -44,6 +44,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { updatePassword, getAuth } from 'firebase/auth';
 import { Input } from '@/components/ui/input';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import Autoplay from "embla-carousel-autoplay"
+
 
 interface Customer {
   id: string;
@@ -74,6 +77,12 @@ interface Package {
   packageAmount: string;
 }
 
+interface Offer {
+    id: string;
+    name: string;
+    description: string;
+}
+
 export default function CustomerPublicPage() {
   const params = useParams();
   const customerId = params.id as string;
@@ -82,6 +91,7 @@ export default function CustomerPublicPage() {
   const { toast } = useToast();
   const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
+  const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
 
   const [isRechargeDialogOpen, setIsRechargeDialogOpen] = useState(false);
   const [isComplaintDialogOpen, setIsComplaintDialogOpen] = useState(false);
@@ -127,13 +137,16 @@ export default function CustomerPublicPage() {
           const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
           const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
           const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
+          const offersQuery = query(collection(db, "offers"), where("userId", "==", customerData.userId), where("status", "==", "Active"));
+
 
           let paymentsLoaded = false;
           let rechargesLoaded = false;
           let packagesLoaded = false;
+          let offersLoaded = false;
 
           const checkAllLoaded = () => {
-            if (paymentsLoaded && rechargesLoaded && packagesLoaded) {
+            if (paymentsLoaded && rechargesLoaded && packagesLoaded && offersLoaded) {
               setLoading(false);
             }
           };
@@ -170,6 +183,12 @@ export default function CustomerPublicPage() {
               const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
               setPackages(packagesData);
               packagesLoaded = true;
+              checkAllLoaded();
+            }),
+             onSnapshot(offersQuery, (snapshot) => {
+              const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
+              setActiveOffers(offersData);
+              offersLoaded = true;
               checkAllLoaded();
             })
           ];
@@ -320,6 +339,33 @@ export default function CustomerPublicPage() {
          </div>
        </header>
       <div className="container mx-auto p-4 py-8 md:p-12">
+        {activeOffers.length > 0 && (
+          <Carousel 
+            plugins={[Autoplay({ delay: 5000 })]}
+            className="w-full mb-8"
+          >
+            <CarouselContent>
+              {activeOffers.map((offer) => (
+                <CarouselItem key={offer.id}>
+                  <div className="p-1">
+                    <Card className="bg-gradient-to-r from-primary to-orange-400 text-primary-foreground">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Megaphone />
+                                {offer.name}
+                            </CardTitle>
+                            <CardDescription className="text-primary-foreground/90">{offer.description}</CardDescription>
+                        </CardHeader>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden sm:flex" />
+            <CarouselNext className="hidden sm:flex" />
+          </Carousel>
+        )}
+
         <Card className="mb-8">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
@@ -520,5 +566,3 @@ export default function CustomerPublicPage() {
     </>
   );
 }
-
-    

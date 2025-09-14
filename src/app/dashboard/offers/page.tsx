@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -15,41 +14,53 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
-const mockOffers = [
-  {
-    id: "offer1",
-    name: "New Year Bonanza",
-    description: "Get 20% off on yearly subscription.",
-    status: "Active",
-    commission: "5% of recharge",
-  },
-  {
-    id: "offer2",
-    name: "Festival Combo",
-    description: "Premium pack for just ₹400 for 2 months.",
-    status: "Active",
-    commission: "₹20 per recharge",
-  },
-  {
-    id: "offer3",
-    name: "Summer Sale",
-    description: "1-month free subscription on HD+ Pack.",
-    status: "Expired",
-    commission: "₹10 per recharge",
-  },
-];
-
+interface Offer {
+  id: string;
+  name: string;
+  description: string;
+  commission: string;
+  status: "Active" | "Expired";
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
+}
 
 export default function OffersPage() {
-  const [userRole, setUserRole] = useState("");
+  const { user, userRole, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const role = localStorage.getItem("userRole");
-      setUserRole(role || "");
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
     }
-  }, []);
+
+    const q = query(collection(db, "offers"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
+      offersData.sort((a,b) => b.createdAt.seconds - a.createdAt.seconds);
+      setOffers(offersData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching offers: ", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch offers",
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -77,6 +88,11 @@ export default function OffersPage() {
             <CardTitle>Offer List</CardTitle>
           </CardHeader>
           <CardContent>
+            {loading || authLoading ? (
+               <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -87,7 +103,8 @@ export default function OffersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockOffers.map((offer) => (
+                {offers.length > 0 ? (
+                  offers.map((offer) => (
                   <TableRow key={offer.id}>
                     <TableCell className="font-medium">{offer.name}</TableCell>
                     <TableCell>{offer.description}</TableCell>
@@ -98,9 +115,17 @@ export default function OffersPage() {
                       </Badge>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                ) : (
+                   <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      No offers found.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       </div>

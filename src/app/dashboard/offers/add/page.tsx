@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -25,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -33,6 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { addDoc, collection } from "firebase/firestore";
 
 
 const formSchema = z.object({
@@ -47,6 +50,9 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddOfferPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -57,14 +63,35 @@ export default function AddOfferPage() {
     },
   });
 
-  function onSubmit(data: FormValues) {
-    console.log(data);
-    toast({
-      title: "Offer Added",
-      description: `${data.offerName} has been successfully created.`,
-    });
-    router.push("/dashboard/offers");
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+        toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to add an offer."});
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+        await addDoc(collection(db, "offers"), {
+            name: data.offerName,
+            description: data.description,
+            commission: data.commission,
+            status: data.status,
+            createdAt: new Date(),
+            userId: user.uid,
+        });
+        toast({
+            title: "Offer Added",
+            description: `${data.offerName} has been successfully created.`,
+        });
+        router.push("/dashboard/offers");
+    } catch(error) {
+        console.error("Error adding offer:", error);
+        toast({ variant: "destructive", title: "Failed to add offer." });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
+
+  const isLoading = authLoading || isSubmitting;
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -146,9 +173,13 @@ export default function AddOfferPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Offer
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                    )}
+                  {isSubmitting ? "Adding..." : "Add Offer"}
                 </Button>
               </form>
             </Form>
