@@ -862,6 +862,12 @@ export default function DashboardPage() {
         setSearchError("");
     };
 
+    const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
+    const newBalance = searchedCustomer && selectedPackageDetails && !paymentReceivedForRecharge
+        ? parseFloat(String(searchedCustomer.balanceAmount)) + parseFloat(selectedPackageDetails.packageAmount)
+        : searchedCustomer?.balanceAmount;
+
+
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground">
@@ -1062,42 +1068,54 @@ export default function DashboardPage() {
             setIsRechargeDialogOpen(isOpen);
          }}>
             <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
-                <DialogDescription>
-                  Select a package to continue with the recharge. Current balance: ₹{searchedCustomer.balanceAmount}.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="package" className="text-right">
-                    Package
-                  </Label>
-                  <Select onValueChange={setSelectedPackage}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select a package" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {packages.map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.packageName} - ₹{pkg.packageAmount}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <DialogHeader>
+                    <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
+                    <DialogDescription>Select a package to continue with the recharge.</DialogDescription>
+                    <div className="text-sm">
+                        Current Balance: <span className="font-bold text-lg">₹{searchedCustomer.balanceAmount}</span>
+                    </div>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="package" className="text-right">Package</Label>
+                        <Select onValueChange={setSelectedPackage}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Select a package" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {packages.map((pkg) => (
+                                    <SelectItem key={pkg.id} value={pkg.id}>
+                                        {pkg.packageName} - ₹{pkg.packageAmount}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {selectedPackageDetails && (
+                        <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                            <div className="flex justify-between">
+                                <span>New Balance After Recharge:</span>
+                                <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
+                            </div>
+                             {paymentReceivedForRecharge && (
+                                <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
+                            )}
+                        </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2 justify-center pt-2">
+                        <Checkbox 
+                        id="payment-received-recharge" 
+                        checked={paymentReceivedForRecharge} 
+                        onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
+                        />
+                        <Label htmlFor="payment-received-recharge" className="text-xs">Payment Received (amount will not be added to balance)</Label>
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2 justify-center">
-                    <Checkbox 
-                      id="payment-received-recharge" 
-                      checked={paymentReceivedForRecharge} 
-                      onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
-                    />
-                    <Label htmlFor="payment-received-recharge">Payment Received (amount will not be added to balance)</Label>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
-              </DialogFooter>
+                <DialogFooter>
+                    <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
        )}

@@ -92,10 +92,10 @@ export default function RechargePage() {
     const customersUnsubscribe = onSnapshot(customersQuery, (snapshot) => {
         const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
         setCustomers(customersData);
+        setLoading(false);
     }, (error) => {
         console.error("Error fetching customers:", error);
         toast({ variant: "destructive", title: "Failed to fetch customers" });
-    }, () => {
         setLoading(false);
     });
 
@@ -159,20 +159,21 @@ export default function RechargePage() {
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 30);
         const expiryTimestamp = Timestamp.fromDate(expiryDate);
+        
+        let updateData: any = {
+            expiryDate: expiryTimestamp,
+            lastRechargeDate: Timestamp.now(),
+        };
 
         if (paymentReceived) {
-            await updateDoc(customerDocRef, {
-                expiryDate: expiryTimestamp
-            });
             description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ₹${rechargeAmount}. Payment received.`;
         } else {
             const newBalance = currentCustomer.balanceAmount + rechargeAmount;
-            await updateDoc(customerDocRef, {
-                balanceAmount: newBalance,
-                expiryDate: expiryTimestamp,
-            });
+            updateData.balanceAmount = newBalance;
             description = `${currentCustomer.name} has been recharged with ${pkg.packageName}. ₹${rechargeAmount} added to collection balance.`;
         }
+
+        await updateDoc(customerDocRef, updateData);
 
         await addDoc(collection(db, "recharges"), {
             customerId: currentCustomer.id,
@@ -183,6 +184,7 @@ export default function RechargePage() {
             paymentReceived: paymentReceived,
             rechargeDate: new Date(),
             rechargedBy: user.uid,
+            adminId: user.uid,
         });
       
         toast({
@@ -191,9 +193,6 @@ export default function RechargePage() {
         });
 
         setIsDialogOpen(false);
-        setSelectedPackage(null);
-        setPaymentReceived(true);
-        setCurrentCustomer(null);
 
     } catch (error) {
         console.error("Recharge failed:", error);
@@ -207,8 +206,16 @@ export default function RechargePage() {
 
   const openDialog = (customer: Customer) => {
     setCurrentCustomer(customer);
+    setSelectedPackage(null);
+    setPaymentReceived(true);
     setIsDialogOpen(true);
   };
+  
+  const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
+  const newBalance = currentCustomer && selectedPackageDetails && !paymentReceived
+        ? parseFloat(String(currentCustomer.balanceAmount)) + parseFloat(selectedPackageDetails.packageAmount)
+        : currentCustomer?.balanceAmount;
+
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -302,9 +309,10 @@ export default function RechargePage() {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Recharge for {currentCustomer.name}</DialogTitle>
-                <DialogDescription>
-                  Select a package to continue with the recharge.
-                </DialogDescription>
+                <DialogDescription>Select a package to continue with the recharge.</DialogDescription>
+                <div className="text-sm">
+                    Current Balance: <span className="font-bold text-lg">₹{currentCustomer.balanceAmount}</span>
+                </div>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -324,17 +332,30 @@ export default function RechargePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center space-x-2 justify-center">
+
+                {selectedPackageDetails && (
+                    <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                        <div className="flex justify-between">
+                            <span>New Balance After Recharge:</span>
+                            <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
+                        </div>
+                            {paymentReceived && (
+                            <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
+                        )}
+                    </div>
+                )}
+
+                <div className="flex items-center space-x-2 justify-center pt-2">
                     <Checkbox 
                       id="payment-received" 
                       checked={paymentReceived} 
                       onCheckedChange={(checked) => setPaymentReceived(Boolean(checked))}
                     />
-                    <Label htmlFor="payment-received">Payment Received</Label>
+                    <Label htmlFor="payment-received" className="text-xs">Payment Received (amount will not be added to balance)</Label>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" onClick={handleRecharge}>Confirm Recharge</Button>
+                <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
               </DialogFooter>
             </DialogContent>
         </Dialog>
