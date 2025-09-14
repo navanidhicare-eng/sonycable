@@ -59,6 +59,18 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface Customer {
+  id: string;
+  name: string;
+  mobile: string;
+  balanceAmount: number;
+  area: string;
+  stbId: string;
+  customerId: string;
+  lastRechargeDate?: Timestamp;
+  connectionReference?: string;
+  monthlyCommission?: string;
+}
 interface Area {
     value: string;
     label: string;
@@ -75,6 +87,7 @@ export default function AddCustomerPage() {
   const { user, loading: authLoading } = useAuth();
   const [areas, setAreas] = useState<Area[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -89,8 +102,40 @@ export default function AddCustomerPage() {
     },
   });
 
+  const mobileNumberValue = form.watch("mobileNumber");
+
+  useEffect(() => {
+    if (mobileNumberValue && mobileNumberValue.length >= 10) {
+      const existingCustomer = allCustomers.find(c => c.mobile === mobileNumberValue);
+      if (existingCustomer) {
+        form.reset({
+            mobileNumber: existingCustomer.mobile,
+            customerName: existingCustomer.name,
+            area: existingCustomer.area,
+            stbId: existingCustomer.stbId,
+            customerId: existingCustomer.customerId,
+            balanceAmount: existingCustomer.balanceAmount || 0,
+            lastRechargeDate: existingCustomer.lastRechargeDate ? existingCustomer.lastRechargeDate.toDate() : undefined,
+            connectionReference: existingCustomer.connectionReference || "",
+            monthlyCommission: existingCustomer.monthlyCommission || "",
+        });
+        toast({
+            title: "Customer Found",
+            description: "Existing customer details have been filled in.",
+        });
+      }
+    }
+  }, [mobileNumberValue, allCustomers, form, toast]);
+
+
   useEffect(() => {
     if (authLoading || !user) return;
+
+    const customersQuery = query(collection(db, "customers"), where("userId", "==", user.uid));
+    const unsubscribeCustomers = onSnapshot(customersQuery, (snapshot) => {
+        const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+        setAllCustomers(customersData);
+    });
 
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
     const unsubscribeAreas = onSnapshot(areasQuery, (snapshot) => {
@@ -105,7 +150,7 @@ export default function AddCustomerPage() {
         });
     });
 
-    const staffQuery = query(collection(db, "staff"), where("userId", "==", user.uid));
+    const staffQuery = query(collection(db, "staff"), where("adminId", "==", user.uid));
     const unsubscribeStaff = onSnapshot(staffQuery, (snapshot) => {
         const staffData = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
         setStaff(staffData);
@@ -119,6 +164,7 @@ export default function AddCustomerPage() {
     });
 
     return () => {
+      unsubscribeCustomers();
       unsubscribeAreas();
       unsubscribeStaff();
     };
@@ -207,6 +253,22 @@ export default function AddCustomerPage() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                 <FormField
+                  control={form.control}
+                  name="mobileNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mobile Number</FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="Enter mobile number to auto-fill" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        If the customer exists, their details will be auto-filled.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="customerName"
@@ -215,19 +277,6 @@ export default function AddCustomerPage() {
                       <FormLabel>Customer Name</FormLabel>
                       <FormControl>
                         <Input placeholder="Enter customer's full name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="mobileNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mobile Number</FormLabel>
-                      <FormControl>
-                        <Input type="tel" placeholder="Enter mobile number" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -293,7 +342,7 @@ export default function AddCustomerPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Area</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select an area" />
@@ -344,7 +393,7 @@ export default function AddCustomerPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Connection Reference</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select staff member" />
@@ -400,6 +449,5 @@ export default function AddCustomerPage() {
     </main>
   );
 }
-
 
     
