@@ -128,6 +128,7 @@ export default function LoginPage() {
               
               // Now that the account is created, try logging in again
               await handleLogin(loginEmail, data);
+              setIsSubmitting(false);
               return; // Exit after successful JIT login
             }
           }
@@ -209,5 +210,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
-    
