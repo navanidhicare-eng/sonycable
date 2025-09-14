@@ -24,6 +24,7 @@ interface Staff {
   name: string;
   role: string;
   commission: string;
+  enrollmentCommission?: number;
 }
 
 interface Payment {
@@ -44,6 +45,8 @@ interface Customer {
     id: string;
     connectionReference?: string;
     monthlyCommission?: string;
+    createdAt: Timestamp;
+    userId: string;
 }
 
 interface Recharge {
@@ -111,13 +114,16 @@ export default function StaffWalletsPage() {
         })
     ];
     
-    Promise.all([
-        new Promise(res => onSnapshot(staffQuery, res)),
-        new Promise(res => onSnapshot(paymentsQuery, res)),
-        new Promise(res => onSnapshot(settlementsQuery, res)),
-        new Promise(res => onSnapshot(customersQuery, res)),
-        new Promise(res => onSnapshot(rechargesQuery, res)),
-    ]).finally(() => setLoading(false));
+    // A simple way to check if all initial loads are done
+    const allQueries = [staffQuery, paymentsQuery, settlementsQuery, customersQuery, rechargesQuery];
+    const promises = allQueries.map(q => new Promise(res => {
+        const unsub = onSnapshot(q, () => {
+            res(true);
+            unsub(); // Unsubscribe after first snapshot
+        });
+    }));
+
+    Promise.all(promises).finally(() => setLoading(false));
 
     return () => {
       unsubs.forEach(unsub => unsub());
@@ -134,19 +140,30 @@ export default function StaffWalletsPage() {
           return !latest || s.createdAt.toDate() > latest ? s.createdAt.toDate() : latest;
         }, null as Date | null);
       
-      // 1. Calculate Collection Commission
-      const collectionCommissionRate = parseFloat(staff.commission.replace('%','')) || 0;
+      // 1. Calculate Collection Amount (Wallet)
       const paymentsAfterSettlement = payments.filter(p => {
         if (p.collectedBy !== staff.uid) return false;
         if (!lastSettlementDate) return true;
         return p.collectionDate.toDate() > lastSettlementDate;
       });
       const totalCollection = paymentsAfterSettlement.reduce((sum, p) => sum + p.amount, 0);
-      const collectionCommission = (totalCollection * collectionCommissionRate) / 100;
 
-      // 2. Calculate New Connection Commission
+      // 2. Calculate Collection Commission
+      const collectionCommissionRate = parseFloat(staff.commission?.replace('%','')) || 0;
+      const collectionCommission = (totalCollection * collectionCommissionRate) / 100;
+      
+      // 3. Calculate New Customer Enrollment Commission (One-Time)
+      const enrollmentCommissionPerCustomer = staff.enrollmentCommission || 0;
+      const newCustomersByStaff = customers.filter(c => {
+          if (c.userId !== user?.uid || c.connectionReference !== staff.id) return false;
+          if (!lastSettlementDate) return true; // If never settled, all are new
+          return c.createdAt.toDate() > lastSettlementDate;
+      });
+      const totalEnrollmentCommission = newCustomersByStaff.length * enrollmentCommissionPerCustomer;
+
+      // 4. Calculate Monthly Commission from Recharges of Referred Customers
       const referredCustomers = customers.filter(c => c.connectionReference === staff.id);
-      let newConnectionCommission = 0;
+      let monthlyRechargeCommission = 0;
 
       referredCustomers.forEach(cust => {
           const monthlyCommRate = parseFloat(cust.monthlyCommission || '0');
@@ -157,11 +174,11 @@ export default function StaffWalletsPage() {
                   return r.rechargeDate.toDate() > lastSettlementDate;
               });
               const totalRechargeAmount = customerRecharges.reduce((sum, r) => sum + r.amount, 0);
-              newConnectionCommission += (totalRechargeAmount * monthlyCommRate) / 100;
+              monthlyRechargeCommission += (totalRechargeAmount * monthlyCommRate) / 100;
           }
       });
       
-      const totalCommission = collectionCommission + newConnectionCommission;
+      const totalCommission = collectionCommission + totalEnrollmentCommission + monthlyRechargeCommission;
 
       return {
         staffId: staff.id,
@@ -171,7 +188,7 @@ export default function StaffWalletsPage() {
         commissionAmount: totalCommission,
       };
     });
-  }, [staffList, payments, settlements, customers, recharges]);
+  }, [staffList, payments, settlements, customers, recharges, user]);
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
