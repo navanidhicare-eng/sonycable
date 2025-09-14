@@ -48,11 +48,19 @@ export default function MyCollectionHistoryPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -30),
     to: new Date(),
   });
+
+  const handleDateSelect = (selectedDate: DateRange | undefined) => {
+    setDate(selectedDate);
+    if (selectedDate?.from && selectedDate?.to) {
+      setIsDatePickerOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -156,7 +164,7 @@ export default function MyCollectionHistoryPage() {
               </p>
             </div>
              <div className="mt-4 sm:mt-0">
-               <Popover>
+               <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                     <PopoverTrigger asChild>
                         <Button
                         id="date"
@@ -187,7 +195,7 @@ export default function MyCollectionHistoryPage() {
                         mode="range"
                         defaultMonth={date?.from}
                         selected={date}
-                        onSelect={setDate}
+                        onSelect={handleDateSelect}
                         numberOfMonths={2}
                         />
                     </PopoverContent>
