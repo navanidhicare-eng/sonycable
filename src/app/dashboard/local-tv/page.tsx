@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { PlusCircle, Loader2, Trash2, ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -150,7 +150,12 @@ export default function LocalTvPage() {
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="flex gap-1">
+                             <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/dashboard/local-tv/${channel.id}/edit`}>
+                                    <Pencil className="h-4 w-4" />
+                                </Link>
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(channel)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
