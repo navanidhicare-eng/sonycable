@@ -32,7 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 
 const formSchema = z.object({
   channelName: z.string().min(1, "Channel name is required."),
@@ -119,6 +119,14 @@ export default function AddLocalTvChannelPage() {
   }
 
   const isLoading = authLoading || isSubmitting;
+  
+  const handleTimeChange = (timeValue: string, field: any) => {
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const existingDate = field.value && isValid(new Date(field.value)) ? new Date(field.value) : new Date();
+    existingDate.setHours(hours);
+    existingDate.setMinutes(minutes);
+    field.onChange(existingDate);
+  };
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -230,7 +238,7 @@ export default function AddLocalTvChannelPage() {
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {field.value ? (
+                                  {field.value && isValid(field.value) ? (
                                     format(field.value, "PPP HH:mm")
                                   ) : (
                                     <span>Pick a date and time</span>
@@ -249,13 +257,8 @@ export default function AddLocalTvChannelPage() {
                                <Input
                                 type="time"
                                 className="mt-2"
-                                value={field.value ? format(field.value, "HH:mm") : ""}
-                                onChange={(e) => {
-                                    const time = e.target.value.split(':');
-                                    const newDate = new Date(field.value || new Date());
-                                    newDate.setHours(parseInt(time[0]), parseInt(time[1]));
-                                    field.onChange(newDate);
-                                }}
+                                value={field.value && isValid(field.value) ? format(field.value, "HH:mm") : ""}
+                                onChange={(e) => handleTimeChange(e.target.value, field)}
                                 />
                             </PopoverContent>
                           </Popover>
@@ -279,7 +282,7 @@ export default function AddLocalTvChannelPage() {
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {field.value ? (
+                                  {field.value && isValid(field.value) ? (
                                     format(field.value, "PPP HH:mm")
                                   ) : (
                                     <span>Pick a date and time</span>
@@ -298,13 +301,8 @@ export default function AddLocalTvChannelPage() {
                                <Input
                                 type="time"
                                 className="mt-2"
-                                value={field.value ? format(field.value, "HH:mm") : ""}
-                                onChange={(e) => {
-                                    const time = e.target.value.split(':');
-                                    const newDate = new Date(field.value || new Date());
-                                    newDate.setHours(parseInt(time[0]), parseInt(time[1]));
-                                    field.onChange(newDate);
-                                }}
+                                value={field.value && isValid(field.value) ? format(field.value, "HH:mm") : ""}
+                                onChange={(e) => handleTimeChange(e.target.value, field)}
                                 />
                             </PopoverContent>
                           </Popover>
