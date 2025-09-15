@@ -115,6 +115,18 @@ export default function CustomerPublicPage() {
     return combined;
   }, [paymentHistory, rechargeHistory]);
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("userRole");
+      }
+      router.push('/login');
+    } catch (error) {
+      console.error("Failed to log out", error);
+    }
+  };
+
   useEffect(() => {
     if (!customerId) {
       setLoading(false);
@@ -332,9 +344,6 @@ export default function CustomerPublicPage() {
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
-       <header className="bg-card border-b p-4 text-center">
-         <h1 className="text-xl font-bold">Customer Dashboard</h1>
-       </header>
       <div className="container mx-auto p-4 py-8 md:p-12">
         {activeOffers.length > 0 && (
           <Carousel 
