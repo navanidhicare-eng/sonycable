@@ -36,11 +36,12 @@ export default function AutoSubscriptionPage() {
   const customerId = params.id as string;
 
   useEffect(() => {
-    if (authLoading || !customerId) {
+    if (authLoading || !user || !customerId) {
         if (!authLoading) setLoading(false);
         return;
     }
     
+    setLoading(true);
     const customerDocRef = doc(db, 'customers', customerId);
 
     const unsubscribe = onSnapshot(customerDocRef, (docSnap) => {
@@ -61,7 +62,7 @@ export default function AutoSubscriptionPage() {
     });
 
     return () => unsubscribe();
-  }, [customerId, authLoading, toast]);
+  }, [customerId, authLoading, user, toast]);
   
   const handleToggleAutoSubscription = async (enabled: boolean) => {
     if (!customer) return;
