@@ -53,7 +53,7 @@ export default function LocalTvPage() {
           </div>
           <Button asChild className="mt-4 sm:mt-0">
             {/* The link should point to a page for adding a new channel, which you'll need to create */}
-            <Link href="#">
+            <Link href="/dashboard/local-tv/add">
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Channel
             </Link>
