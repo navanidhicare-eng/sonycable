@@ -353,23 +353,21 @@ export default function CustomerPublicPage() {
     <main className="min-h-screen w-full font-body text-foreground bg-background">
       <div className="container mx-auto p-4 py-8 md:p-12">
         {activeLiveStreams.length > 0 && (
-          <div className="mb-8 space-y-4">
-            {activeLiveStreams.map((stream) => (
-              <Card key={stream.id} className="bg-gradient-to-r from-red-500 to-red-700 text-white border-none shadow-lg">
+          <div className="mb-8">
+              <Card className="bg-gradient-to-r from-red-500 to-red-700 text-white border-none shadow-lg cursor-pointer" onClick={() => handleWatchNow(activeLiveStreams[0])}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Radio className="animate-pulse" />
-                        {stream.name}
+                        {activeLiveStreams[0].name}
                     </CardTitle>
-                    <CardDescription className="text-red-100">{stream.description}</CardDescription>
+                    <CardDescription className="text-red-100">{activeLiveStreams[0].description}</CardDescription>
                 </CardHeader>
                 <CardFooter>
-                    <Button variant="secondary" className="w-full" onClick={() => handleWatchNow(stream)}>
+                    <div className="w-full text-center font-bold">
                         Watch Live Now
-                    </Button>
+                    </div>
                 </CardFooter>
               </Card>
-            ))}
           </div>
         )}
         
@@ -503,6 +501,15 @@ export default function CustomerPublicPage() {
         </Card>
       </div>
     </main>
+
+    {/* Scrolling Text at bottom */}
+    <div className="fixed bottom-0 left-0 right-0 h-10 bg-primary text-primary-foreground overflow-hidden z-20">
+        <div className="absolute whitespace-nowrap animate-marquee">
+            <span className="mx-8 text-sm font-medium">Welcome to SONY CABLE NETWORK. Pay your bill on time to avoid disconnection. For any queries, contact customer support.</span>
+             <span className="mx-8 text-sm font-medium">Welcome to SONY CABLE NETWORK. Pay your bill on time to avoid disconnection. For any queries, contact customer support.</span>
+        </div>
+    </div>
+
 
     {/* Force Password Change Dialog */}
     <Dialog open={isPasswordDialogOpen} onOpenChange={() => {}}>
