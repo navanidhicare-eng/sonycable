@@ -181,7 +181,7 @@ export default function CustomerLocalTvPage() {
                     <iframe
                         width="100%"
                         height="100%"
-                        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+                        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&showinfo=0`}
                         title={selectedChannel?.name}
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -198,5 +198,7 @@ export default function CustomerLocalTvPage() {
     </>
   );
 }
+
+    
 
     
