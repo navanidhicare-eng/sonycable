@@ -129,7 +129,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href={customerId ? `/customer/${customerId}/referral-bonus` : '#'}>
                     <Gift />
                     <span>Referral Bonus</span>
                 </Link>

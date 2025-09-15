@@ -423,22 +423,11 @@ export default function AddCustomerPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Connection Reference</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select staff member" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {staff.map(s => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                       <FormControl>
+                        <Input placeholder="Enter Staff ID or Customer ID of referrer" {...field} />
+                      </FormControl>
                        <FormDescription>
-                        Select the staff member who referred this new connection.
+                        Enter the ID of the staff or customer who referred this new connection.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
