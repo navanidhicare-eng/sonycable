@@ -81,7 +81,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                 <Link href={`/customer/${customerId}`}>
+                 <Link href={`/customer/${customerId}/history`}>
                     <History />
                     <span>Transaction History</span>
                 </Link>
