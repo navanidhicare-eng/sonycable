@@ -176,7 +176,7 @@ export default function CustomerLocalTvPage() {
                     <span className="sr-only">Close</span>
                 </DialogClose>
             </DialogHeader>
-            <div className="aspect-video">
+            <div className="aspect-video pointer-events-none">
                 {videoId ? (
                     <iframe
                         width="100%"
@@ -198,7 +198,3 @@ export default function CustomerLocalTvPage() {
     </>
   );
 }
-
-    
-
-    
