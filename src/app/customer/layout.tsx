@@ -89,7 +89,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href={customerId ? `/customer/${customerId}/request-recharge` : '#'}>
                     <Send />
                     <span>Request Recharge</span>
                 </Link>
