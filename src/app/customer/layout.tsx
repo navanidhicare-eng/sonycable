@@ -21,6 +21,10 @@ import {
   History,
   Send,
   MessageSquareWarning,
+  Repeat,
+  Tv,
+  Store,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -94,6 +98,38 @@ function CustomerDashboardLayout({
                 <Link href="#">
                     <MessageSquareWarning />
                     <span>Register Complaint</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild onClick={handleLinkClick}>
+                <Link href="#">
+                    <Repeat />
+                    <span>Auto Subscription</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild onClick={handleLinkClick}>
+                <Link href="#">
+                    <Tv />
+                    <span>Local Live TV</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild onClick={handleLinkClick}>
+                <Link href="#">
+                    <Store />
+                    <span>Local Business Directory</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild onClick={handleLinkClick}>
+                <Link href="#">
+                    <Gift />
+                    <span>Referral Bonus</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
