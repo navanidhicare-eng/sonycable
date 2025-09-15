@@ -29,7 +29,7 @@ import {
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 function CustomerDashboardLayout({
   children,
@@ -37,6 +37,8 @@ function CustomerDashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const params = useParams();
+  const customerId = params.id as string;
   const { isMobile, setOpenMobile } = useSidebar();
 
   const handleLinkClick = () => {
@@ -71,7 +73,7 @@ function CustomerDashboardLayout({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href={`/customer/${customerId}`}>
                   <LayoutDashboard />
                   <span>Dashboard</span>
                 </Link>
@@ -103,7 +105,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href="/customer/auto-subscription">
                     <Repeat />
                     <span>Auto Subscription</span>
                 </Link>
