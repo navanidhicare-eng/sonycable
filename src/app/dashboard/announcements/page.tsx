@@ -41,7 +41,7 @@ interface Announcement {
   text: string;
   startDate?: Timestamp;
   endDate?: Timestamp;
-  createdAt: Timestamp;
+  createdAt: Timestamp | Date; // Allow both types
 }
 
 export default function AnnouncementsPage() {
@@ -61,7 +61,12 @@ export default function AnnouncementsPage() {
     const q = query(collection(db, "announcements"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
-      data.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      data.sort((a, b) => {
+          const timeA = a.createdAt instanceof Timestamp ? a.createdAt.seconds : (a.createdAt as Date)?.getTime() / 1000;
+          const timeB = b.createdAt instanceof Timestamp ? b.createdAt.seconds : (b.createdAt as Date)?.getTime() / 1000;
+          if (!timeA || !timeB) return 0;
+          return timeB - timeA;
+      });
       setAnnouncements(data);
       setLoading(false);
     }, (error) => {
@@ -104,6 +109,17 @@ export default function AnnouncementsPage() {
       setAnnouncementToDelete(null);
     }
   };
+
+  const formatDate = (dateValue: Timestamp | Date | undefined) => {
+    if (!dateValue) return 'N/A';
+    if (dateValue instanceof Timestamp) {
+      return dateValue.toDate().toLocaleDateString('en-CA');
+    }
+    if (dateValue instanceof Date) {
+      return dateValue.toLocaleDateString('en-CA');
+    }
+    return 'Invalid Date';
+  }
 
   return (
     <>
@@ -158,7 +174,7 @@ export default function AnnouncementsPage() {
                         <TableCell>
                             <Badge variant={status.variant}>{status.text}</Badge>
                         </TableCell>
-                        <TableCell>{ann.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
+                        <TableCell>{formatDate(ann.createdAt)}</TableCell>
                         <TableCell>
                             <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(ann)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
