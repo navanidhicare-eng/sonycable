@@ -46,6 +46,7 @@ import { updatePassword, getAuth, signOut } from 'firebase/auth';
 import { Input } from '@/components/ui/input';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from "embla-carousel-autoplay"
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface Customer {
@@ -90,6 +91,7 @@ export default function CustomerPublicPage() {
   const params = useParams();
   const router = useRouter();
   const customerId = params.id as string;
+  const { user, loading: authLoading } = useAuth();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -121,9 +123,10 @@ export default function CustomerPublicPage() {
 
 
   useEffect(() => {
-    if (!customerId) {
-      setLoading(false);
-      return;
+    if (authLoading) return;
+    if (!user || !customerId) {
+        setLoading(false);
+        return;
     }
 
     setLoading(true);
@@ -145,16 +148,6 @@ export default function CustomerPublicPage() {
           const offersQuery = query(collection(db, "offers"), where("userId", "==", customerData.userId), where("status", "==", "Active"));
 
 
-          let paymentsLoaded = false;
-          let rechargesLoaded = false;
-          let offersLoaded = false;
-
-          const checkAllLoaded = () => {
-            if (paymentsLoaded && rechargesLoaded && offersLoaded) {
-              setLoading(false);
-            }
-          };
-
           const unsubscribes = [
             onSnapshot(paymentsQuery, (snapshot) => {
               const payments = snapshot.docs.map(doc => ({
@@ -166,8 +159,6 @@ export default function CustomerPublicPage() {
                 type: 'Payment'
               } as Transaction));
               setPaymentHistory(payments);
-              paymentsLoaded = true;
-              checkAllLoaded();
             }),
             onSnapshot(rechargesQuery, (snapshot) => {
               const recharges = snapshot.docs.map(doc => ({
@@ -180,17 +171,16 @@ export default function CustomerPublicPage() {
                 type: 'Recharge'
               } as Transaction));
               setRechargeHistory(recharges);
-              rechargesLoaded = true;
-              checkAllLoaded();
             }),
              onSnapshot(offersQuery, (snapshot) => {
               const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
               setActiveOffers(offersData);
-              offersLoaded = true;
-              checkAllLoaded();
             })
           ];
-
+          
+          setLoading(false); // Assume data streams will handle themselves
+          
+          // This return will be called when the component unmounts or dependencies change
           return () => unsubscribes.forEach(unsub => unsub());
         } else {
           setLoading(false);
@@ -206,7 +196,7 @@ export default function CustomerPublicPage() {
     });
 
     return () => customerUnsubscribe();
-  }, [customerId, toast]);
+  }, [customerId, toast, user, authLoading]);
   
   useEffect(() => {
     const createAutoRechargeRequest = async () => {
@@ -291,7 +281,7 @@ export default function CustomerPublicPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
         <main className="flex min-h-screen w-full items-center justify-center bg-background p-4 font-body text-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />

@@ -36,8 +36,9 @@ export default function AutoSubscriptionPage() {
   const customerId = params.id as string;
 
   useEffect(() => {
-    if (authLoading || !user || !customerId) {
-        if (!authLoading) setLoading(false);
+    if (authLoading) return;
+    if (!user || !customerId) {
+        setLoading(false);
         return;
     }
     
