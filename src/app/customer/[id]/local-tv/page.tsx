@@ -48,47 +48,48 @@ export default function CustomerLocalTvPage() {
         if (customerSnapshot.empty) {
           toast({ variant: "destructive", title: "Customer data not found." });
           setLoading(false);
-          return;
+          return null; // Return null to signify no admin found
         }
 
         const customerData = customerSnapshot.docs[0].data() as Customer;
         const adminId = customerData.userId;
 
         if (!adminId) {
-          // This can happen if the customer is not properly linked to an admin
           toast({ variant: "destructive", title: "Provider Not Found", description: "Could not identify the service provider for your account." });
           setLoading(false);
-          return;
+          return null;
         }
 
-        // 2. Fetch channels from that admin
-        const channelsQuery = query(collection(db, "localChannels"), where("userId", "==", adminId));
-        const unsubscribe = onSnapshot(channelsQuery, (snapshot) => {
-          const channelsData = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Channel))
-            .filter(channel => channel.type === 'channel'); // Filter for regular channels client-side
-          
-          channelsData.sort((a,b) => (a.name > b.name) ? 1 : -1)
-          setChannels(channelsData);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error fetching channels:", error);
-          toast({ variant: "destructive", title: "Failed to load channels" });
-          setLoading(false);
-        });
-
-        return unsubscribe;
+        return adminId;
 
       } catch (error) {
-        console.error("Error in fetching customer/channel data:", error);
-        toast({ variant: "destructive", title: "An error occurred while loading data." });
+        console.error("Error fetching customer data:", error);
+        toast({ variant: "destructive", title: "An error occurred while loading initial data." });
         setLoading(false);
+        return null;
       }
     };
     
     let unsubscribe: (() => void) | undefined;
-    fetchChannels().then(unsub => {
-        if(unsub) unsubscribe = unsub;
+
+    fetchChannels().then(adminId => {
+        if (adminId) {
+            // 2. Fetch channels from that admin using a snapshot listener
+            const channelsQuery = query(collection(db, "localChannels"), where("userId", "==", adminId));
+            unsubscribe = onSnapshot(channelsQuery, (snapshot) => {
+              const channelsData = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Channel))
+                .filter(channel => channel.type === 'channel'); // Filter for regular channels client-side
+              
+              channelsData.sort((a,b) => (a.name > b.name) ? 1 : -1)
+              setChannels(channelsData);
+              setLoading(false);
+            }, (error) => {
+              console.error("Error fetching channels:", error);
+              toast({ variant: "destructive", title: "Failed to load channels" });
+              setLoading(false);
+            });
+        }
     });
 
     return () => {
@@ -202,7 +203,3 @@ export default function CustomerLocalTvPage() {
     </>
   );
 }
-
-    
-
-    
