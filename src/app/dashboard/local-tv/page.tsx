@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { PlusCircle, Loader2, Trash2, ExternalLink, Video } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -111,16 +111,24 @@ export default function LocalTvPage() {
                 Manage your local and live TV channels here.
               </p>
             </div>
-            <Button asChild className="mt-4 sm:mt-0">
-              <Link href="/dashboard/local-tv/add">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Channel
-              </Link>
-            </Button>
+            <div className="flex gap-2 mt-4 sm:mt-0">
+                <Button asChild>
+                    <Link href="/dashboard/local-tv/create-live">
+                        <Video className="mr-2 h-4 w-4" />
+                        Create Live Stream
+                    </Link>
+                </Button>
+                <Button asChild variant="outline">
+                    <Link href="/dashboard/local-tv/add">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Channel
+                    </Link>
+                </Button>
+            </div>
           </header>
           <Card className="w-full max-w-4xl">
             <CardHeader>
-              <CardTitle>Channel List</CardTitle>
+              <CardTitle>YouTube Channel List</CardTitle>
             </CardHeader>
             <CardContent>
               {loading || authLoading ? (
