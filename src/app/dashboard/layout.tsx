@@ -32,6 +32,7 @@ Calculator,
   Shield,
   Wallet,
   History,
+  Tv,
 } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -250,6 +251,14 @@ function DashboardLayout({
                         <span>Offers</span>
                         </Link>
                     </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
+                    <Link href="/dashboard/local-tv">
+                      <Tv />
+                      <span>Local Live TV</span>
+                    </Link>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               </>
             )}
