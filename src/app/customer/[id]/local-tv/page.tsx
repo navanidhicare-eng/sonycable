@@ -8,8 +8,9 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Tv2, Youtube } from 'lucide-react';
+import { Loader2, Tv2, Youtube, X } from 'lucide-react';
 import Link from 'next/link';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 
 interface Channel {
   id: string;
@@ -27,6 +28,8 @@ export default function CustomerLocalTvPage() {
   const { toast } = useToast();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -87,6 +90,24 @@ export default function CustomerLocalTvPage() {
     };
   }, [authLoading, user, toast]);
 
+  const getYouTubeVideoId = (url: string) => {
+    let videoId = '';
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(youtubeRegex);
+    if (match) {
+        videoId = match[1];
+    }
+    return videoId;
+  };
+
+  const handleWatchNow = (channel: Channel) => {
+    setSelectedChannel(channel);
+    setIsPlayerOpen(true);
+  };
+  
+  const videoId = selectedChannel ? getYouTubeVideoId(selectedChannel.youtubeLink) : null;
+
+
   if (loading || authLoading) {
     return (
       <main className="flex min-h-[calc(100vh-theme(spacing.14))] w-full items-center justify-center bg-background p-4 md:min-h-screen">
@@ -96,6 +117,7 @@ export default function CustomerLocalTvPage() {
   }
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
       <div className="container mx-auto p-4 py-8 md:p-12">
         <header className="mb-10 flex w-full max-w-4xl flex-col items-start">
@@ -124,8 +146,8 @@ export default function CustomerLocalTvPage() {
                   <CardDescription>{channel.description}</CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto">
-                   <Button asChild className="w-full">
-                       <Link href={channel.youtubeLink} target="_blank" rel="noopener noreferrer">
+                   <Button asChild className="w-full" onClick={() => handleWatchNow(channel)}>
+                       <Link href="#">
                         Watch Now
                        </Link>
                     </Button>
@@ -141,5 +163,40 @@ export default function CustomerLocalTvPage() {
         )}
       </div>
     </main>
+
+    <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
+        <DialogContent className="max-w-4xl p-0">
+            <DialogHeader className="p-4">
+                <DialogTitle className="flex items-center gap-2">
+                     <Youtube className="h-6 w-6 text-red-600"/>
+                     {selectedChannel?.name}
+                </DialogTitle>
+                 <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                </DialogClose>
+            </DialogHeader>
+            <div className="aspect-video">
+                {videoId ? (
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+                        title={selectedChannel?.name}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                    ></iframe>
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-black text-white">
+                        Invalid YouTube Link
+                    </div>
+                )}
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
+
+    
