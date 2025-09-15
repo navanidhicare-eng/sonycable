@@ -55,6 +55,8 @@ export default function CustomerLocalTvPage() {
         const adminId = customerData.userId;
 
         if (!adminId) {
+          // This can happen if the customer is not properly linked to an admin
+          toast({ variant: "destructive", title: "Provider Not Found", description: "Could not identify the service provider for your account." });
           setLoading(false);
           return;
         }
@@ -200,5 +202,7 @@ export default function CustomerLocalTvPage() {
     </>
   );
 }
+
+    
 
     
