@@ -16,6 +16,7 @@ import { db, auth } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Loader2 } from 'lucide-react';
+import { useParams } from 'next/navigation';
 
 interface Customer {
   id: string;
@@ -28,10 +29,12 @@ export default function AutoSubscriptionPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const params = useParams();
 
   useEffect(() => {
-    if (authLoading || !user) {
-        if (!authLoading) setLoading(false);
+    if (authLoading) return;
+    if (!user) {
+        setLoading(false);
         return;
     }
     
