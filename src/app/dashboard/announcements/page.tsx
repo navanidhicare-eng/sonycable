@@ -2,249 +2,200 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription
 } from "@/components/ui/card";
+import { PlusCircle, Loader2, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Loader2, CalendarIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, setDoc, updateDoc, Timestamp } from "firebase/firestore";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { collection, query, where, onSnapshot, doc, deleteDoc, Timestamp } from "firebase/firestore";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const formSchema = z.object({
-  announcementText: z.string().min(1, "Announcement text cannot be empty."),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+interface Announcement {
+  id: string;
+  text: string;
+  startDate?: Timestamp;
+  endDate?: Timestamp;
+  createdAt: Timestamp;
+}
 
 export default function AnnouncementsPage() {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
-  const [announcementDocId, setAnnouncementDocId] = useState<string | null>(null);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      announcementText: "",
-    },
-  });
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-
-    const fetchAnnouncement = async () => {
-      setPageLoading(true);
-      const q = query(collection(db, "announcements"), where("userId", "==", user.uid));
-      try {
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const doc = querySnapshot.docs[0];
-          const data = doc.data();
-          setAnnouncementDocId(doc.id);
-          form.reset({ 
-            announcementText: data.text,
-            startDate: data.startDate ? data.startDate.toDate() : undefined,
-            endDate: data.endDate ? data.endDate.toDate() : undefined,
-          });
-        }
-      } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Failed to fetch announcement." });
-      } finally {
-        setPageLoading(false);
-      }
+    if (!user) {
+        if(!authLoading) setLoading(false);
+        return;
     };
 
-    fetchAnnouncement();
-  }, [user, form, toast]);
+    const q = query(collection(db, "announcements"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
+      data.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setAnnouncements(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching announcements:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to fetch announcements." });
+      setLoading(false);
+    });
 
-  async function onSubmit(data: FormValues) {
-    if (!user) return;
-    setIsSubmitting(true);
-    
-    const docData = {
-        text: data.announcementText,
-        userId: user.uid,
-        updatedAt: new Date(),
-        startDate: data.startDate ? Timestamp.fromDate(data.startDate) : null,
-        endDate: data.endDate ? Timestamp.fromDate(data.endDate) : null,
-    };
+    return () => unsubscribe();
+  }, [user, authLoading, toast]);
+  
+  const getStatus = (announcement: Announcement): { text: string; variant: "default" | "secondary" | "destructive" } => {
+      const now = new Date();
+      const start = announcement.startDate?.toDate();
+      const end = announcement.endDate?.toDate();
 
-    try {
-      if (announcementDocId) {
-        const docRef = doc(db, "announcements", announcementDocId);
-        await updateDoc(docRef, docData);
-      } else {
-        const docRef = doc(db, "announcements", user.uid);
-        await setDoc(docRef, docData);
-        setAnnouncementDocId(user.uid);
+      if (end) {
+          end.setHours(23, 59, 59, 999);
+          if (now > end) return { text: "Expired", variant: "destructive" };
       }
-      toast({
-        title: "Announcement Updated",
-        description: "The scrolling text has been successfully updated for all customers.",
-      });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not save the announcement." });
-    } finally {
-      setIsSubmitting(false);
-    }
+      if (start && now < start) return { text: "Upcoming", variant: "secondary" };
+      
+      return { text: "Active", variant: "default" };
   }
 
-  const isLoading = authLoading || pageLoading || isSubmitting;
+  const openDeleteDialog = (announcement: Announcement) => {
+    setAnnouncementToDelete(announcement);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!announcementToDelete) return;
+    try {
+      await deleteDoc(doc(db, "announcements", announcementToDelete.id));
+      toast({ title: "Announcement Deleted" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Deletion Failed" });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setAnnouncementToDelete(null);
+    }
+  };
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
-        <Card className="w-full max-w-2xl">
+        <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
+              Scrolling Announcements
+            </h1>
+            <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
+              Manage the scrolling text shown to customers.
+            </p>
+          </div>
+          <Button asChild className="mt-4 sm:mt-0">
+            <Link href="/dashboard/announcements/add">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Announcement
+            </Link>
+          </Button>
+        </header>
+
+        <Card className="w-full max-w-4xl">
           <CardHeader>
-            <CardTitle className="text-2xl">Scrolling Announcement</CardTitle>
+            <CardTitle>All Announcements</CardTitle>
             <CardDescription>
-              Set the text and optional date range for the scrolling announcement at the bottom of the customer dashboard.
+                Here is a list of all your scheduled announcements.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {pageLoading || authLoading ? (
+            {loading || authLoading ? (
               <div className="flex justify-center items-center h-40">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="announcementText"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Announcement Text</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter the text you want to scroll for customers..."
-                            className="resize-none"
-                            rows={4}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="startDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                          <FormLabel>Start Date</FormLabel>
-                          <Popover>
-                              <PopoverTrigger asChild>
-                              <FormControl>
-                                  <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                  )}
-                                  >
-                                  {field.value ? (
-                                      format(field.value, "PPP")
-                                  ) : (
-                                      <span>Pick a start date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                              </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                              />
-                              </PopoverContent>
-                          </Popover>
-                           <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                       <FormField
-                      control={form.control}
-                      name="endDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                          <FormLabel>End Date</FormLabel>
-                          <Popover>
-                              <PopoverTrigger asChild>
-                              <FormControl>
-                                  <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                  )}
-                                  >
-                                  {field.value ? (
-                                      format(field.value, "PPP")
-                                  ) : (
-                                      <span>Pick an end date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                              </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                              />
-                              </PopoverContent>
-                          </Popover>
-                           <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    {isSubmitting ? "Updating..." : "Update Announcement"}
-                  </Button>
-                </form>
-              </Form>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Announcement Text</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created On</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {announcements.length > 0 ? (
+                    announcements.map((ann) => {
+                      const status = getStatus(ann);
+                      return (
+                      <TableRow key={ann.id}>
+                        <TableCell className="max-w-xs truncate">{ann.text}</TableCell>
+                        <TableCell>
+                            <Badge variant={status.variant}>{status.text}</Badge>
+                        </TableCell>
+                        <TableCell>{ann.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
+                        <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(ann)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </TableCell>
+                      </TableRow>
+                    )})
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        No announcements found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
       </div>
     </main>
+    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+        <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete this announcement.
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+            Delete
+            </AlertDialogAction>
+        </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -95,6 +95,7 @@ interface LocalChannel {
 }
 
 interface Announcement {
+    id: string;
     text: string;
     startDate?: Timestamp;
     endDate?: Timestamp;
@@ -113,7 +114,7 @@ export default function CustomerPublicPage() {
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
   const [activeLiveStreams, setActiveLiveStreams] = useState<LocalChannel[]>([]);
   const [upcomingLiveStreams, setUpcomingLiveStreams] = useState<LocalChannel[]>([]);
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [activeAnnouncements, setActiveAnnouncements] = useState<Announcement[]>([]);
 
 
   // States for password change dialog
@@ -219,11 +220,20 @@ export default function CustomerPublicPage() {
             setUpcomingLiveStreams(upcomingStreams);
           }),
           onSnapshot(announcementQuery, (snapshot) => {
-              if (!snapshot.empty) {
-                  setAnnouncement(snapshot.docs[0].data() as Announcement);
-              } else {
-                  setAnnouncement(null);
-              }
+              const now = new Date();
+              const activeAnns = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Announcement))
+                .filter(ann => {
+                    const start = ann.startDate ? ann.startDate.toDate() : null;
+                    const end = ann.endDate ? ann.endDate.toDate() : null;
+                    if (start && now < start) return false;
+                    if (end) {
+                        end.setHours(23, 59, 59, 999);
+                        if (now > end) return false;
+                    }
+                    return true;
+                });
+              setActiveAnnouncements(activeAnns);
           })
         ];
         
@@ -345,18 +355,10 @@ export default function CustomerPublicPage() {
   
   const videoId = selectedChannel ? getYouTubeVideoId(selectedChannel.youtubeLink) : null;
 
-  const showAnnouncement = useMemo(() => {
-    if (!announcement) return false;
-    const now = new Date();
-    const start = announcement.startDate ? announcement.startDate.toDate() : null;
-    const end = announcement.endDate ? announcement.endDate.toDate() : null;
-    if (start && now < start) return false;
-    if (end) {
-        end.setHours(23, 59, 59, 999); // Include the whole end day
-        if (now > end) return false;
-    }
-    return true;
-  }, [announcement]);
+  const announcementText = useMemo(() => {
+      if (activeAnnouncements.length === 0) return null;
+      return activeAnnouncements.map(ann => ann.text).join(' ★ ');
+  }, [activeAnnouncements]);
 
 
   if (loading || authLoading) {
@@ -380,7 +382,7 @@ export default function CustomerPublicPage() {
 
   return (
     <>
-    <main className={cn("min-h-screen w-full font-body text-foreground bg-background", showAnnouncement && "pb-10")}>
+    <main className={cn("min-h-screen w-full font-body text-foreground bg-background", announcementText && "pb-10")}>
       <div className="container mx-auto p-4 py-8 md:p-12">
         {activeLiveStreams.length > 0 && (
           <div className="mb-8">
@@ -532,11 +534,11 @@ export default function CustomerPublicPage() {
       </div>
     </main>
 
-    {showAnnouncement && announcement && (
+    {announcementText && (
       <div className="fixed bottom-0 left-0 right-0 h-10 bg-primary text-primary-foreground overflow-hidden z-20">
           <div className="absolute whitespace-nowrap animate-marquee">
-              <span className="mx-8 text-sm font-medium">{announcement.text}</span>
-              <span className="mx-8 text-sm font-medium">{announcement.text}</span>
+              <span className="mx-8 text-sm font-medium">{announcementText}</span>
+              <span className="mx-8 text-sm font-medium">{announcementText}</span>
           </div>
       </div>
     )}
@@ -623,5 +625,3 @@ export default function CustomerPublicPage() {
     </>
   );
 }
-
-    
