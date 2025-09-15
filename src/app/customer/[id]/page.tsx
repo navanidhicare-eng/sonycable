@@ -310,20 +310,6 @@ export default function CustomerPublicPage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("userRole");
-      }
-      router.push('/login');
-    } catch (error) {
-      console.error("Failed to log out", error);
-      toast({ variant: "destructive", title: "Logout Failed" });
-    }
-  };
-
-
   if (loading) {
     return (
         <main className="flex min-h-screen w-full items-center justify-center bg-background p-4 font-body text-foreground">
@@ -346,17 +332,8 @@ export default function CustomerPublicPage() {
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
-       <header className="bg-card border-b">
-         <div className="container mx-auto p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-             <Network className="h-8 w-8 text-primary" />
-             <h1 className="text-xl font-bold">SONY CABLE NETWORK</h1>
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-            </Button>
-         </div>
+       <header className="bg-card border-b p-4 text-center">
+         <h1 className="text-xl font-bold">Customer Dashboard</h1>
        </header>
       <div className="container mx-auto p-4 py-8 md:p-12">
         {activeOffers.length > 0 && (
@@ -421,16 +398,6 @@ export default function CustomerPublicPage() {
               </div>
             </div>
           </CardContent>
-           <CardFooter className="flex gap-4">
-              <Button onClick={() => setIsRechargeDialogOpen(true)}>
-                  <Send className="mr-2 h-4 w-4" />
-                  Request Recharge
-              </Button>
-              <Button variant="outline" onClick={() => setIsComplaintDialogOpen(true)}>
-                  <MessageSquareWarning className="mr-2 h-4 w-4" />
-                  Register Complaint
-              </Button>
-          </CardFooter>
         </Card>
 
         <Card>
