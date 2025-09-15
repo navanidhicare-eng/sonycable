@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp, writeBatch, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, doc, updateDoc, query, where, getDocs, Timestamp, writeBatch, deleteDoc, runTransaction } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -74,6 +74,7 @@ interface Customer {
   customerId: string;
   area: string;
   stbId: string;
+  expiryDate?: Timestamp;
 }
 
 interface RechargePackage {
@@ -341,35 +342,43 @@ export default function DashboardPage() {
   const handleApproveRechargeRequest = async (request: RechargeRequest) => {
     if (!currentUser) return;
     try {
-      const batch = writeBatch(db);
+      await runTransaction(db, async (transaction) => {
+        const customerDocRef = doc(db, "customers", request.customerId);
+        const customerDoc = await transaction.get(customerDocRef);
 
-      // Update customer's expiry date
-      const customerDocRef = doc(db, "customers", request.customerId);
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 30);
-      batch.update(customerDocRef, { 
-          lastRechargeDate: Timestamp.now(),
-          expiryDate: Timestamp.fromDate(expiryDate)
+        if (!customerDoc.exists()) {
+          throw new Error("Customer not found");
+        }
+
+        const customerData = customerDoc.data() as Customer;
+        const currentExpiryDate = customerData.expiryDate?.toDate() || new Date();
+        
+        const newLastRechargeDate = currentExpiryDate > new Date() ? currentExpiryDate : new Date();
+
+        const newExpiryDate = new Date(newLastRechargeDate);
+        newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+        
+        transaction.update(customerDocRef, { 
+            lastRechargeDate: Timestamp.fromDate(newLastRechargeDate),
+            expiryDate: Timestamp.fromDate(newExpiryDate)
+        });
+        
+        const rechargesColRef = collection(db, "recharges");
+        const newRechargeRef = doc(rechargesColRef);
+        transaction.set(newRechargeRef, {
+            customerId: request.customerId,
+            customerName: request.customerName,
+            packageName: request.packageName,
+            amount: parseFloat(request.packageAmount),
+            paymentReceived: true, 
+            rechargeDate: Timestamp.fromDate(newLastRechargeDate),
+            rechargedBy: 'SYSTEM_AUTO', 
+            adminId: currentUser.uid,
+        });
+
+        const requestDocRef = doc(db, "rechargeRequests", request.id);
+        transaction.update(requestDocRef, { status: "Completed" });
       });
-      
-      // Add to recharges collection
-      const rechargesColRef = collection(db, "recharges");
-      batch.set(doc(rechargesColRef), {
-          customerId: request.customerId,
-          customerName: request.customerName,
-          packageName: request.packageName,
-          amount: parseFloat(request.packageAmount),
-          paymentReceived: true, // Auto-recharge implies payment is handled or balanced
-          rechargeDate: Timestamp.now(),
-          rechargedBy: 'SYSTEM_AUTO', 
-          adminId: currentUser.uid,
-      });
-
-      // Update the request status
-      const requestDocRef = doc(db, "rechargeRequests", request.id);
-      batch.update(requestDocRef, { status: "Completed" });
-
-      await batch.commit();
 
       toast({
         title: "Recharge Approved",
