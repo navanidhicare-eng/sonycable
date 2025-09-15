@@ -9,7 +9,7 @@ import {
   CardTitle,
   CardDescription
 } from "@/components/ui/card";
-import { PlusCircle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Loader2, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, deleteDoc, Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc, Timestamp, writeBatch } from "firebase/firestore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +41,7 @@ interface Announcement {
   startDate?: Timestamp;
   endDate?: Timestamp;
   createdAt: Timestamp | Date; // Allow both types
+  order: number;
 }
 
 export default function AnnouncementsPage() {
@@ -60,12 +61,8 @@ export default function AnnouncementsPage() {
     const q = query(collection(db, "announcements"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
-      data.sort((a, b) => {
-          const timeA = a.createdAt instanceof Timestamp ? a.createdAt.seconds : (a.createdAt as Date)?.getTime() / 1000;
-          const timeB = b.createdAt instanceof Timestamp ? b.createdAt.seconds : (b.createdAt as Date)?.getTime() / 1000;
-          if (!timeA || !timeB) return 0;
-          return timeB - timeA;
-      });
+      // Sort by order field, ascending
+      data.sort((a, b) => (a.order || 0) - (b.order || 0));
       setAnnouncements(data);
       setLoading(false);
     }, (error) => {
@@ -115,17 +112,40 @@ export default function AnnouncementsPage() {
     return date.toLocaleDateString('en-CA');
   }
 
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= announcements.length) return;
+
+    const batch = writeBatch(db);
+    const ann1 = announcements[index];
+    const ann2 = announcements[newIndex];
+
+    const ann1Ref = doc(db, "announcements", ann1.id);
+    const ann2Ref = doc(db, "announcements", ann2.id);
+
+    // Swap order values
+    batch.update(ann1Ref, { order: ann2.order });
+    batch.update(ann2Ref, { order: ann1.order });
+
+    try {
+      await batch.commit();
+      toast({ title: "Order Updated" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to update order" });
+    }
+  };
+
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
-        <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
+        <header className="mb-10 flex w-full max-w-5xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
               Scrolling Announcements
             </h1>
             <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-              Manage the scrolling text shown to customers.
+              Manage the scrolling text shown to customers. You can reorder them using the arrow buttons.
             </p>
           </div>
           <Button asChild className="mt-4 sm:mt-0">
@@ -136,7 +156,7 @@ export default function AnnouncementsPage() {
           </Button>
         </header>
 
-        <Card className="w-full max-w-4xl">
+        <Card className="w-full max-w-5xl">
           <CardHeader>
             <CardTitle>All Announcements</CardTitle>
             <CardDescription>
@@ -152,6 +172,7 @@ export default function AnnouncementsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Order</TableHead>
                     <TableHead>Announcement Text</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Start Date</TableHead>
@@ -161,10 +182,18 @@ export default function AnnouncementsPage() {
                 </TableHeader>
                 <TableBody>
                   {announcements.length > 0 ? (
-                    announcements.map((ann) => {
+                    announcements.map((ann, index) => {
                       const status = getStatus(ann);
                       return (
                       <TableRow key={ann.id}>
+                         <TableCell className="flex gap-1 items-center">
+                           <Button variant="ghost" size="icon" onClick={() => handleMove(index, 'up')} disabled={index === 0}>
+                                <ArrowUp className="h-4 w-4" />
+                            </Button>
+                             <Button variant="ghost" size="icon" onClick={() => handleMove(index, 'down')} disabled={index === announcements.length - 1}>
+                                <ArrowDown className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
                         <TableCell className="max-w-xs truncate">{ann.text}</TableCell>
                         <TableCell>
                             <Badge variant={status.variant}>{status.text}</Badge>
@@ -185,7 +214,7 @@ export default function AnnouncementsPage() {
                     )})
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         No announcements found.
                       </TableCell>
                     </TableRow>

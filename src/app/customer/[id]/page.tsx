@@ -99,6 +99,7 @@ interface Announcement {
     text: string;
     startDate?: Timestamp;
     endDate?: Timestamp;
+    order: number;
 }
 
 export default function CustomerPublicPage() {
@@ -233,6 +234,7 @@ export default function CustomerPublicPage() {
                     }
                     return true;
                 });
+              activeAnns.sort((a, b) => a.order - b.order);
               setActiveAnnouncements(activeAnns);
           })
         ];

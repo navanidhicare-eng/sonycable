@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -26,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Save, Loader2, CalendarIcon, PlusCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, Timestamp, getDocs, query, where } from "firebase/firestore";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -59,15 +58,20 @@ export default function AddAnnouncementPage() {
     if (!user) return;
     setIsSubmitting(true);
     
-    const docData = {
-        text: data.announcementText,
-        userId: user.uid,
-        createdAt: new Date(),
-        startDate: data.startDate ? Timestamp.fromDate(data.startDate) : null,
-        endDate: data.endDate ? Timestamp.fromDate(data.endDate) : null,
-    };
-
     try {
+      const q = query(collection(db, "announcements"), where("userId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
+      const newOrder = querySnapshot.size + 1;
+
+      const docData = {
+          text: data.announcementText,
+          userId: user.uid,
+          createdAt: new Date(),
+          startDate: data.startDate ? Timestamp.fromDate(data.startDate) : null,
+          endDate: data.endDate ? Timestamp.fromDate(data.endDate) : null,
+          order: newOrder,
+      };
+
       await addDoc(collection(db, "announcements"), docData);
       toast({
         title: "Announcement Added",
