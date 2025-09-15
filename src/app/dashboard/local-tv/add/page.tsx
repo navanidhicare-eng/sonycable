@@ -23,17 +23,36 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { db } from "@/lib/firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 const formSchema = z.object({
   channelName: z.string().min(1, "Channel name is required."),
   description: z.string().optional(),
   youtubeLink: z.string().url("Please enter a valid YouTube URL."),
+  type: z.enum(["channel", "livestream"], {
+    required_error: "You need to select a type.",
+  }),
+  startTime: z.date().optional(),
+  endTime: z.date().optional(),
+}).refine(data => {
+    if (data.type === 'livestream') {
+        return !!data.startTime && !!data.endTime;
+    }
+    return true;
+}, {
+    message: "Start and end time are required for a live stream.",
+    path: ["startTime"], // You can point to any of the two fields
 });
+
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -49,8 +68,11 @@ export default function AddLocalTvChannelPage() {
       channelName: "",
       description: "",
       youtubeLink: "",
+      type: "channel",
     },
   });
+
+  const channelType = form.watch("type");
 
   async function onSubmit(data: FormValues) {
     if (!user) {
@@ -63,24 +85,33 @@ export default function AddLocalTvChannelPage() {
     }
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "localChannels"), {
+      const docData: any = {
         name: data.channelName,
         description: data.description || "",
         youtubeLink: data.youtubeLink,
+        type: data.type,
         createdAt: new Date(),
         userId: user.uid,
-      });
+      };
+
+      if (data.type === 'livestream') {
+        docData.startTime = Timestamp.fromDate(data.startTime!);
+        docData.endTime = Timestamp.fromDate(data.endTime!);
+      }
+
+      await addDoc(collection(db, "localChannels"), docData);
+
       toast({
-        title: "Channel Added",
+        title: "Content Added",
         description: `${data.channelName} has been successfully added.`,
       });
       router.push("/dashboard/local-tv");
     } catch (error) {
-      console.error("Error adding channel: ", error);
+      console.error("Error adding content: ", error);
       toast({
         variant: "destructive",
-        title: "Failed to add channel",
-        description: "An error occurred while saving the channel data.",
+        title: "Failed to add content",
+        description: "An error occurred while saving the data.",
       });
     } finally {
       setIsSubmitting(false);
@@ -104,12 +135,47 @@ export default function AddLocalTvChannelPage() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="channel" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Channel (Always available)
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="livestream" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Live Stream (Time-based event)
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="channelName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Channel Name</FormLabel>
+                      <FormLabel>Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter channel name" {...field} />
+                        <Input placeholder="Enter name for channel or live stream" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -123,7 +189,7 @@ export default function AddLocalTvChannelPage() {
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Tell us a little bit about the channel"
+                          placeholder="Tell us a little bit about it"
                           className="resize-none"
                           {...field}
                         />
@@ -145,13 +211,117 @@ export default function AddLocalTvChannelPage() {
                     </FormItem>
                   )}
                 />
+
+                {channelType === 'livestream' && (
+                  <div className="space-y-6 rounded-md border p-4">
+                    <FormField
+                      control={form.control}
+                      name="startTime"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Live Start Time</FormLabel>
+                           <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP HH:mm")
+                                  ) : (
+                                    <span>Pick a date and time</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                              />
+                               <Input
+                                type="time"
+                                className="mt-2"
+                                value={field.value ? format(field.value, "HH:mm") : ""}
+                                onChange={(e) => {
+                                    const time = e.target.value.split(':');
+                                    const newDate = new Date(field.value || new Date());
+                                    newDate.setHours(parseInt(time[0]), parseInt(time[1]));
+                                    field.onChange(newDate);
+                                }}
+                                />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="endTime"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Live End Time</FormLabel>
+                           <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP HH:mm")
+                                  ) : (
+                                    <span>Pick a date and time</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                              />
+                               <Input
+                                type="time"
+                                className="mt-2"
+                                value={field.value ? format(field.value, "HH:mm") : ""}
+                                onChange={(e) => {
+                                    const time = e.target.value.split(':');
+                                    const newDate = new Date(field.value || new Date());
+                                    newDate.setHours(parseInt(time[0]), parseInt(time[1]));
+                                    field.onChange(newDate);
+                                }}
+                                />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <PlusCircle className="mr-2 h-4 w-4" />
                   )}
-                  {isSubmitting ? "Adding Channel..." : "Add Channel"}
+                  {isSubmitting ? "Adding..." : "Add Content"}
                 </Button>
               </form>
             </Form>

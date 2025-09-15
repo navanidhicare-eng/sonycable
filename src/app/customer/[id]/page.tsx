@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut, Radio } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, where, addDoc, updateDoc, getDocs, Timestamp } from "firebase/firestore";
@@ -47,6 +47,7 @@ import { Input } from '@/components/ui/input';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from "embla-carousel-autoplay"
 import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
 
 
 interface Customer {
@@ -81,6 +82,16 @@ interface Offer {
     status: string;
 }
 
+interface LocalChannel {
+  id: string;
+  name: string;
+  description: string;
+  youtubeLink: string;
+  type: 'channel' | 'livestream';
+  startTime?: Timestamp;
+  endTime?: Timestamp;
+}
+
 export default function CustomerPublicPage() {
   const params = useParams();
   const router = useRouter();
@@ -92,6 +103,8 @@ export default function CustomerPublicPage() {
   const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
+  const [activeLiveStreams, setActiveLiveStreams] = useState<LocalChannel[]>([]);
+
 
   // States for password change dialog
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -142,6 +155,7 @@ export default function CustomerPublicPage() {
         const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
         const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
         const offersQuery = query(collection(db, "offers"), where("userId", "==", customerData.userId), where("status", "==", "Active"));
+        const localChannelsQuery = query(collection(db, "localChannels"), where("userId", "==", customerData.userId));
 
         const unsubscribes = [
           onSnapshot(paymentsQuery, (snapshot) => {
@@ -170,6 +184,18 @@ export default function CustomerPublicPage() {
            onSnapshot(offersQuery, (snapshot) => {
             const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
             setActiveOffers(offersData);
+          }),
+           onSnapshot(localChannelsQuery, (snapshot) => {
+            const now = new Date();
+            const liveStreams = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as LocalChannel))
+                .filter(channel => 
+                    channel.type === 'livestream' &&
+                    channel.startTime && channel.endTime &&
+                    channel.startTime.toDate() <= now &&
+                    channel.endTime.toDate() >= now
+                );
+            setActiveLiveStreams(liveStreams);
           })
         ];
         
@@ -297,12 +323,34 @@ export default function CustomerPublicPage() {
     <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
       <div className="container mx-auto p-4 py-8 md:p-12">
-        {activeOffers.length > 0 && (
+        {(activeOffers.length > 0 || activeLiveStreams.length > 0) && (
           <Carousel 
             plugins={[Autoplay({ delay: 5000 })]}
             className="w-full mb-8"
           >
             <CarouselContent>
+              {activeLiveStreams.map((stream) => (
+                <CarouselItem key={stream.id}>
+                  <div className="p-1">
+                     <Card className="bg-gradient-to-r from-red-500 to-red-700 text-white">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Radio />
+                                {stream.name}
+                            </CardTitle>
+                            <CardDescription className="text-red-100">{stream.description}</CardDescription>
+                        </CardHeader>
+                        <CardFooter>
+                            <Button asChild variant="secondary" className="w-full">
+                               <Link href={`/customer/${customer.id}/local-tv`}>
+                                Watch Live Now
+                               </Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
               {activeOffers.map((offer) => (
                 <CarouselItem key={offer.id}>
                   <div className="p-1">
