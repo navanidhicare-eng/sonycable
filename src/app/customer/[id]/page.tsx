@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut, Radio, X } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut, Radio, X, CalendarClock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, where, addDoc, updateDoc, getDocs, Timestamp } from "firebase/firestore";
@@ -105,6 +105,7 @@ export default function CustomerPublicPage() {
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
   const [activeLiveStreams, setActiveLiveStreams] = useState<LocalChannel[]>([]);
+  const [upcomingLiveStreams, setUpcomingLiveStreams] = useState<LocalChannel[]>([]);
 
 
   // States for password change dialog
@@ -192,15 +193,20 @@ export default function CustomerPublicPage() {
           }),
            onSnapshot(localChannelsQuery, (snapshot) => {
             const now = new Date();
-            const liveStreams = snapshot.docs
+            const allStreams = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as LocalChannel))
-                .filter(channel => 
-                    channel.type === 'livestream' &&
-                    channel.startTime && channel.endTime &&
-                    channel.startTime.toDate() <= now &&
-                    channel.endTime.toDate() >= now
-                );
-            setActiveLiveStreams(liveStreams);
+                .filter(channel => channel.type === 'livestream' && channel.startTime && channel.endTime);
+
+            const activeStreams = allStreams.filter(channel => 
+                channel.startTime!.toDate() <= now && channel.endTime!.toDate() >= now
+            );
+            
+            const upcomingStreams = allStreams.filter(channel => 
+                channel.startTime!.toDate() > now
+            );
+
+            setActiveLiveStreams(activeStreams);
+            setUpcomingLiveStreams(upcomingStreams);
           })
         ];
         
@@ -349,10 +355,10 @@ export default function CustomerPublicPage() {
         {activeLiveStreams.length > 0 && (
           <div className="mb-8 space-y-4">
             {activeLiveStreams.map((stream) => (
-              <Card key={stream.id} className="bg-gradient-to-r from-red-500 to-red-700 text-white">
+              <Card key={stream.id} className="bg-gradient-to-r from-red-500 to-red-700 text-white border-none shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Radio />
+                        <Radio className="animate-pulse" />
                         {stream.name}
                     </CardTitle>
                     <CardDescription className="text-red-100">{stream.description}</CardDescription>
@@ -392,6 +398,31 @@ export default function CustomerPublicPage() {
             <CarouselPrevious className="hidden sm:flex" />
             <CarouselNext className="hidden sm:flex" />
           </Carousel>
+        )}
+        
+        {upcomingLiveStreams.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock />
+                Upcoming Live Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {upcomingLiveStreams.map((stream) => (
+                <div key={stream.id} className="p-4 border rounded-lg">
+                  <h4 className="font-semibold">{stream.name}</h4>
+                  <p className="text-sm text-muted-foreground">{stream.description}</p>
+                  <p className="text-xs text-primary font-medium mt-2">
+                    Starts at: {stream.startTime?.toDate().toLocaleString()}
+                  </p>
+                   <Button variant="secondary" className="w-full mt-3" disabled>
+                        Watch Now
+                    </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
         <Card className="mb-8 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white">
