@@ -105,7 +105,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href={`/customer/auto-subscription`}>
+                <Link href={`/customer/${customerId}/auto-subscription`}>
                     <Repeat />
                     <span>Auto Subscription</span>
                 </Link>

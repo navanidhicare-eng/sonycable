@@ -12,11 +12,14 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { Loader2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Customer {
   id: string;
@@ -24,33 +27,27 @@ interface Customer {
 }
 
 export default function AutoSubscriptionPage() {
-  const [user, authLoading] = useAuthState(auth);
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const params = useParams();
+  const customerId = params.id as string;
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-        setLoading(false);
+    if (authLoading || !customerId) {
+        if (!authLoading) setLoading(false);
         return;
     }
     
-    // In a real app, you would likely derive the customer document ID
-    // from the logged-in user's UID. For this example, we assume there's a
-    // direct mapping or a single customer for simplicity. A better approach
-    // would be to have the customer ID in the URL params.
-    const customerDocRef = doc(db, 'customers', user.uid);
+    const customerDocRef = doc(db, 'customers', customerId);
 
     const unsubscribe = onSnapshot(customerDocRef, (docSnap) => {
       if (docSnap.exists()) {
         setCustomer({ id: docSnap.id, ...docSnap.data() } as Customer);
       } else {
-        // This case needs to be handled based on your app's logic.
-        // Maybe the customer doc ID is not the UID.
-        console.log("Customer document not found. The mapping might be incorrect.");
+        console.log("Customer document not found for ID:", customerId);
         toast({
             variant: "destructive",
             title: "Customer data not found."
@@ -64,7 +61,7 @@ export default function AutoSubscriptionPage() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, toast]);
+  }, [customerId, authLoading, toast]);
   
   const handleToggleAutoSubscription = async (enabled: boolean) => {
     if (!customer) return;
@@ -92,7 +89,7 @@ export default function AutoSubscriptionPage() {
   };
 
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <main className="flex min-h-[calc(100vh-theme(spacing.14))] w-full items-center justify-center bg-background p-4 md:min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -103,13 +100,19 @@ export default function AutoSubscriptionPage() {
   return (
     <main className="min-h-[calc(100vh-theme(spacing.14))] w-full font-body text-foreground md:min-h-screen">
       <div className="container mx-auto p-4 py-8 md:p-12">
+        <div className="mb-4">
+            <Button asChild variant="outline" size="sm">
+                <Link href={`/customer/${customerId}`} className="flex items-center gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back to Dashboard</span>
+                </Link>
+            </Button>
+        </div>
         <Card className="w-full max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle className="text-2xl">Automatic Subscription</CardTitle>
             <CardDescription>
-              Manage your automatic monthly subscription settings here. If enabled,
-              your account will be automatically recharged every 30 days using your
-              available balance.
+              If enabled, a recharge request will be automatically sent to the admin 3 days before your package expires. The admin must approve the request to complete the recharge.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -119,14 +122,14 @@ export default function AutoSubscriptionPage() {
                     Enable Auto-Subscription
                     </p>
                     <p className="text-sm text-muted-foreground">
-                    Automatically renew your package every month.
+                    Automatically send a renewal request before your package expires.
                     </p>
                 </div>
                  <Switch
                     id="auto-subscription-switch"
                     checked={customer?.autoSubscriptionEnabled || false}
                     onCheckedChange={handleToggleAutoSubscription}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !customer}
                 />
             </div>
           </CardContent>
