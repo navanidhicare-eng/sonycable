@@ -97,7 +97,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href={customerId ? `/customer/${customerId}/register-complaint` : '#'}>
                     <MessageSquareWarning />
                     <span>Register Complaint</span>
                 </Link>
