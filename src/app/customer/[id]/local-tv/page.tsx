@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Tv2, Youtube, X } from 'lucide-react';
+import { Loader2, Tv2, Youtube, X, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 
@@ -59,7 +59,7 @@ export default function CustomerLocalTvPage() {
         }
 
         // 2. Fetch channels from that admin
-        const channelsQuery = query(collection(db, "localChannels"), where("userId", "==", adminId));
+        const channelsQuery = query(collection(db, "localChannels"), where("userId", "==", adminId), where("type", "==", "channel"));
         const unsubscribe = onSnapshot(channelsQuery, (snapshot) => {
           const channelsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Channel));
           channelsData.sort((a,b) => (a.name > b.name) ? 1 : -1)
@@ -125,10 +125,10 @@ export default function CustomerLocalTvPage() {
              <Tv2 className="h-10 w-10 text-primary"/>
              <div>
                 <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-                    Local Live TV
+                    Local TV Channels
                 </h1>
                 <p className="mt-2 max-w-3xl text-lg text-muted-foreground">
-                    Watch local channels and live streams from your provider.
+                    Watch local channels and videos from your provider.
                 </p>
              </div>
           </div>
@@ -146,10 +146,8 @@ export default function CustomerLocalTvPage() {
                   <CardDescription>{channel.description}</CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto">
-                   <Button asChild className="w-full" onClick={() => handleWatchNow(channel)}>
-                       <Link href="#">
+                   <Button className="w-full" onClick={() => handleWatchNow(channel)}>
                         Watch Now
-                       </Link>
                     </Button>
                 </CardFooter>
               </Card>
@@ -198,3 +196,5 @@ export default function CustomerLocalTvPage() {
     </>
   );
 }
+
+    

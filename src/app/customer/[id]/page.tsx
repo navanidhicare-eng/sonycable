@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut, Radio } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut, Radio, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, where, addDoc, updateDoc, getDocs, Timestamp } from "firebase/firestore";
@@ -32,6 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -113,6 +114,10 @@ export default function CustomerPublicPage() {
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // States for Live Player
+  const [selectedChannel, setSelectedChannel] = useState<LocalChannel | null>(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
 
   const allTransactions = useMemo(() => {
@@ -300,6 +305,24 @@ export default function CustomerPublicPage() {
     }
   };
 
+  const getYouTubeVideoId = (url: string) => {
+    let videoId = '';
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(youtubeRegex);
+    if (match) {
+        videoId = match[1];
+    }
+    return videoId;
+  };
+
+  const handleWatchNow = (channel: LocalChannel) => {
+    setSelectedChannel(channel);
+    setIsPlayerOpen(true);
+  };
+  
+  const videoId = selectedChannel ? getYouTubeVideoId(selectedChannel.youtubeLink) : null;
+
+
   if (loading || authLoading) {
     return (
         <main className="flex min-h-screen w-full items-center justify-center bg-background p-4 font-body text-foreground">
@@ -323,34 +346,33 @@ export default function CustomerPublicPage() {
     <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
       <div className="container mx-auto p-4 py-8 md:p-12">
-        {(activeOffers.length > 0 || activeLiveStreams.length > 0) && (
+        {activeLiveStreams.length > 0 && (
+          <div className="mb-8 space-y-4">
+            {activeLiveStreams.map((stream) => (
+              <Card key={stream.id} className="bg-gradient-to-r from-red-500 to-red-700 text-white">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Radio />
+                        {stream.name}
+                    </CardTitle>
+                    <CardDescription className="text-red-100">{stream.description}</CardDescription>
+                </CardHeader>
+                <CardFooter>
+                    <Button variant="secondary" className="w-full" onClick={() => handleWatchNow(stream)}>
+                        Watch Live Now
+                    </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+        
+        {activeOffers.length > 0 && (
           <Carousel 
             plugins={[Autoplay({ delay: 5000 })]}
             className="w-full mb-8"
           >
             <CarouselContent>
-              {activeLiveStreams.map((stream) => (
-                <CarouselItem key={stream.id}>
-                  <div className="p-1">
-                     <Card className="bg-gradient-to-r from-red-500 to-red-700 text-white">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Radio />
-                                {stream.name}
-                            </CardTitle>
-                            <CardDescription className="text-red-100">{stream.description}</CardDescription>
-                        </CardHeader>
-                        <CardFooter>
-                            <Button asChild variant="secondary" className="w-full">
-                               <Link href={`/customer/${customer.id}/local-tv`}>
-                                Watch Live Now
-                               </Link>
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))}
               {activeOffers.map((offer) => (
                 <CarouselItem key={offer.id}>
                   <div className="p-1">
@@ -496,6 +518,42 @@ export default function CustomerPublicPage() {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    {/* Video Player Dialog */}
+    <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
+        <DialogContent className="max-w-4xl p-0">
+            <DialogHeader className="p-4">
+                <DialogTitle className="flex items-center gap-2">
+                     <Radio className="h-6 w-6 text-red-600"/>
+                     {selectedChannel?.name}
+                </DialogTitle>
+                 <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                </DialogClose>
+            </DialogHeader>
+            <div className="aspect-video">
+                {videoId ? (
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&showinfo=0`}
+                        title={selectedChannel?.name}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                    ></iframe>
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-black text-white">
+                        Invalid YouTube Link
+                    </div>
+                )}
+            </div>
+        </DialogContent>
+    </Dialog>
     </>
   );
 }
+
+
+    
