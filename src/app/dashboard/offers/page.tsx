@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -16,8 +16,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Offer {
   id: string;
@@ -36,6 +46,8 @@ export default function OffersPage() {
   const { toast } = useToast();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState<Offer | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -62,7 +74,36 @@ export default function OffersPage() {
     return () => unsubscribe();
   }, [user, authLoading, toast]);
 
+  const openDeleteDialog = (offer: Offer) => {
+    setOfferToDelete(offer);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteOffer = async () => {
+    if (!offerToDelete) return;
+
+    try {
+      await deleteDoc(doc(db, "offers", offerToDelete.id));
+      toast({
+        title: "Offer Deleted",
+        description: `${offerToDelete.name} has been removed successfully.`,
+      });
+    } catch (error) {
+      console.error("Error deleting offer: ", error);
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: "An error occurred while deleting the offer.",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setOfferToDelete(null);
+    }
+  };
+
+
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
         <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
@@ -100,6 +141,7 @@ export default function OffersPage() {
                   <TableHead>Description</TableHead>
                   <TableHead>Commission</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -114,11 +156,21 @@ export default function OffersPage() {
                         {offer.status}
                       </Badge>
                     </TableCell>
+                    <TableCell className="flex gap-1">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link href={`/dashboard/offers/${offer.id}/edit`}>
+                                <Pencil className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(offer)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </TableCell>
                   </TableRow>
                   ))
                 ) : (
                    <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No offers found.
                     </TableCell>
                   </TableRow>
@@ -130,5 +182,24 @@ export default function OffersPage() {
         </Card>
       </div>
     </main>
+
+    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the offer
+            <span className="font-bold"> {offerToDelete?.name}</span>.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteOffer} className="bg-destructive hover:bg-destructive/90">
+            Delete Offer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
