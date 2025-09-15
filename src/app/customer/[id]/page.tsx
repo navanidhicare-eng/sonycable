@@ -117,10 +117,8 @@ export default function CustomerPublicPage() {
 
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-        setLoading(false);
-        // Optional: redirect to login if no user
+    if (authLoading || !user) {
+        if (!authLoading) setLoading(false);
         return;
     }
 
@@ -326,37 +324,37 @@ export default function CustomerPublicPage() {
           </Carousel>
         )}
 
-        <Card className="mb-8">
+        <Card className="mb-8 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <CardTitle className="text-2xl">{customer.name}</CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-gray-200">
                       Customer Details & Transaction History
                     </CardDescription>
                 </div>
                 <div>
-                    <p className="text-sm text-muted-foreground mt-2 sm:mt-0">Balance Due</p>
-                    <p className="text-2xl font-bold text-destructive">₹{customer.balanceAmount.toLocaleString()}</p>
+                    <p className="text-sm text-gray-200 mt-2 sm:mt-0">Balance Due</p>
+                    <p className="text-2xl font-bold text-white">₹{customer.balanceAmount.toLocaleString()}</p>
                 </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
               <div>
-                <p className="font-medium text-muted-foreground">Mobile</p>
+                <p className="font-medium text-gray-200">Mobile</p>
                 <p>{customer.mobile}</p>
               </div>
               <div>
-                <p className="font-medium text-muted-foreground">Area</p>
+                <p className="font-medium text-gray-200">Area</p>
                 <p>{customer.area}</p>
               </div>
               <div>
-                <p className="font-medium text-muted-foreground">STB ID</p>
+                <p className="font-medium text-gray-200">STB ID</p>
                 <p>{customer.stbId}</p>
               </div>
               <div>
-                <p className="font-medium text-muted-foreground">Customer ID</p>
+                <p className="font-medium text-gray-200">Customer ID</p>
                 <p>{customer.customerId}</p>
               </div>
             </div>
