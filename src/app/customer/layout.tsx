@@ -113,7 +113,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href={customerId ? `/customer/${customerId}/local-tv` : '#'}>
                     <Tv />
                     <span>Local Live TV</span>
                 </Link>
