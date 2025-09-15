@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,20 +36,20 @@ export default function AutoSubscriptionPage() {
   const customerId = params.id as string;
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user || !customerId) {
-        setLoading(false);
+    if (authLoading || !user) {
+        if (!authLoading) setLoading(false);
         return;
     }
     
     setLoading(true);
-    const customerDocRef = doc(db, 'customers', customerId);
+    const customerQuery = query(collection(db, "customers"), where("uid", "==", user.uid));
 
-    const unsubscribe = onSnapshot(customerDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setCustomer({ id: docSnap.id, ...docSnap.data() } as Customer);
+    const unsubscribe = onSnapshot(customerQuery, (snapshot) => {
+      if (!snapshot.empty) {
+        const customerDoc = snapshot.docs[0];
+        setCustomer({ id: customerDoc.id, ...customerDoc.data() } as Customer);
       } else {
-        console.log("Customer document not found for ID:", customerId);
+        console.log("Customer document not found for UID:", user.uid);
         toast({
             variant: "destructive",
             title: "Customer data not found."
@@ -63,7 +63,7 @@ export default function AutoSubscriptionPage() {
     });
 
     return () => unsubscribe();
-  }, [customerId, authLoading, user, toast]);
+  }, [authLoading, user, toast]);
   
   const handleToggleAutoSubscription = async (enabled: boolean) => {
     if (!customer) return;
