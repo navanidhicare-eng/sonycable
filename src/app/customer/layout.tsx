@@ -73,7 +73,7 @@ function CustomerDashboardLayout({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href={`/customer/${customerId}`}>
+                <Link href={customerId ? `/customer/${customerId}` : '#'}>
                   <LayoutDashboard />
                   <span>Dashboard</span>
                 </Link>
@@ -81,7 +81,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                 <Link href={`/customer/${customerId}/history`}>
+                 <Link href={customerId ? `/customer/${customerId}/history` : '#'}>
                     <History />
                     <span>Transaction History</span>
                 </Link>
@@ -105,7 +105,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href={`/customer/${customerId}/auto-subscription`}>
+                <Link href={customerId ? `/customer/${customerId}/auto-subscription` : '#'}>
                     <Repeat />
                     <span>Auto Subscription</span>
                 </Link>
