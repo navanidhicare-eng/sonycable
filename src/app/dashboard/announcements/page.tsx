@@ -117,28 +117,20 @@ export default function AnnouncementsPage() {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= announcements.length) return;
 
+    const newAnnouncements = [...announcements];
+    const [movedItem] = newAnnouncements.splice(index, 1);
+    newAnnouncements.splice(newIndex, 0, movedItem);
+
     const batch = writeBatch(db);
-    const ann1 = announcements[index];
-    const ann2 = announcements[newIndex];
 
-    // Ensure order values are not undefined
-    const order1 = ann1.order ?? 0;
-    const order2 = ann2.order ?? 0;
-
-    if (order1 === undefined || order2 === undefined) {
-      toast({ variant: "destructive", title: "Cannot reorder", description: "Some announcements are missing order data." });
-      return;
-    }
-
-    const ann1Ref = doc(db, "announcements", ann1.id);
-    const ann2Ref = doc(db, "announcements", ann2.id);
-
-    // Swap order values
-    batch.update(ann1Ref, { order: order2 });
-    batch.update(ann2Ref, { order: order1 });
+    newAnnouncements.forEach((ann, idx) => {
+      const docRef = doc(db, 'announcements', ann.id);
+      batch.update(docRef, { order: idx + 1 });
+    });
 
     try {
       await batch.commit();
+      setAnnouncements(newAnnouncements); // Optimistically update UI
       toast({ title: "Order Updated" });
     } catch (error) {
       console.error("Error updating order:", error);
