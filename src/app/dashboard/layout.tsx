@@ -180,6 +180,14 @@ function DashboardLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                  <SidebarMenuItem>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
+                    <Link href="/dashboard/transactions">
+                      <History />
+                      <span>Transactions</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
                     <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/collection">
                         <IndianRupee />
