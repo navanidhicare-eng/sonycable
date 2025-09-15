@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -95,9 +94,9 @@ export default function AddLocalTvChannelPage() {
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
         <Card className="w-full max-w-2xl">
           <CardHeader>
-            <CardTitle className="text-2xl">Add New Live TV Channel</CardTitle>
+            <CardTitle className="text-2xl">Add New YouTube Channel or Live Stream</CardTitle>
             <CardDescription>
-              Fill in the details below to add a new channel.
+              Fill in the details below to add a new channel. You can use a regular YouTube video link or a live stream link.
             </CardDescription>
           </CardHeader>
           <CardContent>
