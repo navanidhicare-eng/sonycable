@@ -55,42 +55,50 @@ export default function LoginPage() {
     const user = userCredential.user;
 
     let userRole: string | null = null;
-    let customerId: string | null = null;
-    let destination = "/dashboard";
+    let destination: string | null = null;
 
+    // 1. Check for Admin
     if (user.email === 'psdgandepalli@gmail.com') {
       userRole = "Admin";
+      destination = "/dashboard";
     } else {
+      // 2. Check for Staff
       const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
       const staffSnapshot = await getDocs(staffQuery);
       if (!staffSnapshot.empty) {
         const staffData = staffSnapshot.docs[0].data();
-        userRole = staffData.role || "Staff";
+        userRole = staffData.role || "Staff"; // Use the specific role from DB
+        destination = "/dashboard";
       } else {
+        // 3. Check for Customer
         const customerQuery = query(collection(db, "customers"), where("uid", "==", user.uid));
         const customerSnapshot = await getDocs(customerQuery);
         if (!customerSnapshot.empty) {
+          const customerId = customerSnapshot.docs[0].id;
           userRole = "Customer";
-          customerId = customerSnapshot.docs[0].id;
           destination = `/customer/${customerId}`;
         }
       }
     }
 
-    if (typeof window !== "undefined") {
-      if (userRole) {
+    if (userRole && destination) {
+      if (typeof window !== "undefined") {
         localStorage.setItem("userRole", userRole);
-      } else {
-        auth.signOut();
-        throw new Error("auth/unauthorized-user");
       }
+      toast({
+        title: "Login Successful",
+        description: "Redirecting...",
+      });
+      router.push(destination);
+    } else {
+      // If no role or destination is found, it's an unauthorized user.
+      // Log them out and show an error.
+      await auth.signOut();
+      if (typeof window !== "undefined") {
+          localStorage.removeItem("userRole");
+      }
+      throw new Error("auth/unauthorized-user");
     }
-
-    toast({
-      title: "Login Successful",
-      description: "Redirecting...",
-    });
-    router.push(destination);
   }
 
   async function onSubmit(data: FormValues) {
