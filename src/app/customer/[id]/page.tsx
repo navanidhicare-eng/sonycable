@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
-import { collection, doc, onSnapshot, query, where, addDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where, addDoc, updateDoc, getDocs, Timestamp } from "firebase/firestore";
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -58,6 +58,8 @@ interface Customer {
   balanceAmount: number;
   userId: string; // Admin's UID
   passwordChangeRequired?: boolean;
+  autoSubscriptionEnabled?: boolean;
+  expiryDate?: Timestamp;
 }
 
 interface Transaction {
@@ -109,6 +111,14 @@ export default function CustomerPublicPage() {
     combined.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return combined;
   }, [paymentHistory, rechargeHistory]);
+
+  const latestRecharge = useMemo(() => {
+    if (rechargeHistory.length === 0) return null;
+    return rechargeHistory.reduce((latest, current) => 
+        new Date(current.date) > new Date(latest.date) ? current : latest
+    );
+  }, [rechargeHistory]);
+
 
   useEffect(() => {
     if (!customerId) {
@@ -197,6 +207,48 @@ export default function CustomerPublicPage() {
 
     return () => customerUnsubscribe();
   }, [customerId, toast]);
+  
+  useEffect(() => {
+    const createAutoRechargeRequest = async () => {
+        if (!customer || !customer.autoSubscriptionEnabled || !customer.expiryDate || !latestRecharge) {
+            return;
+        }
+
+        const expiry = customer.expiryDate.toDate();
+        const today = new Date();
+        const threeDaysFromNow = new Date();
+        threeDaysFromNow.setDate(today.getDate() + 3);
+
+        if (expiry > today && expiry <= threeDaysFromNow) {
+            // Check if a request already exists
+            const requestsQuery = query(
+                collection(db, 'rechargeRequests'),
+                where('customerId', '==', customer.id),
+                where('status', '==', 'Pending')
+            );
+            const existingRequests = await getDocs(requestsQuery);
+
+            if (existingRequests.empty) {
+                // Create a new request
+                await addDoc(collection(db, 'rechargeRequests'), {
+                    customerId: customer.id,
+                    customerName: customer.name,
+                    adminId: customer.userId,
+                    packageName: latestRecharge.packageName,
+                    packageAmount: latestRecharge.amount,
+                    requestDate: new Date(),
+                    status: 'Pending',
+                    type: 'Auto'
+                });
+                 toast({
+                    title: "Auto-Recharge Request Sent",
+                    description: `Your request for ${latestRecharge.packageName} has been sent for admin approval.`
+                });
+            }
+        }
+    };
+    createAutoRechargeRequest();
+  }, [customer, latestRecharge, toast]);
 
   const handlePasswordChange = async () => {
     setPasswordError("");
