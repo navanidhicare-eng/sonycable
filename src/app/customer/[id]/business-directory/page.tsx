@@ -103,7 +103,7 @@ export default function CustomerBusinessDirectoryPage() {
           <div className="flex items-center gap-3">
              <Store className="h-10 w-10 text-primary"/>
              <div>
-                <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
+                <h1 className="text-3xl font-bold tracking-tighter md:text-4xl">
                     Local Business Directory
                 </h1>
                 <p className="mt-2 max-w-3xl text-lg text-muted-foreground">
@@ -118,7 +118,7 @@ export default function CustomerBusinessDirectoryPage() {
             {businesses.map((biz) => (
               <Card key={biz.id} className="flex flex-col">
                 <CardHeader>
-                  <CardTitle>{biz.businessName}</CardTitle>
+                  <CardTitle className="line-clamp-2">{biz.businessName}</CardTitle>
                   <CardDescription>{biz.category}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-4">
