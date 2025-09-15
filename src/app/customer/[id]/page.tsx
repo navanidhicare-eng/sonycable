@@ -74,12 +74,6 @@ interface Transaction {
     method?: string;
 }
 
-interface Package {
-  id: string;
-  packageName: string;
-  packageAmount: string;
-}
-
 interface Offer {
     id: string;
     name: string;
@@ -90,7 +84,7 @@ interface Offer {
 export default function CustomerPublicPage() {
   const params = useParams();
   const router = useRouter();
-  const customerId = params.id as string;
+  const customerIdFromUrl = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,69 +118,70 @@ export default function CustomerPublicPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || !customerId) {
+    if (!user) {
         setLoading(false);
+        // Optional: redirect to login if no user
         return;
     }
 
     setLoading(true);
 
-    const customerDocRef = doc(db, "customers", customerId);
+    const customerQuery = query(collection(db, "customers"), where("uid", "==", user.uid));
 
-    const customerUnsubscribe = onSnapshot(customerDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const customerData = { id: docSnap.id, ...docSnap.data() } as Customer;
+    const customerUnsubscribe = onSnapshot(customerQuery, (snapshot) => {
+      if (!snapshot.empty) {
+        const customerDoc = snapshot.docs[0];
+        const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
         setCustomer(customerData);
 
         if (customerData.passwordChangeRequired) {
             setIsPasswordDialogOpen(true);
         }
 
-        if (customerData.userId) {
-          const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
-          const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
-          const offersQuery = query(collection(db, "offers"), where("userId", "==", customerData.userId), where("status", "==", "Active"));
+        const customerId = customerDoc.id;
 
+        // Now fetch related data using the fetched customerId
+        const paymentsQuery = query(collection(db, "payments"), where("customerId", "==", customerId));
+        const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
+        const offersQuery = query(collection(db, "offers"), where("userId", "==", customerData.userId), where("status", "==", "Active"));
 
-          const unsubscribes = [
-            onSnapshot(paymentsQuery, (snapshot) => {
-              const payments = snapshot.docs.map(doc => ({
-                id: doc.id,
-                date: doc.data().collectionDate.toDate().toISOString(),
-                description: `Payment via ${doc.data().method}`,
-                amount: doc.data().amount,
-                method: doc.data().method,
-                type: 'Payment'
-              } as Transaction));
-              setPaymentHistory(payments);
-            }),
-            onSnapshot(rechargesQuery, (snapshot) => {
-              const recharges = snapshot.docs.map(doc => ({
-                id: doc.id,
-                date: doc.data().rechargeDate.toDate().toISOString(),
-                description: `Recharge - ${doc.data().packageName}`,
-                amount: doc.data().amount,
-                packageName: doc.data().packageName,
-                status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
-                type: 'Recharge'
-              } as Transaction));
-              setRechargeHistory(recharges);
-            }),
-             onSnapshot(offersQuery, (snapshot) => {
-              const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
-              setActiveOffers(offersData);
-            })
-          ];
-          
-          setLoading(false); // Assume data streams will handle themselves
-          
-          // This return will be called when the component unmounts or dependencies change
-          return () => unsubscribes.forEach(unsub => unsub());
-        } else {
-          setLoading(false);
-        }
+        const unsubscribes = [
+          onSnapshot(paymentsQuery, (snapshot) => {
+            const payments = snapshot.docs.map(doc => ({
+              id: doc.id,
+              date: doc.data().collectionDate.toDate().toISOString(),
+              description: `Payment via ${doc.data().method}`,
+              amount: doc.data().amount,
+              method: doc.data().method,
+              type: 'Payment'
+            } as Transaction));
+            setPaymentHistory(payments);
+          }),
+          onSnapshot(rechargesQuery, (snapshot) => {
+            const recharges = snapshot.docs.map(doc => ({
+              id: doc.id,
+              date: doc.data().rechargeDate.toDate().toISOString(),
+              description: `Recharge - ${doc.data().packageName}`,
+              amount: doc.data().amount,
+              packageName: doc.data().packageName,
+              status: doc.data().paymentReceived ? 'Paid' : 'Unpaid',
+              type: 'Recharge'
+            } as Transaction));
+            setRechargeHistory(recharges);
+          }),
+           onSnapshot(offersQuery, (snapshot) => {
+            const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
+            setActiveOffers(offersData);
+          })
+        ];
+        
+        setLoading(false);
+        // We will return a function that unsubscribes from all these listeners
+        return () => unsubscribes.forEach(unsub => unsub());
+
       } else {
         toast({ variant: "destructive", title: "Customer not found" });
+        setCustomer(null);
         setLoading(false);
       }
     }, (error) => {
@@ -196,7 +191,7 @@ export default function CustomerPublicPage() {
     });
 
     return () => customerUnsubscribe();
-  }, [customerId, toast, user, authLoading]);
+  }, [user, authLoading, toast]);
   
   useEffect(() => {
     const createAutoRechargeRequest = async () => {
