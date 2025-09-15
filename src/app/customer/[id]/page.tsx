@@ -386,77 +386,7 @@ export default function CustomerPublicPage() {
     <>
     <main className={cn("min-h-screen w-full font-body text-foreground bg-background", announcementText && "pb-10")}>
       <div className="container mx-auto p-4 py-8 md:p-12">
-        {activeLiveStreams.length > 0 && (
-          <div className="mb-8">
-              <Card className="bg-gradient-to-r from-red-500 to-red-700 text-white border-none shadow-lg cursor-pointer" onClick={() => handleWatchNow(activeLiveStreams[0])}>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Radio className="animate-pulse" />
-                        {activeLiveStreams[0].name}
-                    </CardTitle>
-                    <CardDescription className="text-red-100">{activeLiveStreams[0].description}</CardDescription>
-                </CardHeader>
-                <CardFooter>
-                    <div className="w-full text-center font-bold">
-                        Watch Live Now
-                    </div>
-                </CardFooter>
-              </Card>
-          </div>
-        )}
         
-        {activeOffers.length > 0 && (
-          <Carousel 
-            plugins={[Autoplay({ delay: 5000 })]}
-            className="w-full mb-8"
-          >
-            <CarouselContent>
-              {activeOffers.map((offer) => (
-                <CarouselItem key={offer.id}>
-                  <div className="p-1">
-                    <Card className="bg-gradient-to-r from-primary to-orange-400 text-primary-foreground">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Megaphone />
-                                {offer.name}
-                            </CardTitle>
-                            <CardDescription className="text-primary-foreground/90">{offer.description}</CardDescription>
-                        </CardHeader>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="hidden sm:flex" />
-            <CarouselNext className="hidden sm:flex" />
-          </Carousel>
-        )}
-        
-        {upcomingLiveStreams.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarClock />
-                Upcoming Live Events
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {upcomingLiveStreams.map((stream) => (
-                <div key={stream.id} className="p-4 border rounded-lg">
-                  <h4 className="font-semibold">{stream.name}</h4>
-                  <p className="text-sm text-muted-foreground">{stream.description}</p>
-                  <p className="text-xs text-primary font-medium mt-2">
-                    Starts at: {stream.startTime?.toDate().toLocaleString()}
-                  </p>
-                   <Button variant="secondary" className="w-full mt-3" disabled>
-                        Watch Now
-                    </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
         <Card className="mb-8 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
@@ -493,6 +423,77 @@ export default function CustomerPublicPage() {
             </div>
           </CardContent>
         </Card>
+
+        {activeOffers.length > 0 && (
+          <Carousel 
+            plugins={[Autoplay({ delay: 5000 })]}
+            className="w-full mb-8"
+          >
+            <CarouselContent>
+              {activeOffers.map((offer) => (
+                <CarouselItem key={offer.id}>
+                  <div className="p-1">
+                    <Card className="bg-gradient-to-r from-primary to-orange-400 text-primary-foreground">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Megaphone />
+                                {offer.name}
+                            </CardTitle>
+                            <CardDescription className="text-primary-foreground/90">{offer.description}</CardDescription>
+                        </CardHeader>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden sm:flex" />
+            <CarouselNext className="hidden sm:flex" />
+          </Carousel>
+        )}
+
+        {activeLiveStreams.length > 0 && (
+          <div className="mb-8">
+              <Card className="bg-gradient-to-r from-red-500 to-red-700 text-white border-none shadow-lg cursor-pointer" onClick={() => handleWatchNow(activeLiveStreams[0])}>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Radio className="animate-pulse" />
+                        {activeLiveStreams[0].name}
+                    </CardTitle>
+                    <CardDescription className="text-red-100">{activeLiveStreams[0].description}</CardDescription>
+                </CardHeader>
+                <CardFooter>
+                    <div className="w-full text-center font-bold">
+                        Watch Live Now
+                    </div>
+                </CardFooter>
+              </Card>
+          </div>
+        )}
+        
+        {upcomingLiveStreams.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock />
+                Upcoming Live Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {upcomingLiveStreams.map((stream) => (
+                <div key={stream.id} className="p-4 border rounded-lg">
+                  <h4 className="font-semibold">{stream.name}</h4>
+                  <p className="text-sm text-muted-foreground">{stream.description}</p>
+                  <p className="text-xs text-primary font-medium mt-2">
+                    Starts at: {stream.startTime?.toDate().toLocaleString()}
+                  </p>
+                   <Button variant="secondary" className="w-full mt-3" disabled>
+                        Watch Now
+                    </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
             <CardHeader>
