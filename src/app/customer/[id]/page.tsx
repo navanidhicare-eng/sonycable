@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone } from 'lucide-react';
+import { Loader2, Network, Send, MessageSquareWarning, Eye, EyeOff, Megaphone, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, where, addDoc, updateDoc } from "firebase/firestore";
@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { updatePassword, getAuth } from 'firebase/auth';
+import { updatePassword, getAuth, signOut } from 'firebase/auth';
 import { Input } from '@/components/ui/input';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from "embla-carousel-autoplay"
@@ -85,6 +85,7 @@ interface Offer {
 
 export default function CustomerPublicPage() {
   const params = useParams();
+  const router = useRouter();
   const customerId = params.id as string;
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,6 +310,19 @@ export default function CustomerPublicPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("userRole");
+      }
+      router.push('/login');
+    } catch (error) {
+      console.error("Failed to log out", error);
+      toast({ variant: "destructive", title: "Logout Failed" });
+    }
+  };
+
 
   if (loading) {
     return (
@@ -333,9 +347,15 @@ export default function CustomerPublicPage() {
     <>
     <main className="min-h-screen w-full font-body text-foreground bg-background">
        <header className="bg-card border-b">
-         <div className="container mx-auto p-4 flex items-center gap-3">
+         <div className="container mx-auto p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
              <Network className="h-8 w-8 text-primary" />
              <h1 className="text-xl font-bold">SONY CABLE NETWORK</h1>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+            </Button>
          </div>
        </header>
       <div className="container mx-auto p-4 py-8 md:p-12">
