@@ -34,8 +34,14 @@ export function useAuth() {
             if (!staffSnapshot.empty) {
               const staffData = staffSnapshot.docs[0].data();
               finalRole = staffData.role || null;
-            } else if (!storedRole) { // If no staff doc and no role in storage, they are unauthorized.
-               finalRole = null;
+            } else {
+               const customerQuery = query(collection(db, "customers"), where("uid", "==", currentUser.uid));
+               const customerSnapshot = await getDocs(customerQuery);
+               if (!customerSnapshot.empty) {
+                    finalRole = "Customer";
+               } else if (!storedRole) { // If no staff/customer doc and no role in storage, they are unauthorized.
+                   finalRole = null;
+               }
             }
           }
           
