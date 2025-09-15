@@ -41,7 +41,7 @@ interface Announcement {
   startDate?: Timestamp;
   endDate?: Timestamp;
   createdAt: Timestamp | Date; // Allow both types
-  order: number;
+  order?: number;
 }
 
 export default function AnnouncementsPage() {
@@ -106,12 +106,13 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const formatDate = (dateValue: Timestamp | Date | undefined) => {
+  const formatDate = (dateValue?: Timestamp | Date) => {
     if (!dateValue) return 'N/A';
+    // Handle both Timestamp and Date objects
     const date = dateValue instanceof Timestamp ? dateValue.toDate() : dateValue;
     return date.toLocaleDateString('en-CA');
-  }
-
+  };
+  
   const handleMove = async (index: number, direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= announcements.length) return;
@@ -120,20 +121,31 @@ export default function AnnouncementsPage() {
     const ann1 = announcements[index];
     const ann2 = announcements[newIndex];
 
+    // Ensure order values are not undefined
+    const order1 = ann1.order ?? 0;
+    const order2 = ann2.order ?? 0;
+
+    if (order1 === undefined || order2 === undefined) {
+      toast({ variant: "destructive", title: "Cannot reorder", description: "Some announcements are missing order data." });
+      return;
+    }
+
     const ann1Ref = doc(db, "announcements", ann1.id);
     const ann2Ref = doc(db, "announcements", ann2.id);
 
     // Swap order values
-    batch.update(ann1Ref, { order: ann2.order });
-    batch.update(ann2Ref, { order: ann1.order });
+    batch.update(ann1Ref, { order: order2 });
+    batch.update(ann2Ref, { order: order1 });
 
     try {
       await batch.commit();
       toast({ title: "Order Updated" });
     } catch (error) {
+      console.error("Error updating order:", error);
       toast({ variant: "destructive", title: "Failed to update order" });
     }
   };
+
 
   return (
     <>
