@@ -253,6 +253,14 @@ function DashboardLayout({
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
+                        <Link href="/dashboard/announcements">
+                        <Megaphone />
+                        <span>Announcements</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild onClick={handleLinkClick}>
                     <Link href="/dashboard/local-tv">

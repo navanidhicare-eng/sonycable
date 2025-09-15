@@ -93,6 +93,10 @@ interface LocalChannel {
   endTime?: Timestamp;
 }
 
+interface Announcement {
+    text: string;
+}
+
 export default function CustomerPublicPage() {
   const params = useParams();
   const router = useRouter();
@@ -106,6 +110,7 @@ export default function CustomerPublicPage() {
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
   const [activeLiveStreams, setActiveLiveStreams] = useState<LocalChannel[]>([]);
   const [upcomingLiveStreams, setUpcomingLiveStreams] = useState<LocalChannel[]>([]);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
 
 
   // States for password change dialog
@@ -162,6 +167,8 @@ export default function CustomerPublicPage() {
         const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
         const offersQuery = query(collection(db, "offers"), where("userId", "==", customerData.userId), where("status", "==", "Active"));
         const localChannelsQuery = query(collection(db, "localChannels"), where("userId", "==", customerData.userId));
+        const announcementQuery = query(collection(db, "announcements"), where("userId", "==", customerData.userId));
+
 
         const unsubscribes = [
           onSnapshot(paymentsQuery, (snapshot) => {
@@ -207,6 +214,13 @@ export default function CustomerPublicPage() {
 
             setActiveLiveStreams(activeStreams);
             setUpcomingLiveStreams(upcomingStreams);
+          }),
+          onSnapshot(announcementQuery, (snapshot) => {
+              if (!snapshot.empty) {
+                  setAnnouncement(snapshot.docs[0].data() as Announcement);
+              } else {
+                  setAnnouncement(null);
+              }
           })
         ];
         
@@ -502,13 +516,14 @@ export default function CustomerPublicPage() {
       </div>
     </main>
 
-    {/* Scrolling Text at bottom */}
-    <div className="fixed bottom-0 left-0 right-0 h-10 bg-primary text-primary-foreground overflow-hidden z-20">
-        <div className="absolute whitespace-nowrap animate-marquee">
-            <span className="mx-8 text-sm font-medium">Welcome to SONY CABLE NETWORK. Pay your bill on time to avoid disconnection. For any queries, contact customer support.</span>
-             <span className="mx-8 text-sm font-medium">Welcome to SONY CABLE NETWORK. Pay your bill on time to avoid disconnection. For any queries, contact customer support.</span>
-        </div>
-    </div>
+    {announcement && (
+      <div className="fixed bottom-0 left-0 right-0 h-10 bg-primary text-primary-foreground overflow-hidden z-20">
+          <div className="absolute whitespace-nowrap animate-marquee">
+              <span className="mx-8 text-sm font-medium">{announcement.text}</span>
+              <span className="mx-8 text-sm font-medium">{announcement.text}</span>
+          </div>
+      </div>
+    )}
 
 
     {/* Force Password Change Dialog */}
@@ -592,6 +607,3 @@ export default function CustomerPublicPage() {
     </>
   );
 }
-
-
-    
