@@ -49,6 +49,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import Autoplay from "embla-carousel-autoplay"
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 
 interface Customer {
@@ -364,7 +365,7 @@ export default function CustomerPublicPage() {
 
   return (
     <>
-    <main className="min-h-screen w-full font-body text-foreground bg-background">
+    <main className={cn("min-h-screen w-full font-body text-foreground bg-background", announcement && "pb-10")}>
       <div className="container mx-auto p-4 py-8 md:p-12">
         {activeLiveStreams.length > 0 && (
           <div className="mb-8">
@@ -607,3 +608,5 @@ export default function CustomerPublicPage() {
     </>
   );
 }
+
+    
