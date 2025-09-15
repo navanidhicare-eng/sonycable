@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -112,13 +111,8 @@ export default function AnnouncementsPage() {
 
   const formatDate = (dateValue: Timestamp | Date | undefined) => {
     if (!dateValue) return 'N/A';
-    if (dateValue instanceof Timestamp) {
-      return dateValue.toDate().toLocaleDateString('en-CA');
-    }
-    if (dateValue instanceof Date) {
-      return dateValue.toLocaleDateString('en-CA');
-    }
-    return 'Invalid Date';
+    const date = dateValue instanceof Timestamp ? dateValue.toDate() : dateValue;
+    return date.toLocaleDateString('en-CA');
   }
 
   return (
@@ -160,7 +154,8 @@ export default function AnnouncementsPage() {
                   <TableRow>
                     <TableHead>Announcement Text</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Created On</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -174,8 +169,14 @@ export default function AnnouncementsPage() {
                         <TableCell>
                             <Badge variant={status.variant}>{status.text}</Badge>
                         </TableCell>
-                        <TableCell>{formatDate(ann.createdAt)}</TableCell>
-                        <TableCell>
+                        <TableCell>{formatDate(ann.startDate)}</TableCell>
+                        <TableCell>{formatDate(ann.endDate)}</TableCell>
+                        <TableCell className="flex gap-1">
+                            <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/dashboard/announcements/${ann.id}/edit`}>
+                                    <Pencil className="h-4 w-4" />
+                                </Link>
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(ann)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -184,7 +185,7 @@ export default function AnnouncementsPage() {
                     )})
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
+                      <TableCell colSpan={5} className="h-24 text-center">
                         No announcements found.
                       </TableCell>
                     </TableRow>
