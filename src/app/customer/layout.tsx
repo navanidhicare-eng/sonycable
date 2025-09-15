@@ -121,7 +121,7 @@ function CustomerDashboardLayout({
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="#">
+                <Link href={customerId ? `/customer/${customerId}/business-directory` : '#'}>
                     <Store />
                     <span>Local Business Directory</span>
                 </Link>
