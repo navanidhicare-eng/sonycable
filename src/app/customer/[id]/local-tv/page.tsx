@@ -17,6 +17,7 @@ interface Channel {
   name: string;
   description: string;
   youtubeLink: string;
+  type: 'channel' | 'livestream';
 }
 
 interface Customer {
@@ -59,9 +60,12 @@ export default function CustomerLocalTvPage() {
         }
 
         // 2. Fetch channels from that admin
-        const channelsQuery = query(collection(db, "localChannels"), where("userId", "==", adminId), where("type", "==", "channel"));
+        const channelsQuery = query(collection(db, "localChannels"), where("userId", "==", adminId));
         const unsubscribe = onSnapshot(channelsQuery, (snapshot) => {
-          const channelsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Channel));
+          const channelsData = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Channel))
+            .filter(channel => channel.type === 'channel'); // Filter for regular channels client-side
+          
           channelsData.sort((a,b) => (a.name > b.name) ? 1 : -1)
           setChannels(channelsData);
           setLoading(false);
