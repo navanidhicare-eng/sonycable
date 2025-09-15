@@ -156,13 +156,13 @@ export default function RechargePage() {
     const customerDocRef = doc(db, "customers", currentCustomer.id);
 
     try {
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + 30);
-        const expiryTimestamp = Timestamp.fromDate(expiryDate);
+        const newRechargeDate = new Date();
+        const newExpiryDate = new Date(newRechargeDate);
+        newExpiryDate.setDate(newExpiryDate.getDate() + 30);
         
         let updateData: any = {
-            expiryDate: expiryTimestamp,
-            lastRechargeDate: Timestamp.now(),
+            expiryDate: Timestamp.fromDate(newExpiryDate),
+            lastRechargeDate: Timestamp.fromDate(newRechargeDate),
         };
 
         if (paymentReceived) {
@@ -182,7 +182,7 @@ export default function RechargePage() {
             packageName: pkg.packageName,
             amount: rechargeAmount,
             paymentReceived: paymentReceived,
-            rechargeDate: new Date(),
+            rechargeDate: newRechargeDate,
             rechargedBy: user.uid,
             adminId: user.uid,
         });

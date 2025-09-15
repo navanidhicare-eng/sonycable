@@ -351,15 +351,17 @@ export default function DashboardPage() {
         }
 
         const customerData = customerDoc.data() as Customer;
-        const currentExpiryDate = customerData.expiryDate?.toDate() || new Date();
         
-        const newLastRechargeDate = currentExpiryDate > new Date() ? currentExpiryDate : new Date();
+        // If current plan hasn't expired, start new one from expiry date. Otherwise, start from today.
+        const newRechargeDate = (customerData.expiryDate && customerData.expiryDate.toDate() > new Date()) 
+            ? customerData.expiryDate.toDate() 
+            : new Date();
 
-        const newExpiryDate = new Date(newLastRechargeDate);
+        const newExpiryDate = new Date(newRechargeDate);
         newExpiryDate.setDate(newExpiryDate.getDate() + 30);
         
         transaction.update(customerDocRef, { 
-            lastRechargeDate: Timestamp.fromDate(newLastRechargeDate),
+            lastRechargeDate: Timestamp.fromDate(newRechargeDate),
             expiryDate: Timestamp.fromDate(newExpiryDate)
         });
         
@@ -371,7 +373,7 @@ export default function DashboardPage() {
             packageName: request.packageName,
             amount: parseFloat(request.packageAmount),
             paymentReceived: true, 
-            rechargeDate: Timestamp.fromDate(newLastRechargeDate),
+            rechargeDate: Timestamp.fromDate(newRechargeDate),
             rechargedBy: 'SYSTEM_AUTO', 
             adminId: currentUser.uid,
         });
@@ -551,26 +553,25 @@ export default function DashboardPage() {
     const customerDocRef = doc(db, "customers", searchedCustomer.id);
 
     try {
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + 30);
-        const expiryTimestamp = Timestamp.fromDate(expiryDate);
+        const newRechargeDate = new Date();
+        const newExpiryDate = new Date(newRechargeDate);
+        newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+
+        let updateData: any = {
+            expiryDate: Timestamp.fromDate(newExpiryDate),
+            lastRechargeDate: Timestamp.fromDate(newRechargeDate),
+        };
 
         if (paymentReceivedForRecharge) {
-            await updateDoc(customerDocRef, {
-                expiryDate: expiryTimestamp,
-                lastRechargeDate: Timestamp.now(),
-            });
             description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ₹${rechargeAmount}. Payment received.`;
         } else {
             const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
             const newBalance = currentBalance + rechargeAmount;
-            await updateDoc(customerDocRef, {
-                balanceAmount: newBalance,
-                expiryDate: expiryTimestamp,
-                lastRechargeDate: Timestamp.now(),
-            });
+            updateData.balanceAmount = newBalance;
             description = `${searchedCustomer.name} has been recharged with ${pkg.packageName}. ₹${rechargeAmount} added to collection balance.`;
         }
+
+        await updateDoc(customerDocRef, updateData);
 
         await addDoc(collection(db, "recharges"), {
             customerId: searchedCustomer.id,
@@ -579,7 +580,7 @@ export default function DashboardPage() {
             packageName: pkg.packageName,
             amount: rechargeAmount,
             paymentReceived: paymentReceivedForRecharge,
-            rechargeDate: new Date(),
+            rechargeDate: newRechargeDate,
             rechargedBy: currentUser.uid, // staff uid
             adminId: staffData.adminId, // admin uid
         });
