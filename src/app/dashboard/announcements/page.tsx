@@ -23,13 +23,19 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, CalendarIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, Timestamp } from "firebase/firestore";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 const formSchema = z.object({
   announcementText: z.string().min(1, "Announcement text cannot be empty."),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,8 +64,13 @@ export default function AnnouncementsPage() {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           const doc = querySnapshot.docs[0];
+          const data = doc.data();
           setAnnouncementDocId(doc.id);
-          form.reset({ announcementText: doc.data().text });
+          form.reset({ 
+            announcementText: data.text,
+            startDate: data.startDate ? data.startDate.toDate() : undefined,
+            endDate: data.endDate ? data.endDate.toDate() : undefined,
+          });
         }
       } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Failed to fetch announcement." });
@@ -74,19 +85,22 @@ export default function AnnouncementsPage() {
   async function onSubmit(data: FormValues) {
     if (!user) return;
     setIsSubmitting(true);
+    
+    const docData = {
+        text: data.announcementText,
+        userId: user.uid,
+        updatedAt: new Date(),
+        startDate: data.startDate ? Timestamp.fromDate(data.startDate) : null,
+        endDate: data.endDate ? Timestamp.fromDate(data.endDate) : null,
+    };
 
     try {
       if (announcementDocId) {
         const docRef = doc(db, "announcements", announcementDocId);
-        await updateDoc(docRef, { text: data.announcementText });
+        await updateDoc(docRef, docData);
       } else {
-        // Since we assume one announcement doc per user, we can set a predictable ID
         const docRef = doc(db, "announcements", user.uid);
-        await setDoc(docRef, {
-          text: data.announcementText,
-          userId: user.uid,
-          updatedAt: new Date(),
-        });
+        await setDoc(docRef, docData);
         setAnnouncementDocId(user.uid);
       }
       toast({
@@ -109,7 +123,7 @@ export default function AnnouncementsPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Scrolling Announcement</CardTitle>
             <CardDescription>
-              Set the text that scrolls at the bottom of the customer dashboard.
+              Set the text and optional date range for the scrolling announcement at the bottom of the customer dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -138,6 +152,85 @@ export default function AnnouncementsPage() {
                       </FormItem>
                     )}
                   />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="startDate"
+                      render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                          <FormLabel>Start Date</FormLabel>
+                          <Popover>
+                              <PopoverTrigger asChild>
+                              <FormControl>
+                                  <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                  )}
+                                  >
+                                  {field.value ? (
+                                      format(field.value, "PPP")
+                                  ) : (
+                                      <span>Pick a start date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                              </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                              />
+                              </PopoverContent>
+                          </Popover>
+                           <FormMessage />
+                          </FormItem>
+                      )}
+                      />
+                       <FormField
+                      control={form.control}
+                      name="endDate"
+                      render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                          <FormLabel>End Date</FormLabel>
+                          <Popover>
+                              <PopoverTrigger asChild>
+                              <FormControl>
+                                  <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                  )}
+                                  >
+                                  {field.value ? (
+                                      format(field.value, "PPP")
+                                  ) : (
+                                      <span>Pick an end date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                              </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                              />
+                              </PopoverContent>
+                          </Popover>
+                           <FormMessage />
+                          </FormItem>
+                      )}
+                      />
+                  </div>
+
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -96,6 +96,8 @@ interface LocalChannel {
 
 interface Announcement {
     text: string;
+    startDate?: Timestamp;
+    endDate?: Timestamp;
 }
 
 export default function CustomerPublicPage() {
@@ -343,6 +345,19 @@ export default function CustomerPublicPage() {
   
   const videoId = selectedChannel ? getYouTubeVideoId(selectedChannel.youtubeLink) : null;
 
+  const showAnnouncement = useMemo(() => {
+    if (!announcement) return false;
+    const now = new Date();
+    const start = announcement.startDate ? announcement.startDate.toDate() : null;
+    const end = announcement.endDate ? announcement.endDate.toDate() : null;
+    if (start && now < start) return false;
+    if (end) {
+        end.setHours(23, 59, 59, 999); // Include the whole end day
+        if (now > end) return false;
+    }
+    return true;
+  }, [announcement]);
+
 
   if (loading || authLoading) {
     return (
@@ -365,7 +380,7 @@ export default function CustomerPublicPage() {
 
   return (
     <>
-    <main className={cn("min-h-screen w-full font-body text-foreground bg-background", announcement && "pb-10")}>
+    <main className={cn("min-h-screen w-full font-body text-foreground bg-background", showAnnouncement && "pb-10")}>
       <div className="container mx-auto p-4 py-8 md:p-12">
         {activeLiveStreams.length > 0 && (
           <div className="mb-8">
@@ -517,7 +532,7 @@ export default function CustomerPublicPage() {
       </div>
     </main>
 
-    {announcement && (
+    {showAnnouncement && announcement && (
       <div className="fixed bottom-0 left-0 right-0 h-10 bg-primary text-primary-foreground overflow-hidden z-20">
           <div className="absolute whitespace-nowrap animate-marquee">
               <span className="mx-8 text-sm font-medium">{announcement.text}</span>
