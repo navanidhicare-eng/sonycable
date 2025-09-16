@@ -159,6 +159,7 @@ export default function DashboardPage() {
 
             const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
             const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", currentUser.uid), where("status", "==", "Pending"));
+            const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", currentUser.uid));
             
             const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
                 const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
@@ -170,8 +171,34 @@ export default function DashboardPage() {
                 requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
                 setRechargeRequests(requests);
             });
+             const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+                let todaysCollection = 0;
+                let monthlyCollection = 0;
+
+                snapshot.forEach(doc => {
+                    const payment = doc.data();
+                    const paymentDate = payment.collectionDate.toDate();
+
+                    if (paymentDate >= monthStart) {
+                        monthlyCollection += payment.amount;
+                    }
+                    if (paymentDate >= todayStart) {
+                        todaysCollection += payment.amount;
+                    }
+                });
+                
+                setStats(prevStats => ({
+                    ...prevStats,
+                    todaysCollection,
+                    monthlyCollection,
+                }));
+            });
             
-            unsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests);
+            unsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments);
 
         } catch (error) {
             console.error("Error fetching admin stats:", error);
