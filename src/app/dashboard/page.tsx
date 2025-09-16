@@ -102,6 +102,8 @@ export default function DashboardPage() {
   });
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
   const [staffData, setStaffData] = useState<StaffData | null>(null);
+  const [totalPendingForStaff, setTotalPendingForStaff] = useState(0);
+
 
   // States for Customer Search Dialog (Collections)
   const [isCustomerSearchDialogOpen, setIsCustomerSearchDialogOpen] = useState(false);
@@ -194,6 +196,13 @@ export default function DashboardPage() {
             setStaffData(staffDocData);
             const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
             const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
+
+            const allCustomersQuery = query(collection(db, "customers"), where("userId", "==", staffDocData.adminId));
+            const unsubscribeAllCustomers = onSnapshot(allCustomersQuery, (snapshot) => {
+                const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
+                setTotalPendingForStaff(totalPending);
+            });
+            unsubscribes.push(unsubscribeAllCustomers);
 
 
             if (!isCollectionAgent) {
@@ -800,7 +809,20 @@ export default function DashboardPage() {
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        { !isCollectionAgent && <StaffRechargeCard /> }
+        { !isCollectionAgent && (
+            <>
+                <StaffRechargeCard />
+                <Card className="bg-red-100 text-red-800">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Outstanding Balance</CardTitle>
+                        <CircleDollarSign className="h-4 w-4 text-red-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">₹{totalPendingForStaff.toLocaleString()}</div>
+                    </CardContent>
+                </Card>
+            </>
+        )}
         <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
