@@ -434,14 +434,13 @@ export default function PaymentsCollectionsPage() {
                                         </div>
                                         <div className="flex gap-2 pt-2">
                                             <Button
-                                                variant="outline"
                                                 className="flex-1"
                                                 onClick={() => openCollectDialog(collection)}
                                             >
                                                 <HandCoins className="mr-2 h-4 w-4" />
                                                 Collect
                                             </Button>
-                                            <Button variant="ghost" size="icon" asChild>
+                                            <Button variant="secondary" size="icon" asChild>
                                                 <a href={`tel:${collection.mobile}`}>
                                                 <Phone className="h-4 w-4" />
                                                 </a>
