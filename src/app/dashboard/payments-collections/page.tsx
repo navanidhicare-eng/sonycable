@@ -299,10 +299,10 @@ export default function PaymentsCollectionsPage() {
           </header>
           <Card className="w-full max-w-4xl">
             <CardHeader>
-                <div className="flex justify-between items-center mb-4">
-                    <CardTitle>Outstanding Balances</CardTitle>
+                <div className="flex justify-between items-center mb-4 p-4 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 text-white">
+                    <CardTitle className="text-white">Outstanding Balances</CardTitle>
                     <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Total Due</p>
+                        <p className="text-sm text-gray-200">Total Due</p>
                         <p className="text-2xl font-bold">₹{totalDue.toLocaleString()}</p>
                     </div>
                 </div>
