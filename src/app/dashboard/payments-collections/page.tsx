@@ -174,7 +174,8 @@ export default function PaymentsCollectionsPage() {
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
         collection.mobile.includes(searchTerm) ||
-        (collection.stbId && collection.stbId.toLowerCase().includes(searchTermLower));
+        (collection.stbId && collection.stbId.toLowerCase().includes(searchTermLower)) ||
+        (collection.customerId && collection.customerId.toLowerCase().includes(searchTermLower));
 
       const matchesArea =
         filterArea === "all" || collection.area === filterArea;
@@ -276,7 +277,7 @@ export default function PaymentsCollectionsPage() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search by name, mobile, STB..."
+                    placeholder="Search by name, mobile, STB, ID..."
                     className="pl-9"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
