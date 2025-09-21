@@ -310,6 +310,7 @@ export default function PaymentsCollectionsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Customer Name</TableHead>
+                        <TableHead>Customer ID</TableHead>
                         <TableHead>Mobile</TableHead>
                         <TableHead>Area</TableHead>
                         <TableHead>Amount Due (₹)</TableHead>
@@ -323,6 +324,7 @@ export default function PaymentsCollectionsPage() {
                             <TableCell className="font-medium">
                               {collection.name}
                             </TableCell>
+                            <TableCell>{collection.customerId}</TableCell>
                             <TableCell>{collection.mobile}</TableCell>
                             <TableCell>{collection.area}</TableCell>
                             <TableCell>
@@ -349,7 +351,7 @@ export default function PaymentsCollectionsPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center">
+                          <TableCell colSpan={6} className="h-24 text-center">
                             No outstanding collections.
                           </TableCell>
                         </TableRow>
