@@ -19,6 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,6 +212,10 @@ export default function PaymentsCollectionsPage() {
         });
     }
   };
+  
+    const totalDue = useMemo(() => {
+    return filteredCollections.reduce((sum, customer) => sum + (parseFloat(String(customer.balanceAmount)) || 0), 0);
+  }, [filteredCollections]);
 
   return (
     <>
@@ -223,7 +233,13 @@ export default function PaymentsCollectionsPage() {
           </header>
           <Card className="w-full max-w-4xl">
             <CardHeader>
-              <CardTitle>Outstanding Balances</CardTitle>
+                <div className="flex justify-between items-center mb-4">
+                    <CardTitle>Outstanding Balances</CardTitle>
+                    <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Total Due</p>
+                        <p className="text-2xl font-bold">₹{totalDue.toLocaleString()}</p>
+                    </div>
+                </div>
               <div className="mt-4 flex flex-col gap-4 sm:flex-row">
                 <div className="relative w-full sm:max-w-xs">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -255,56 +271,109 @@ export default function PaymentsCollectionsPage() {
                     <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>Area</TableHead>
-                    <TableHead>Amount Due (₹)</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCollections.length > 0 ? (
-                    filteredCollections.map((collection) => (
-                      <TableRow key={collection.id}>
-                        <TableCell className="font-medium">
-                          {collection.name}
-                        </TableCell>
-                        <TableCell>{collection.mobile}</TableCell>
-                        <TableCell>{collection.area}</TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">
-                            ₹{collection.balanceAmount}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="flex gap-2">
-                           <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openCollectDialog(collection)}
-                          >
-                            <HandCoins className="mr-2 h-4 w-4" />
-                            Collect
-                          </Button>
-                           <Button variant="ghost" size="icon" asChild>
-                            <a href={`tel:${collection.mobile}`}>
-                              <Phone className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        </TableCell>
+                <>
+                {/* Desktop View */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer Name</TableHead>
+                        <TableHead>Mobile</TableHead>
+                        <TableHead>Area</TableHead>
+                        <TableHead>Amount Due (₹)</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        No outstanding collections.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCollections.length > 0 ? (
+                        filteredCollections.map((collection) => (
+                          <TableRow key={collection.id}>
+                            <TableCell className="font-medium">
+                              {collection.name}
+                            </TableCell>
+                            <TableCell>{collection.mobile}</TableCell>
+                            <TableCell>{collection.area}</TableCell>
+                            <TableCell>
+                              <Badge variant="destructive">
+                                ₹{collection.balanceAmount}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="flex gap-2">
+                               <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openCollectDialog(collection)}
+                              >
+                                <HandCoins className="mr-2 h-4 w-4" />
+                                Collect
+                              </Button>
+                               <Button variant="ghost" size="icon" asChild>
+                                <a href={`tel:${collection.mobile}`}>
+                                  <Phone className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center">
+                            No outstanding collections.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile View */}
+                 <div className="md:hidden">
+                    {filteredCollections.length > 0 ? (
+                        <Accordion type="single" collapsible className="w-full">
+                        {filteredCollections.map((collection) => (
+                            <AccordionItem value={collection.id} key={collection.id}>
+                                <AccordionTrigger>
+                                    <div className="flex justify-between w-full pr-4">
+                                        <span className="font-medium">{collection.name}</span>
+                                        <Badge variant="destructive">
+                                            ₹{collection.balanceAmount}
+                                        </Badge>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="space-y-4 px-1 pt-2">
+                                        <div className="text-sm text-muted-foreground">
+                                            <p><span className="font-semibold text-foreground">Customer ID:</span> {collection.customerId}</p>
+                                            <p><span className="font-semibold text-foreground">STB ID:</span> {collection.stbId}</p>
+                                            <p><span className="font-semibold text-foreground">Mobile:</span> {collection.mobile}</p>
+                                            <p><span className="font-semibold text-foreground">Area:</span> {collection.area}</p>
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <Button
+                                                variant="outline"
+                                                className="flex-1"
+                                                onClick={() => openCollectDialog(collection)}
+                                            >
+                                                <HandCoins className="mr-2 h-4 w-4" />
+                                                Collect
+                                            </Button>
+                                            <Button variant="ghost" size="icon" asChild>
+                                                <a href={`tel:${collection.mobile}`}>
+                                                <Phone className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                        </Accordion>
+                    ) : (
+                         <div className="text-center py-10 text-muted-foreground">
+                            No outstanding collections.
+                         </div>
+                    )}
+                 </div>
+                </>
             )}
             </CardContent>
           </Card>
@@ -364,3 +433,5 @@ export default function PaymentsCollectionsPage() {
     </>
   );
 }
+
+    
