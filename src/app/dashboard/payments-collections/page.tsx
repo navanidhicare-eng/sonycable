@@ -40,8 +40,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Phone, HandCoins, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Separator } from "@/components/ui/separator";
 
 interface Collection {
     id: string;
@@ -58,6 +59,20 @@ interface Staff {
     adminId: string;
 }
 
+interface Payment {
+  id: string;
+  customerId: string;
+  amount: number;
+  collectionDate: Timestamp;
+  collectedBy: string; // Staff UID
+}
+
+interface StaffMember {
+    uid: string;
+    name: string;
+}
+
+
 export default function PaymentsCollectionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
@@ -68,6 +83,8 @@ export default function PaymentsCollectionsPage() {
   const { toast } = useToast();
   
   const [allCustomers, setAllCustomers] = useState<Collection[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, userRole, loading: authLoading } = useAuth();
   const [adminId, setAdminId] = useState<string | null>(null);
@@ -83,9 +100,9 @@ export default function PaymentsCollectionsPage() {
       return;
     }
     
-    let customerUnsubscribe: (() => void) | undefined;
+    let unsubscribes: (() => void)[] = [];
     
-    const fetchStaffAndCustomers = async () => {
+    const fetchStaffAndData = async () => {
       setLoading(true);
       try {
         const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
@@ -106,36 +123,37 @@ export default function PaymentsCollectionsPage() {
               collection(db, "customers"),
               where("userId", "==", fetchedAdminId)
             );
-
-            customerUnsubscribe = onSnapshot(collectionsQuery, (snapshot) => {
+            unsubscribes.push(onSnapshot(collectionsQuery, (snapshot) => {
               const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
               setAllCustomers(collectionsData);
-              setLoading(false);
-            }, (error) => {
-              console.error("Error fetching collections:", error);
-              toast({ variant: "destructive", title: "Failed to fetch collections" });
-              setLoading(false);
-            });
-          } else {
-             setLoading(false);
+            }));
+
+            const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", fetchedAdminId));
+             unsubscribes.push(onSnapshot(paymentsQuery, (snapshot) => {
+                setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment)))
+            }));
+            
+            const allStaffQuery = query(collection(db, "staff"), where("adminId", "==", fetchedAdminId));
+            unsubscribes.push(onSnapshot(allStaffQuery, (snapshot) => {
+                setStaffList(snapshot.docs.map(doc => ({ uid: doc.data().uid, name: doc.data().name })))
+            }));
+
           }
         } else {
              console.log("No staff document found for UID:", user.uid);
-             setLoading(false);
         }
       } catch (error) {
         console.error("Error fetching staff details:", error);
         toast({ variant: "destructive", title: "Failed to load staff data" });
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchStaffAndCustomers();
+    fetchStaffAndData();
 
     return () => {
-      if (customerUnsubscribe) {
-        customerUnsubscribe();
-      }
+      unsubscribes.forEach(unsub => unsub());
     };
   }, [user, authLoading, toast]);
 
@@ -216,6 +234,19 @@ export default function PaymentsCollectionsPage() {
     const totalDue = useMemo(() => {
     return filteredCollections.reduce((sum, customer) => sum + (parseFloat(String(customer.balanceAmount)) || 0), 0);
   }, [filteredCollections]);
+
+  const getCustomerPaymentHistory = (customerId: string) => {
+    return payments
+      .filter(p => p.customerId === customerId)
+      .sort((a, b) => b.collectionDate.seconds - a.collectionDate.seconds)
+      .slice(0, 2);
+  };
+
+  const getStaffName = (staffUid: string) => {
+    const staff = staffList.find(s => s.uid === staffUid);
+    return staff ? staff.name : 'Unknown Staff';
+  };
+
 
   return (
     <>
@@ -329,7 +360,9 @@ export default function PaymentsCollectionsPage() {
                  <div className="md:hidden">
                     {filteredCollections.length > 0 ? (
                         <Accordion type="single" collapsible className="w-full">
-                        {filteredCollections.map((collection) => (
+                        {filteredCollections.map((collection) => {
+                            const paymentHistory = getCustomerPaymentHistory(collection.id);
+                            return (
                             <AccordionItem value={collection.id} key={collection.id}>
                                 <AccordionTrigger>
                                     <div className="flex justify-between w-full pr-4">
@@ -346,6 +379,25 @@ export default function PaymentsCollectionsPage() {
                                             <p><span className="font-semibold text-foreground">STB ID:</span> {collection.stbId}</p>
                                             <p><span className="font-semibold text-foreground">Mobile:</span> {collection.mobile}</p>
                                             <p><span className="font-semibold text-foreground">Area:</span> {collection.area}</p>
+                                        </div>
+                                        <Separator />
+                                         <div>
+                                            <h4 className="font-semibold mb-2 text-sm text-foreground">Last Payments</h4>
+                                            {paymentHistory.length > 0 ? (
+                                                <div className="space-y-2 text-xs">
+                                                    {paymentHistory.map(p => (
+                                                        <div key={p.id} className="flex justify-between items-center">
+                                                            <div>
+                                                                <p className="font-medium text-foreground">₹{p.amount.toLocaleString()}</p>
+                                                                <p className="text-muted-foreground">{p.collectionDate.toDate().toLocaleString()}</p>
+                                                            </div>
+                                                            <p className="text-muted-foreground">by {getStaffName(p.collectedBy)}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground">No payment history found.</p>
+                                            )}
                                         </div>
                                         <div className="flex gap-2 pt-2">
                                             <Button
@@ -365,7 +417,7 @@ export default function PaymentsCollectionsPage() {
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
-                        ))}
+                        )})}
                         </Accordion>
                     ) : (
                          <div className="text-center py-10 text-muted-foreground">
@@ -433,5 +485,3 @@ export default function PaymentsCollectionsPage() {
     </>
   );
 }
-
-    
