@@ -159,18 +159,30 @@ export default function PaymentsCollectionsPage() {
 
 
   const filteredCollections = useMemo(() => {
-    // 1. Filter customers with a positive balance, converting amount to number for safety.
     let customersWithBalance = allCustomers.filter(c => parseFloat(String(c.balanceAmount)) > 0);
 
-    // 2. Filter by staff's assigned areas.
     let customersInAssignedAreas = customersWithBalance;
     if (staffAssignedAreas.length > 0) {
         customersInAssignedAreas = customersWithBalance.filter(c => staffAssignedAreas.includes(c.area));
     }
     
-    // 3. Filter by search term and selected area dropdown.
+    if (!searchTerm.trim()) {
+        return customersInAssignedAreas.filter(c => filterArea === 'all' || c.area === filterArea);
+    }
+    
+    const searchTermLower = searchTerm.toLowerCase();
+
+    // Prioritize exact match for Customer ID or STB ID if search term is numeric
+    if (!isNaN(Number(searchTerm))) {
+        const exactMatch = customersInAssignedAreas.find(c => 
+            (c.customerId === searchTerm) || (c.stbId === searchTerm)
+        );
+        if (exactMatch && (filterArea === 'all' || exactMatch.area === filterArea)) {
+            return [exactMatch];
+        }
+    }
+
     return customersInAssignedAreas.filter((collection) => {
-      const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
         collection.name.toLowerCase().includes(searchTermLower) ||
         collection.mobile.includes(searchTerm) ||
@@ -488,3 +500,5 @@ export default function PaymentsCollectionsPage() {
     </>
   );
 }
+
+    
