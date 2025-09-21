@@ -43,6 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface Collection {
     id: string;
@@ -159,8 +160,8 @@ export default function PaymentsCollectionsPage() {
 
 
   const filteredCollections = useMemo(() => {
-    let customersWithBalance = allCustomers.filter(c => parseFloat(String(c.balanceAmount)) > 0);
-
+    let customersWithBalance = allCustomers;
+    
     let customersInAssignedAreas = customersWithBalance;
     if (staffAssignedAreas.length > 0) {
         customersInAssignedAreas = customersWithBalance.filter(c => staffAssignedAreas.includes(c.area));
@@ -173,7 +174,8 @@ export default function PaymentsCollectionsPage() {
     const searchTermLower = searchTerm.toLowerCase();
 
     // Prioritize exact match for Customer ID or STB ID if search term is numeric
-    if (!isNaN(Number(searchTerm))) {
+    const isNumericSearch = !isNaN(Number(searchTerm));
+    if (isNumericSearch) {
         const exactMatch = customersInAssignedAreas.find(c => 
             (c.customerId === searchTerm) || (c.stbId === searchTerm)
         );
@@ -245,7 +247,7 @@ export default function PaymentsCollectionsPage() {
   };
   
     const totalDue = useMemo(() => {
-    return filteredCollections.reduce((sum, customer) => sum + (parseFloat(String(customer.balanceAmount)) || 0), 0);
+    return filteredCollections.filter(c => parseFloat(String(c.balanceAmount)) > 0).reduce((sum, customer) => sum + (parseFloat(String(customer.balanceAmount)) || 0), 0);
   }, [filteredCollections]);
 
   const getCustomerPaymentHistory = (customerId: string) => {
@@ -258,6 +260,24 @@ export default function PaymentsCollectionsPage() {
   const getStaffName = (staffUid: string) => {
     const staff = staffList.find(s => s.uid === staffUid);
     return staff ? staff.name : 'Unknown Staff';
+  };
+  
+  const BalanceAmount = ({ amount }: { amount: number | string }) => {
+    const numericAmount = parseFloat(String(amount));
+    const isPositive = numericAmount > 0;
+    const isNegative = numericAmount < 0;
+
+    return (
+      <span
+        className={cn(
+          'font-semibold',
+          isPositive && 'text-destructive',
+          isNegative && 'text-green-600'
+        )}
+      >
+        ₹{Math.abs(numericAmount)}
+      </span>
+    );
   };
 
 
@@ -325,7 +345,7 @@ export default function PaymentsCollectionsPage() {
                         <TableHead>Customer ID</TableHead>
                         <TableHead>Mobile</TableHead>
                         <TableHead>Area</TableHead>
-                        <TableHead>Amount Due (₹)</TableHead>
+                        <TableHead>Amount Due</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -340,9 +360,7 @@ export default function PaymentsCollectionsPage() {
                             <TableCell>{collection.mobile}</TableCell>
                             <TableCell>{collection.area}</TableCell>
                             <TableCell>
-                              <Badge variant="destructive">
-                                ₹{collection.balanceAmount}
-                              </Badge>
+                              <BalanceAmount amount={collection.balanceAmount} />
                             </TableCell>
                             <TableCell className="flex gap-2">
                                <Button
@@ -382,9 +400,7 @@ export default function PaymentsCollectionsPage() {
                                 <AccordionTrigger>
                                     <div className="flex justify-between w-full pr-4">
                                         <span className="font-medium">{collection.name}</span>
-                                        <Badge variant="destructive">
-                                            ₹{collection.balanceAmount}
-                                        </Badge>
+                                        <BalanceAmount amount={collection.balanceAmount} />
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
@@ -500,5 +516,3 @@ export default function PaymentsCollectionsPage() {
     </>
   );
 }
-
-    
