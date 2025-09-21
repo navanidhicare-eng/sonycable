@@ -174,15 +174,17 @@ export default function PaymentsCollectionsPage() {
     const searchTermLower = searchTerm.toLowerCase();
 
     // Prioritize exact match for Customer ID or STB ID if search term is numeric
-    const isNumericSearch = !isNaN(Number(searchTerm));
-    if (isNumericSearch) {
+    const isNumericOrStringId = /^[a-zA-Z0-9]+$/.test(searchTerm);
+
+    if (isNumericOrStringId) {
         const exactMatch = customersInAssignedAreas.find(c => 
-            (c.customerId === searchTerm) || (c.stbId === searchTerm)
+            (c.customerId.toLowerCase() === searchTermLower) || (c.stbId.toLowerCase() === searchTermLower)
         );
         if (exactMatch && (filterArea === 'all' || exactMatch.area === filterArea)) {
             return [exactMatch];
         }
     }
+
 
     return customersInAssignedAreas.filter((collection) => {
       const matchesSearch =
@@ -275,7 +277,7 @@ export default function PaymentsCollectionsPage() {
           isNegative && 'text-green-600'
         )}
       >
-        ₹{Math.abs(numericAmount)}
+        {isNegative ? `-₹${Math.abs(numericAmount)}` : `₹${numericAmount}`}
       </span>
     );
   };
