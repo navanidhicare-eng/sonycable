@@ -400,15 +400,17 @@ export default function PaymentsCollectionsPage() {
                             return (
                             <AccordionItem value={collection.id} key={collection.id}>
                                 <AccordionTrigger>
-                                    <div className="flex justify-between w-full pr-4">
-                                        <span className="font-medium">{collection.name}</span>
+                                    <div className="flex justify-between w-full pr-4 items-center">
+                                        <div>
+                                            <span className="font-medium">{collection.name}</span>
+                                            <span className="text-xs text-muted-foreground ml-2">(ID: {collection.customerId})</span>
+                                        </div>
                                         <BalanceAmount amount={collection.balanceAmount} />
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <div className="space-y-4 px-1 pt-2">
                                         <div className="text-sm text-muted-foreground">
-                                            <p><span className="font-semibold text-foreground">Customer ID:</span> {collection.customerId}</p>
                                             <p><span className="font-semibold text-foreground">STB ID:</span> {collection.stbId}</p>
                                             <p><span className="font-semibold text-foreground">Mobile:</span> {collection.mobile}</p>
                                             <p><span className="font-semibold text-foreground">Area:</span> {collection.area}</p>
@@ -434,6 +436,7 @@ export default function PaymentsCollectionsPage() {
                                         </div>
                                         <div className="flex gap-2 pt-2">
                                             <Button
+                                                variant="default"
                                                 className="flex-1"
                                                 onClick={() => openCollectDialog(collection)}
                                             >
