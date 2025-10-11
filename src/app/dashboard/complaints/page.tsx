@@ -15,22 +15,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp, getDoc, runTransaction } from "firebase/firestore";
+import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface Complaint {
   id: string;
@@ -47,11 +35,6 @@ interface Complaint {
 export default function ComplaintsPage() {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
-  const [currentComplaint, setCurrentComplaint] = useState<Complaint | null>(null);
-  const [resolutionNotes, setResolutionNotes] = useState("");
-  const [resolutionAmount, setResolutionAmount] = useState("");
-  const [paymentCollected, setPaymentCollected] = useState(true);
   const { user, userRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -81,59 +64,6 @@ export default function ComplaintsPage() {
 
     return () => unsubscribe();
   }, [user, authLoading, toast]);
-
-
-  const openResolveDialog = (complaint: Complaint) => {
-    setCurrentComplaint(complaint);
-    setResolutionNotes("");
-    setResolutionAmount("");
-    setPaymentCollected(true);
-    setIsResolveDialogOpen(true);
-  };
-
-  const handleResolveComplaint = async () => {
-    if (!currentComplaint) return;
-
-    try {
-      await runTransaction(db, async (transaction) => {
-        const complaintDocRef = doc(db, "complaints", currentComplaint.id);
-        const amountValue = parseFloat(resolutionAmount);
-
-        if (!isNaN(amountValue) && amountValue > 0 && !paymentCollected) {
-            const customerDocRef = doc(db, "customers", currentComplaint.customerId);
-            const customerDoc = await transaction.get(customerDocRef);
-            if (!customerDoc.exists()) {
-                throw new Error("Customer not found");
-            }
-            const currentBalance = customerDoc.data().balanceAmount || 0;
-            const newBalance = currentBalance + amountValue;
-            transaction.update(customerDocRef, { balanceAmount: newBalance });
-        }
-
-        transaction.update(complaintDocRef, {
-            status: "Resolved",
-            resolutionNotes: resolutionNotes,
-            resolutionAmount: !isNaN(amountValue) ? amountValue : null,
-            paymentCollected: !isNaN(amountValue) ? paymentCollected : null,
-        });
-      });
-
-      toast({
-          title: "Complaint Resolved",
-          description: "The complaint has been marked as resolved.",
-      });
-
-      setIsResolveDialogOpen(false);
-      setCurrentComplaint(null);
-    } catch(error) {
-        console.error("Error resolving complaint:", error);
-        toast({
-            variant: "destructive",
-            title: "Resolution Failed",
-            description: "Could not update the complaint status.",
-        });
-    }
-  };
 
 
   return (
@@ -173,7 +103,6 @@ export default function ComplaintsPage() {
                         <TableHead>Customer</TableHead>
                         <TableHead>Complaint</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -197,18 +126,11 @@ export default function ComplaintsPage() {
                                 {complaint.status}
                             </Badge>
                             </TableCell>
-                            <TableCell>
-                            {userRole === 'Admin' && complaint.status === 'Pending' && (
-                                <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
-                                Resolve
-                                </Button>
-                            )}
-                            </TableCell>
                         </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
+                            <TableCell colSpan={4} className="h-24 text-center">
                                 No complaints found.
                             </TableCell>
                         </TableRow>
@@ -220,57 +142,6 @@ export default function ComplaintsPage() {
           </Card>
         </div>
       </main>
-
-      {currentComplaint && (
-        <Dialog open={isResolveDialogOpen} onOpenChange={setIsResolveDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Resolve Complaint</DialogTitle>
-              <DialogDescription>
-                Add notes and any amount related to the complaint resolution.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid w-full gap-1.5">
-                <Label htmlFor="resolution-notes">Resolution Notes</Label>
-                <Textarea 
-                  placeholder="Type your resolution notes here." 
-                  id="resolution-notes"
-                  value={resolutionNotes}
-                  onChange={(e) => setResolutionNotes(e.target.value)}
-                  />
-              </div>
-              <div className="grid w-full gap-1.5">
-                  <Label htmlFor="resolution-amount">Resolution Amount (₹)</Label>
-                  <Input 
-                    type="number"
-                    id="resolution-amount"
-                    placeholder="Enter amount if any"
-                    value={resolutionAmount}
-                    onChange={(e) => setResolutionAmount(e.target.value)}
-                  />
-              </div>
-              {resolutionAmount && (
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="payment-collected"
-                        checked={paymentCollected}
-                        onCheckedChange={(checked) => setPaymentCollected(Boolean(checked))}
-                    />
-                    <Label htmlFor="payment-collected">Payment Collected</Label>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="button" onClick={handleResolveComplaint}>
-                Mark as Resolved
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }
-
-    
