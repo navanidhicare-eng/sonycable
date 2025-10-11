@@ -140,131 +140,132 @@ export default function RechargeOffersPage() {
 
   return (
     <>
-    <main className="min-h-screen w-full font-body text-foreground">
-      <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
-        <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center">
-            <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-              Multi-Month Recharge Offers
-            </h1>
-            <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-              Create and manage discounts for customers who recharge for multiple months at once.
-            </p>
-        </header>
+      <main className="min-h-screen w-full font-body text-foreground">
+        <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
+          <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center">
+              <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
+                Multi-Month Recharge Offers
+              </h1>
+              <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
+                Create and manage discounts for customers who recharge for multiple months at once.
+              </p>
+          </header>
 
-        <div className="grid w-full max-w-4xl gap-8 lg:grid-cols-5">
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add New Offer</CardTitle>
-                <CardDescription>
-                  Define a new discount for a specific number of months.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <FormField
-                      control={form.control}
-                      name="months"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Number of Months</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="e.g., 3" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="discountPercentage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Discount Percentage (%)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="e.g., 10" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
-                      {isSubmitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                      )}
-                      Add Offer
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="lg:col-span-3">
-             <Card>
+          <div className="grid w-full max-w-4xl gap-8 lg:grid-cols-5">
+            <div className="lg:col-span-2">
+              <Card>
                 <CardHeader>
-                    <CardTitle>Active Offers</CardTitle>
+                  <CardTitle>Add New Offer</CardTitle>
+                  <CardDescription>
+                    Define a new discount for a specific number of months.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {loading ? (
-                        <div className="flex justify-center items-center h-40">
-                            <Loader2 className="h-8 w-8 animate-spin" />
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                <TableHead>Months</TableHead>
-                                <TableHead>Discount</TableHead>
-                                <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {offers.length > 0 ? (
-                                offers.map((offer) => (
-                                    <TableRow key={offer.id}>
-                                    <TableCell className="font-medium">{offer.months} Months</TableCell>
-                                    <TableCell className="font-semibold text-primary">{offer.discountPercentage}% OFF</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(offer)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </TableCell>
-                                    </TableRow>
-                                ))
-                                ) : (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">
-                                    No offers found.
-                                    </TableCell>
-                                </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    )}
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <FormField
+                        control={form.control}
+                        name="months"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Number of Months</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="e.g., 3" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="discountPercentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Discount Percentage (%)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="e.g., 10" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
+                        {isSubmitting ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Add Offer
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
-            </Card>
+              </Card>
+            </div>
+            <div className="lg:col-span-3">
+               <Card>
+                  <CardHeader>
+                      <CardTitle>Active Offers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      {loading ? (
+                          <div className="flex justify-center items-center h-40">
+                              <Loader2 className="h-8 w-8 animate-spin" />
+                          </div>
+                      ) : (
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                  <TableHead>Months</TableHead>
+                                  <TableHead>Discount</TableHead>
+                                  <TableHead>Actions</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {offers.length > 0 ? (
+                                  offers.map((offer) => (
+                                      <TableRow key={offer.id}>
+                                      <TableCell className="font-medium">{offer.months} Months</TableCell>
+                                      <TableCell className="font-semibold text-primary">{offer.discountPercentage}% OFF</TableCell>
+                                      <TableCell>
+                                          <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(offer)}>
+                                              <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                      </TableCell>
+                                      </TableRow>
+                                  ))
+                                  ) : (
+                                  <TableRow>
+                                      <TableCell colSpan={3} className="h-24 text-center">
+                                      No offers found.
+                                      </TableCell>
+                                  </TableRow>
+                                  )}
+                              </TableBody>
+                          </Table>
+                      )}
+                  </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
-    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-        <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete this recharge offer.
-            </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-            Delete
-            </AlertDialogAction>
-        </AlertDialogFooter>
-    </AlertDialog>
+      </main>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+          <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this recharge offer.
+              </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
+              </AlertDialogAction>
+          </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
