@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface Customer {
   id: string;
@@ -33,6 +34,7 @@ interface Customer {
   area: string;
   stbId: string;
   expiryDate?: Timestamp;
+  balanceAmount: number;
 }
 
 interface Staff {
@@ -162,6 +164,24 @@ export default function StaffRemindersPage() {
       return { text: `in ${days} days`, isExpired: false, isToday: false, isUpcoming: true };
   };
 
+  const BalanceAmount = ({ amount }: { amount: number }) => {
+    const numericAmount = amount || 0;
+    const isPositive = numericAmount > 0;
+    const isNegative = numericAmount < 0;
+
+    return (
+      <span
+        className={cn(
+          'font-semibold',
+          isPositive && 'text-destructive',
+          isNegative && 'text-green-600'
+        )}
+      >
+        {isNegative ? `-₹${Math.abs(numericAmount)}` : `₹${numericAmount}`}
+      </span>
+    );
+  };
+
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -197,6 +217,7 @@ export default function StaffRemindersPage() {
                       <TableHead>Area</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Balance</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -213,6 +234,9 @@ export default function StaffRemindersPage() {
                             <TableCell>{formatDate(customer.expiryDate)}</TableCell>
                             <TableCell className={`font-bold ${status.isExpired ? 'text-destructive' : ''}`}>
                                 {status.text}
+                            </TableCell>
+                            <TableCell>
+                                <BalanceAmount amount={customer.balanceAmount} />
                             </TableCell>
                             <TableCell className="flex gap-1">
                               <Button variant="ghost" size="icon" asChild>
@@ -237,7 +261,7 @@ export default function StaffRemindersPage() {
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           No customers with upcoming or recent expiries in your areas.
                         </TableCell>
                       </TableRow>
@@ -272,6 +296,7 @@ export default function StaffRemindersPage() {
                                         <p><span className="font-semibold text-foreground">Mobile:</span> {customer.mobile}</p>
                                         <p><span className="font-semibold text-foreground">Area:</span> {customer.area}</p>
                                         <p><span className="font-semibold text-foreground">Expiry Date:</span> {formatDate(customer.expiryDate)}</p>
+                                        <p><span className="font-semibold text-foreground">Balance:</span> <BalanceAmount amount={customer.balanceAmount} /></p>
                                     </div>
                                     <div className="flex gap-2 pt-2">
                                         <Button variant="secondary" size="icon" asChild>
@@ -310,3 +335,5 @@ export default function StaffRemindersPage() {
     </main>
   );
 }
+
+    
