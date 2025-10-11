@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Loader2, Phone, Pencil, Send } from "lucide-react";
+import { Loader2, Phone, Pencil, Send, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, Timestamp, getDocs } from "firebase/firestore";
@@ -151,15 +151,15 @@ export default function StaffRemindersPage() {
   
   const getExpiryStatus = (timestamp?: Timestamp) => {
       const days = daysLeft(timestamp);
-      if (typeof days !== 'number') return { text: 'N/A', isExpired: false, isToday: false };
+      if (typeof days !== 'number') return { text: 'N/A', isExpired: false, isToday: false, isUpcoming: false };
 
       if (days < 0) {
-          return { text: `Expired ${Math.abs(days)} days ago`, isExpired: true, isToday: false };
+          return { text: `Expired ${Math.abs(days)} days ago`, isExpired: true, isToday: false, isUpcoming: false };
       }
       if (days === 0) {
-          return { text: 'Today', isExpired: false, isToday: true };
+          return { text: 'Today', isExpired: false, isToday: true, isUpcoming: false };
       }
-      return { text: `${days}`, isExpired: false, isToday: false };
+      return { text: `in ${days} days`, isExpired: false, isToday: false, isUpcoming: true };
   };
 
 
@@ -204,6 +204,7 @@ export default function StaffRemindersPage() {
                     {expiringCustomers.length > 0 ? (
                       expiringCustomers.map((customer) => {
                         const status = getExpiryStatus(customer.expiryDate);
+                        const isExpired = status.isExpired;
                         return (
                           <TableRow key={customer.id}>
                             <TableCell className="font-medium">{customer.name}</TableCell>
@@ -224,11 +225,21 @@ export default function StaffRemindersPage() {
                                         <Pencil className="h-4 w-4" />
                                     </Link>
                                 </Button>
-                               <Button variant="ghost" size="icon" asChild>
+                               {isExpired ? (
+                                <Button variant="outline" size="sm" asChild>
                                   <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                    <Send className="h-4 w-4" />
+                                    <Send className="mr-2 h-4 w-4" />
+                                    Request Recharge
                                   </Link>
                                 </Button>
+                               ) : (
+                                <Button size="sm" asChild>
+                                    <Link href={`/dashboard/recharge?customerName=${encodeURIComponent(customer.name)}`}>
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        Renewal
+                                    </Link>
+                                </Button>
+                               )}
                             </TableCell>
                           </TableRow>
                         )
@@ -252,6 +263,7 @@ export default function StaffRemindersPage() {
                         let badgeVariant: "destructive" | "secondary" | "default" = "secondary";
                         if (status.isExpired) badgeVariant = "destructive";
                         if (status.isToday) badgeVariant = "default";
+                        const isExpired = status.isExpired;
                         
                         return (
                         <AccordionItem value={customer.id} key={customer.id}>
@@ -281,12 +293,21 @@ export default function StaffRemindersPage() {
                                                 <Pencil className="h-4 w-4" />
                                            </Link>
                                         </Button>
-                                        <Button className="flex-1" asChild>
-                                          <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                            <Send className="mr-2 h-4 w-4" />
-                                            Request Recharge
-                                          </Link>
-                                        </Button>
+                                        {isExpired ? (
+                                            <Button className="flex-1" asChild>
+                                              <Link href={`/dashboard/request-recharge/${customer.id}`}>
+                                                <Send className="mr-2 h-4 w-4" />
+                                                Request Recharge
+                                              </Link>
+                                            </Button>
+                                        ) : (
+                                            <Button className="flex-1" asChild>
+                                                <Link href={`/dashboard/recharge?customerName=${encodeURIComponent(customer.name)}`}>
+                                                    <CreditCard className="mr-2 h-4 w-4" />
+                                                    Renewal
+                                                </Link>
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </AccordionContent>
@@ -307,5 +328,3 @@ export default function StaffRemindersPage() {
     </main>
   );
 }
-
-    
