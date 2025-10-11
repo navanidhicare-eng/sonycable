@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Phone, Pencil, CreditCard } from "lucide-react";
+import { Loader2, Phone, Pencil, Send } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, Timestamp, getDocs } from "firebase/firestore";
@@ -199,8 +199,8 @@ export default function StaffRemindersPage() {
                                 </Link>
                             </Button>
                            <Button variant="ghost" size="icon" asChild>
-                              <Link href={`/dashboard/recharge?customerName=${encodeURIComponent(customer.name)}`}>
-                                <CreditCard className="h-4 w-4" />
+                              <Link href={`/dashboard/request-recharge/${customer.id}`}>
+                                <Send className="h-4 w-4" />
                               </Link>
                             </Button>
                         </TableCell>

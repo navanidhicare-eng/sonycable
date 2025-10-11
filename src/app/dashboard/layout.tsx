@@ -34,6 +34,7 @@ Calculator,
   History,
   Tv,
   Store,
+  Send,
 } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -94,6 +95,7 @@ function DashboardLayout({
              {!authLoading && userRole && userRole !== 'Admin' && (
                <>
                 {!isCollectionAgent && (
+                  <>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild onClick={handleLinkClick}>
                             <Link href="/dashboard/recharge">
@@ -102,6 +104,15 @@ function DashboardLayout({
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                     <SidebarMenuItem>
+                        <SidebarMenuButton asChild onClick={handleLinkClick}>
+                            <Link href="/dashboard/request-recharge">
+                                <Send />
+                                <span>Recharge Requests</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
                 )}
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild onClick={handleLinkClick}>
