@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -31,6 +31,8 @@ import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp, getDoc
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 interface Complaint {
   id: string;
@@ -162,7 +164,7 @@ export default function StaffComplaintsPage() {
               customerId: currentComplaint.customerId,
               customerName: currentComplaint.customerName,
               amount: amountValue,
-              method: "cash", // Assuming cash for service calls, or could be a new method
+              method: "cash", // Assuming cash for service calls
               description: `Complaint Service Charge: ${resolutionNotes || 'N/A'}`,
               collectedBy: user.uid,
               collectionDate: new Date(),
@@ -201,6 +203,12 @@ export default function StaffComplaintsPage() {
     }
   };
 
+  const { pendingComplaints, resolvedComplaints } = useMemo(() => {
+    const pending = complaints.filter(c => c.status === 'Pending');
+    const resolved = complaints.filter(c => c.status === 'Resolved');
+    return { pendingComplaints: pending, resolvedComplaints: resolved };
+  }, [complaints]);
+
 
   return (
     <>
@@ -222,68 +230,119 @@ export default function StaffComplaintsPage() {
               </Link>
             </Button>
           </header>
-          <Card className="w-full max-w-4xl">
-            <CardHeader>
-              <CardTitle>Complaint List</CardTitle>
-            </CardHeader>
-            <CardContent>
-               {loading || authLoading ? (
-                 <div className="flex justify-center items-center h-40">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                 </div>
-               ) : (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Complaint</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {complaints.length > 0 ? (
-                        complaints.map((complaint) => (
-                        <TableRow key={complaint.id}>
-                            <TableCell>{complaint.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
-                            <TableCell className="font-medium">
-                            <div>{complaint.customerName}</div>
-                            <div className="text-xs text-muted-foreground">{complaint.stbId}</div>
-                            </TableCell>
-                            <TableCell>{complaint.complaint}</TableCell>
-                            <TableCell>
-                            <Badge
-                                variant={
-                                complaint.status === "Pending"
-                                    ? "destructive"
-                                    : "default"
-                                }
-                            >
-                                {complaint.status}
-                            </Badge>
-                            </TableCell>
-                            <TableCell>
-                            {complaint.status === 'Pending' && (
-                                <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
-                                Resolve
-                                </Button>
-                            )}
-                            </TableCell>
-                        </TableRow>
-                        ))
+          
+          <Tabs defaultValue="pending" className="w-full max-w-4xl">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="pending">Pending</TabsTrigger>
+                <TabsTrigger value="resolved">Resolved</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pending">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Pending Complaints</CardTitle>
+                        <CardDescription>These are active complaints that need attention.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    {loading || authLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                            <Loader2 className="h-8 w-8 animate-spin" />
+                        </div>
                     ) : (
-                        <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
-                                No complaints found.
-                            </TableCell>
-                        </TableRow>
+                        <Table>
+                            <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Complaint</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {pendingComplaints.length > 0 ? (
+                                pendingComplaints.map((complaint) => (
+                                <TableRow key={complaint.id}>
+                                    <TableCell>{complaint.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
+                                    <TableCell className="font-medium">
+                                    <div>{complaint.customerName}</div>
+                                    <div className="text-xs text-muted-foreground">{complaint.stbId}</div>
+                                    </TableCell>
+                                    <TableCell>{complaint.complaint}</TableCell>
+                                    <TableCell>
+                                    <Badge
+                                        variant="destructive"
+                                    >
+                                        {complaint.status}
+                                    </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
+                                        Resolve
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                        No pending complaints found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            </TableBody>
+                        </Table>
                     )}
-                    </TableBody>
-                </Table>
-               )}
-            </CardContent>
-          </Card>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="resolved">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Resolved Complaints</CardTitle>
+                         <CardDescription>These are complaints that have been closed.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    {loading || authLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                            <Loader2 className="h-8 w-8 animate-spin" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Complaint</TableHead>
+                                <TableHead>Resolution</TableHead>
+                            </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {resolvedComplaints.length > 0 ? (
+                                resolvedComplaints.map((complaint) => (
+                                <TableRow key={complaint.id}>
+                                    <TableCell>{complaint.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
+                                    <TableCell className="font-medium">
+                                    <div>{complaint.customerName}</div>
+                                    <div className="text-xs text-muted-foreground">{complaint.stbId}</div>
+                                    </TableCell>
+                                    <TableCell>{complaint.complaint}</TableCell>
+                                    <TableCell>{complaint.resolutionNotes || "N/A"}</TableCell>
+                                </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        No resolved complaints found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            </TableBody>
+                        </Table>
+                    )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       
