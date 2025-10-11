@@ -96,6 +96,14 @@ function DashboardLayout({
                <>
                 {!isCollectionAgent && (
                   <>
+                     <SidebarMenuItem>
+                        <SidebarMenuButton asChild onClick={handleLinkClick}>
+                            <Link href="/dashboard/customers-staff">
+                            <Users />
+                            <span>Customers</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild onClick={handleLinkClick}>
                             <Link href="/dashboard/recharge">
