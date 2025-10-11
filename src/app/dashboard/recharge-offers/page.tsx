@@ -77,8 +77,8 @@ export default function RechargeOffersPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      months: undefined,
-      discountPercentage: undefined,
+      months: "" as any,
+      discountPercentage: "" as any,
     },
   });
 
