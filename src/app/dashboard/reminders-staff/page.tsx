@@ -11,6 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Loader2, Phone, Pencil, Send } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
@@ -18,6 +24,7 @@ import { collection, query, where, onSnapshot, Timestamp, getDocs } from "fireba
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 interface Customer {
   id: string;
@@ -165,56 +172,113 @@ export default function StaffRemindersPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>Area</TableHead>
-                    <TableHead>Expiry Date</TableHead>
-                    <TableHead>Days Left</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expiringCustomers.length > 0 ? (
-                    expiringCustomers.map((customer) => (
-                      <TableRow key={customer.id}>
-                        <TableCell className="font-medium">{customer.name}</TableCell>
-                        <TableCell>{customer.mobile}</TableCell>
-                        <TableCell>{customer.area}</TableCell>
-                        <TableCell>{formatDate(customer.expiryDate)}</TableCell>
-                        <TableCell className={`font-bold ${daysLeft(customer.expiryDate) === 0 ? 'text-destructive' : ''}`}>
-                            {daysLeft(customer.expiryDate) === 0 ? 'Today' : daysLeft(customer.expiryDate)}
-                        </TableCell>
-                        <TableCell className="flex gap-1">
-                          <Button variant="ghost" size="icon" asChild>
-                            <a href={`tel:${customer.mobile}`}>
-                              <Phone className="h-4 w-4" />
-                            </a>
-                          </Button>
-                           <Button variant="ghost" size="icon" asChild>
-                                <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                                    <Pencil className="h-4 w-4" />
+              <>
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer Name</TableHead>
+                      <TableHead>Mobile</TableHead>
+                      <TableHead>Area</TableHead>
+                      <TableHead>Expiry Date</TableHead>
+                      <TableHead>Days Left</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expiringCustomers.length > 0 ? (
+                      expiringCustomers.map((customer) => (
+                        <TableRow key={customer.id}>
+                          <TableCell className="font-medium">{customer.name}</TableCell>
+                          <TableCell>{customer.mobile}</TableCell>
+                          <TableCell>{customer.area}</TableCell>
+                          <TableCell>{formatDate(customer.expiryDate)}</TableCell>
+                          <TableCell className={`font-bold ${daysLeft(customer.expiryDate) === 0 ? 'text-destructive' : ''}`}>
+                              {daysLeft(customer.expiryDate) === 0 ? 'Today' : daysLeft(customer.expiryDate)}
+                          </TableCell>
+                          <TableCell className="flex gap-1">
+                            <Button variant="ghost" size="icon" asChild>
+                              <a href={`tel:${customer.mobile}`}>
+                                <Phone className="h-4 w-4" />
+                              </a>
+                            </Button>
+                             <Button variant="ghost" size="icon" asChild>
+                                  <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                      <Pencil className="h-4 w-4" />
+                                  </Link>
+                              </Button>
+                             <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/dashboard/request-recharge/${customer.id}`}>
+                                  <Send className="h-4 w-4" />
                                 </Link>
-                            </Button>
-                           <Button variant="ghost" size="icon" asChild>
-                              <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                <Send className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                              </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          No customers with upcoming expiries in your areas.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
-                        No customers with upcoming expiries in your areas.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Mobile View */}
+              <div className="md:hidden">
+                {expiringCustomers.length > 0 ? (
+                    <Accordion type="single" collapsible className="w-full">
+                    {expiringCustomers.map((customer) => {
+                        const days = daysLeft(customer.expiryDate);
+                        return (
+                        <AccordionItem value={customer.id} key={customer.id}>
+                            <AccordionTrigger>
+                                <div className="flex justify-between w-full pr-4 items-center">
+                                    <span className="font-medium">{customer.name}</span>
+                                    <Badge variant={days === 0 ? 'destructive' : 'secondary'}>
+                                      Expires {days === 0 ? 'Today' : `in ${days} day(s)`}
+                                    </Badge>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="space-y-4 px-1 pt-2">
+                                    <div className="text-sm text-muted-foreground">
+                                        <p><span className="font-semibold text-foreground">Mobile:</span> {customer.mobile}</p>
+                                        <p><span className="font-semibold text-foreground">Area:</span> {customer.area}</p>
+                                        <p><span className="font-semibold text-foreground">Expiry Date:</span> {formatDate(customer.expiryDate)}</p>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <Button variant="secondary" size="icon" asChild>
+                                          <a href={`tel:${customer.mobile}`}>
+                                            <Phone className="h-4 w-4" />
+                                          </a>
+                                        </Button>
+                                        <Button variant="secondary" size="icon" asChild>
+                                           <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                                <Pencil className="h-4 w-4" />
+                                           </Link>
+                                        </Button>
+                                        <Button className="flex-1" asChild>
+                                          <Link href={`/dashboard/request-recharge/${customer.id}`}>
+                                            <Send className="mr-2 h-4 w-4" />
+                                            Request Recharge
+                                          </Link>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    )})}
+                    </Accordion>
+                ) : (
+                     <div className="text-center py-10 text-muted-foreground">
+                        No customers with upcoming expiries.
+                     </div>
+                )}
+              </div>
+              </>
             )}
           </CardContent>
         </Card>
