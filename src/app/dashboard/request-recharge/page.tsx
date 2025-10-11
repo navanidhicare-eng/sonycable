@@ -22,10 +22,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Search, User, Loader2, Send } from "lucide-react";
+import { Search, User, Loader2, Send } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
@@ -54,6 +53,7 @@ interface Package {
 
 const formSchema = z.object({
   selectedPackage: z.string().min(1, "Please select a package."),
+  rechargeMonths: z.number().min(1).max(12),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -73,6 +73,9 @@ export default function StaffRequestRechargePage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      rechargeMonths: 1,
+    }
   });
 
   const handleCustomerSearch = async () => {
@@ -176,12 +179,15 @@ export default function StaffRequestRechargePage() {
             return;
         }
 
+        const totalAmount = parseFloat(selectedPkg.packageAmount) * data.rechargeMonths;
+
       await addDoc(collection(db, "rechargeRequests"), {
         customerId: foundCustomer.id,
         customerName: foundCustomer.name,
         adminId: foundCustomer.userId,
         packageName: selectedPkg.packageName,
-        packageAmount: selectedPkg.packageAmount,
+        packageAmount: totalAmount,
+        months: data.rechargeMonths,
         requestDate: new Date(),
         status: 'Pending',
         type: 'Staff',
@@ -193,7 +199,7 @@ export default function StaffRequestRechargePage() {
       });
       setFoundCustomer(null);
       setSearchTerm("");
-      form.reset();
+      form.reset({ rechargeMonths: 1 });
 
     } catch (error) {
        console.error("Error sending request:", error);
@@ -208,7 +214,9 @@ export default function StaffRequestRechargePage() {
   }
   
   const selectedPackageId = form.watch("selectedPackage");
+  const rechargeMonths = form.watch("rechargeMonths");
   const selectedPackageDetails = selectedPackageId ? packages.find(p => p.id === selectedPackageId) : null;
+  const totalAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) * rechargeMonths : 0;
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -273,14 +281,41 @@ export default function StaffRequestRechargePage() {
                             </FormItem>
                         )}
                         />
+                        
+                        <FormField
+                            control={form.control}
+                            name="rechargeMonths"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Number of Months</FormLabel>
+                                <Select onValueChange={(val) => field.onChange(Number(val))} value={String(field.value)}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select number of months" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {[...Array(12)].map((_, i) => (
+                                        <SelectItem key={i + 1} value={String(i + 1)}>
+                                        {i + 1} Month(s)
+                                        </SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         {selectedPackageDetails && (
-                        <div className="text-center text-sm text-muted-foreground p-3 bg-muted rounded-md">
-                            You are requesting <span className="font-bold text-foreground">{selectedPackageDetails.packageName}</span> for <span className="font-bold text-foreground">₹{selectedPackageDetails.packageAmount}</span>.
-                        </div>
+                            <div className="text-center text-sm text-muted-foreground p-3 bg-muted rounded-md">
+                                You are requesting <span className="font-bold text-foreground">{selectedPackageDetails.packageName}</span> for <span className="font-bold text-foreground">{rechargeMonths} month(s)</span>.
+                                <br/>
+                                Total Amount: <span className="font-bold text-foreground text-base">₹{totalAmount.toLocaleString()}</span>
+                            </div>
                         )}
                         
-                        <Button type="submit" className="w-full" disabled={!foundCustomer || isSubmitting || authLoading}>
+                        <Button type="submit" className="w-full" disabled={!foundCustomer || isSubmitting || authLoading || !selectedPackageId}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             {isSubmitting ? "Sending Request..." : "Send Request to Admin"}
                         </Button>

@@ -37,6 +37,7 @@ export default function RequestRechargePage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [rechargeMonths, setRechargeMonths] = useState(1);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const params = useParams();
@@ -121,13 +122,16 @@ export default function RequestRechargePage() {
         setIsSubmitting(false);
         return;
       }
+      
+      const totalAmount = parseFloat(selectedPackage.packageAmount) * rechargeMonths;
 
       await addDoc(collection(db, 'rechargeRequests'), {
         customerId: customer.id,
         customerName: customer.name,
         adminId: customer.userId,
         packageName: selectedPackage.packageName,
-        packageAmount: selectedPackage.packageAmount,
+        packageAmount: totalAmount,
+        months: rechargeMonths,
         requestDate: new Date(),
         status: 'Pending',
         type: 'Manual',
@@ -135,7 +139,7 @@ export default function RequestRechargePage() {
 
       toast({
         title: "Request Sent",
-        description: `Your request for ${selectedPackage.packageName} has been sent to the admin for approval.`,
+        description: `Your request for ${selectedPackage.packageName} for ${rechargeMonths} month(s) has been sent to the admin for approval.`,
       });
       setSelectedPackage(null);
 
@@ -154,7 +158,10 @@ export default function RequestRechargePage() {
   const handlePackageChange = (packageId: string) => {
     const pkg = packages.find(p => p.id === packageId);
     setSelectedPackage(pkg || null);
+    setRechargeMonths(1);
   };
+  
+  const totalAmount = selectedPackage ? parseFloat(selectedPackage.packageAmount) * rechargeMonths : 0;
 
   if (loading || authLoading) {
     return (
@@ -191,9 +198,28 @@ export default function RequestRechargePage() {
                 </Select>
             </div>
             {selectedPackage && (
-              <div className="text-center text-sm text-muted-foreground p-3 bg-muted rounded-md">
-                You have selected <span className="font-bold text-foreground">{selectedPackage.packageName}</span> for <span className="font-bold text-foreground">₹{selectedPackage.packageAmount}</span>.
-              </div>
+              <>
+                <div className="space-y-2">
+                    <Label htmlFor="months-select">Number of Months</Label>
+                    <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
+                        <SelectTrigger id="months-select">
+                            <SelectValue placeholder="Select number of months" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {[...Array(12)].map((_, i) => (
+                                <SelectItem key={i + 1} value={String(i + 1)}>
+                                {i + 1} Month(s)
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="text-center text-sm text-muted-foreground p-3 bg-muted rounded-md">
+                  You are requesting <span className="font-bold text-foreground">{selectedPackage.packageName}</span> for <span className="font-bold text-foreground">{rechargeMonths} month(s)</span>.
+                  <br/>
+                  Total Amount: <span className="font-bold text-foreground text-base">₹{totalAmount.toLocaleString()}</span>
+                </div>
+              </>
             )}
             <Button 
                 onClick={handleSendRequest} 

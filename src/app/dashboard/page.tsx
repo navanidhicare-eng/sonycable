@@ -40,7 +40,8 @@ interface RechargeRequest {
     id: string;
     customerName: string;
     packageName: string;
-    packageAmount: string;
+    packageAmount: number;
+    months?: number;
     status: 'Pending' | 'Completed';
     requestDate: Timestamp;
     customerId: string;
@@ -403,22 +404,22 @@ export default function DashboardPage() {
         const customerData = customerDoc.data() as Customer;
         
         let newRechargeDate = new Date();
-        // If it's a renewal, base it on last recharge date, not expiry
+        const months = request.months || 1;
+
         if (request.requestSubtype === 'Renewal' && customerData.lastRechargeDate) {
             const lastRecharge = customerData.lastRechargeDate.toDate();
-            newRechargeDate = new Date(lastRecharge.setMonth(lastRecharge.getMonth() + 1));
+            newRechargeDate = new Date(lastRecharge.setMonth(lastRecharge.getMonth() + months));
         } else if (request.requestSubtype === 'Renewal' && !customerData.lastRechargeDate) {
-            // Fallback for renewal if lastRechargeDate is missing for some reason
              newRechargeDate = (customerData.expiryDate && customerData.expiryDate.toDate() > new Date()) 
             ? customerData.expiryDate.toDate() 
             : new Date();
         }
 
         const newExpiryDate = new Date(newRechargeDate);
-        newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+        newExpiryDate.setDate(newExpiryDate.getDate() + 30 * months);
         
         const currentBalance = customerData.balanceAmount || 0;
-        const newBalance = currentBalance + parseFloat(request.packageAmount);
+        const newBalance = currentBalance + request.packageAmount;
 
         transaction.update(customerDocRef, { 
             lastRechargeDate: Timestamp.fromDate(newRechargeDate),
@@ -432,8 +433,9 @@ export default function DashboardPage() {
             customerId: request.customerId,
             customerName: request.customerName,
             packageName: request.packageName,
-            amount: parseFloat(request.packageAmount),
-            paymentReceived: false, // Balance is added, so payment is not collected upfront
+            amount: request.packageAmount,
+            months: months,
+            paymentReceived: false,
             rechargeDate: Timestamp.fromDate(newRechargeDate),
             rechargedBy: 'SYSTEM_AUTO', 
             adminId: currentUser.uid,
@@ -741,7 +743,7 @@ export default function DashboardPage() {
                         <div>
                             <p className="font-semibold">{req.customerName}</p>
                             <p className="text-sm text-muted-foreground">
-                                Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span>
+                                Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span> {req.months && ` for ${req.months} month(s)`}
                             </p>
                             <Badge variant="outline" className="mt-1">{req.type} Request</Badge>
                         </div>
