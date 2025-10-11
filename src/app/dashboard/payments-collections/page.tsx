@@ -37,13 +37,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Phone, HandCoins, Loader2 } from "lucide-react";
+import { Search, Phone, HandCoins, Loader2, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface Collection {
     id: string;
@@ -447,6 +448,12 @@ export default function PaymentsCollectionsPage() {
                                                 <a href={`tel:${collection.mobile}`}>
                                                 <Phone className="h-4 w-4" />
                                                 </a>
+                                            </Button>
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/dashboard/customers/${collection.id}/history`}>
+                                                    <History className="mr-2 h-4 w-4" />
+                                                    Full History
+                                                </Link>
                                             </Button>
                                         </div>
                                     </div>

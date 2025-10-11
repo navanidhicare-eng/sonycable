@@ -59,7 +59,7 @@ export default function CustomerHistoryPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
@@ -201,6 +201,47 @@ export default function CustomerHistoryPage() {
     pdf.save(`${customer.name}-Details.pdf`);
   };
 
+  const BackButton = () => {
+    if (authLoading) {
+      return null;
+    }
+
+    if (userRole === 'Admin') {
+      return (
+        <Button asChild variant="outline" size="sm">
+          <Link href="/dashboard/customers" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Customers</span>
+          </Link>
+        </Button>
+      );
+    }
+
+    if (userRole && userRole !== 'Customer') { // Any staff role
+       return (
+        <Button asChild variant="outline" size="sm">
+          <Link href="/dashboard/payments-collections" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Collections</span>
+          </Link>
+        </Button>
+      );
+    }
+
+    if (userRole === 'Customer') {
+      return (
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/customer/${customerId}`} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Dashboard</span>
+          </Link>
+        </Button>
+      );
+    }
+
+    return null;
+  };
+
   if (loading || authLoading) {
     return (
         <main className="flex min-h-screen w-full items-center justify-center font-body text-foreground">
@@ -215,12 +256,7 @@ export default function CustomerHistoryPage() {
             <div className="container mx-auto p-4 py-8 md:p-12 text-center">
                  <h1 className="text-2xl font-bold">Customer Not Found</h1>
                  <p className="text-muted-foreground">The requested customer could not be found.</p>
-                 <Button asChild variant="outline" size="sm" className="mt-4">
-                    <Link href="/dashboard/customers" className="flex items-center gap-2">
-                        <ArrowLeft className="h-4 w-4" />
-                        <span>Back to Customers</span>
-                    </Link>
-                </Button>
+                 <BackButton />
             </div>
         </main>
     )
@@ -231,12 +267,7 @@ export default function CustomerHistoryPage() {
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
         <div className="mb-8">
-            <Button asChild variant="outline" size="sm">
-                <Link href="/dashboard/customers" className="flex items-center gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    <span>Back to Customers</span>
-                </Link>
-            </Button>
+            <BackButton />
         </div>
         <Card className="mb-8">
           <CardHeader>
@@ -247,12 +278,14 @@ export default function CustomerHistoryPage() {
                       View recharge and payment history for this customer.
                     </CardDescription>
                 </div>
-                <div className="mt-4 flex gap-2 sm:mt-0">
-                    <Button variant="outline" onClick={handleGenerateAndShowQR}>
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Show QR Code
-                    </Button>
-                </div>
+                {(userRole === 'Admin' || userRole === 'Customer') && (
+                    <div className="mt-4 flex gap-2 sm:mt-0">
+                        <Button variant="outline" onClick={handleGenerateAndShowQR}>
+                            <QrCode className="mr-2 h-4 w-4" />
+                            Show QR Code
+                        </Button>
+                    </div>
+                )}
             </div>
           </CardHeader>
           <CardContent>
