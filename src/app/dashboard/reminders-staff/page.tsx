@@ -98,7 +98,8 @@ export default function StaffRemindersPage() {
                         // Filter by expiry date
                         if (!customer.expiryDate) return false;
                         const expiryDate = customer.expiryDate.toDate();
-                        return expiryDate >= today && expiryDate <= threeDaysFromNow;
+                        // Show customers expired or expiring in next 3 days.
+                        return expiryDate <= threeDaysFromNow;
                     });
                 
                 customersData.sort((a, b) => a.expiryDate!.seconds - b.expiryDate!.seconds);
@@ -138,16 +139,29 @@ export default function StaffRemindersPage() {
     return timestamp.toDate().toLocaleDateString('en-CA');
   }
 
-  const daysLeft = (timestamp?: Timestamp) => {
+  const daysLeft = (timestamp?: Timestamp): number | string => {
     if (!timestamp) return 'N/A';
-    const expiryDate = timestamp.toDate();
-    expiryDate.setHours(0, 0, 0, 0);
+    const expiryDate = new Date(timestamp.toDate().setHours(0, 0, 0, 0));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const diffTime = expiryDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   }
+  
+  const getExpiryStatus = (timestamp?: Timestamp) => {
+      const days = daysLeft(timestamp);
+      if (typeof days !== 'number') return { text: 'N/A', isExpired: false, isToday: false };
+
+      if (days < 0) {
+          return { text: `Expired ${Math.abs(days)} days ago`, isExpired: true, isToday: false };
+      }
+      if (days === 0) {
+          return { text: 'Today', isExpired: false, isToday: true };
+      }
+      return { text: `${days}`, isExpired: false, isToday: false };
+  };
+
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
@@ -158,13 +172,13 @@ export default function StaffRemindersPage() {
               Recharge Reminders
             </h1>
             <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-              Customers whose subscription is expiring in the next 3 days.
+              Customers whose subscription is expiring in the next 3 days or has already expired.
             </p>
           </div>
         </header>
         <Card className="w-full max-w-4xl">
           <CardHeader>
-            <CardTitle>Upcoming Expiries</CardTitle>
+            <CardTitle>Upcoming & Recent Expiries</CardTitle>
           </CardHeader>
           <CardContent>
             {loading || authLoading ? (
@@ -182,44 +196,47 @@ export default function StaffRemindersPage() {
                       <TableHead>Mobile</TableHead>
                       <TableHead>Area</TableHead>
                       <TableHead>Expiry Date</TableHead>
-                      <TableHead>Days Left</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {expiringCustomers.length > 0 ? (
-                      expiringCustomers.map((customer) => (
-                        <TableRow key={customer.id}>
-                          <TableCell className="font-medium">{customer.name}</TableCell>
-                          <TableCell>{customer.mobile}</TableCell>
-                          <TableCell>{customer.area}</TableCell>
-                          <TableCell>{formatDate(customer.expiryDate)}</TableCell>
-                          <TableCell className={`font-bold ${daysLeft(customer.expiryDate) === 0 ? 'text-destructive' : ''}`}>
-                              {daysLeft(customer.expiryDate) === 0 ? 'Today' : daysLeft(customer.expiryDate)}
-                          </TableCell>
-                          <TableCell className="flex gap-1">
-                            <Button variant="ghost" size="icon" asChild>
-                              <a href={`tel:${customer.mobile}`}>
-                                <Phone className="h-4 w-4" />
-                              </a>
-                            </Button>
-                             <Button variant="ghost" size="icon" asChild>
-                                  <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                                      <Pencil className="h-4 w-4" />
+                      expiringCustomers.map((customer) => {
+                        const status = getExpiryStatus(customer.expiryDate);
+                        return (
+                          <TableRow key={customer.id}>
+                            <TableCell className="font-medium">{customer.name}</TableCell>
+                            <TableCell>{customer.mobile}</TableCell>
+                            <TableCell>{customer.area}</TableCell>
+                            <TableCell>{formatDate(customer.expiryDate)}</TableCell>
+                            <TableCell className={`font-bold ${status.isExpired ? 'text-destructive' : ''}`}>
+                                {status.text}
+                            </TableCell>
+                            <TableCell className="flex gap-1">
+                              <Button variant="ghost" size="icon" asChild>
+                                <a href={`tel:${customer.mobile}`}>
+                                  <Phone className="h-4 w-4" />
+                                </a>
+                              </Button>
+                               <Button variant="ghost" size="icon" asChild>
+                                    <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                               <Button variant="ghost" size="icon" asChild>
+                                  <Link href={`/dashboard/request-recharge/${customer.id}`}>
+                                    <Send className="h-4 w-4" />
                                   </Link>
-                              </Button>
-                             <Button variant="ghost" size="icon" asChild>
-                                <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                  <Send className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                                </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                          No customers with upcoming expiries in your areas.
+                          No customers with upcoming or recent expiries in your areas.
                         </TableCell>
                       </TableRow>
                     )}
@@ -231,14 +248,18 @@ export default function StaffRemindersPage() {
                 {expiringCustomers.length > 0 ? (
                     <Accordion type="single" collapsible className="w-full">
                     {expiringCustomers.map((customer) => {
-                        const days = daysLeft(customer.expiryDate);
+                        const status = getExpiryStatus(customer.expiryDate);
+                        let badgeVariant: "destructive" | "secondary" | "default" = "secondary";
+                        if (status.isExpired) badgeVariant = "destructive";
+                        if (status.isToday) badgeVariant = "default";
+                        
                         return (
                         <AccordionItem value={customer.id} key={customer.id}>
                             <AccordionTrigger>
                                 <div className="flex justify-between w-full pr-4 items-center">
                                     <span className="font-medium">{customer.name}</span>
-                                    <Badge variant={days === 0 ? 'destructive' : 'secondary'}>
-                                      Expires {days === 0 ? 'Today' : `in ${days} day(s)`}
+                                    <Badge variant={badgeVariant}>
+                                      {status.text}
                                     </Badge>
                                 </div>
                             </AccordionTrigger>
@@ -274,7 +295,7 @@ export default function StaffRemindersPage() {
                     </Accordion>
                 ) : (
                      <div className="text-center py-10 text-muted-foreground">
-                        No customers with upcoming expiries.
+                        No customers with upcoming or recent expiries.
                      </div>
                 )}
               </div>
@@ -286,3 +307,5 @@ export default function StaffRemindersPage() {
     </main>
   );
 }
+
+    
