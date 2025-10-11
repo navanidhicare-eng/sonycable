@@ -61,6 +61,11 @@ export default function StaffComplaintsPage() {
   const { user, userRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
+  const isCollectionAgent = useMemo(() => {
+    if (!userRole) return false;
+    return /collection|collation/i.test(userRole);
+  }, [userRole]);
+
   useEffect(() => {
     if (authLoading || !user) {
       if(!authLoading) setLoading(false);
@@ -223,12 +228,14 @@ export default function StaffComplaintsPage() {
                 Track and manage customer complaints here.
               </p>
             </div>
-            <Button asChild className="mt-4 sm:mt-0">
-              <Link href="/dashboard/complaints-staff/add">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Complaint
-              </Link>
-            </Button>
+            {!isCollectionAgent && (
+                <Button asChild className="mt-4 sm:mt-0">
+                <Link href="/dashboard/complaints-staff/add">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Complaint
+                </Link>
+                </Button>
+            )}
           </header>
           
           <Tabs defaultValue="pending" className="w-full max-w-4xl">
@@ -255,7 +262,7 @@ export default function StaffComplaintsPage() {
                                 <TableHead>Customer</TableHead>
                                 <TableHead>Complaint</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead>Actions</TableHead>
+                                {!isCollectionAgent && <TableHead>Actions</TableHead>}
                             </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -275,16 +282,18 @@ export default function StaffComplaintsPage() {
                                         {complaint.status}
                                     </Badge>
                                     </TableCell>
-                                    <TableCell>
-                                        <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
-                                        Resolve
-                                        </Button>
-                                    </TableCell>
+                                    {!isCollectionAgent && (
+                                        <TableCell>
+                                            <Button variant="outline" size="sm" onClick={() => openResolveDialog(complaint)}>
+                                            Resolve
+                                            </Button>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    <TableCell colSpan={isCollectionAgent ? 4 : 5} className="h-24 text-center">
                                         No pending complaints found.
                                     </TableCell>
                                 </TableRow>
@@ -397,3 +406,5 @@ export default function StaffComplaintsPage() {
     </>
   );
 }
+
+    
