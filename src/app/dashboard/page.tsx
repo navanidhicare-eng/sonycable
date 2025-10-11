@@ -87,6 +87,12 @@ interface RechargePackage {
   packageAmount: string;
 }
 
+interface RechargeOffer {
+  id: string;
+  months: number;
+  discountPercentage: number;
+}
+
 export default function DashboardPage() {
   const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
@@ -126,6 +132,7 @@ export default function DashboardPage() {
   const [isRechargeSearchDialogOpen, setIsRechargeSearchDialogOpen] = useState(false);
   const [isRechargeDialogOpen, setIsRechargeDialogOpen] = useState(false);
   const [packages, setPackages] = useState<RechargePackage[]>([]);
+  const [rechargeOffers, setRechargeOffers] = useState<RechargeOffer[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [paymentReceivedForRecharge, setPaymentReceivedForRecharge] = useState(false);
   const [rechargeMonths, setRechargeMonths] = useState(1);
@@ -146,6 +153,8 @@ export default function DashboardPage() {
             const customersQuery = query(collection(db, "customers"), where("userId", "==", currentUser.uid));
             const packagesQuery = query(collection(db, "packages"), where("userId", "==", currentUser.uid));
             const staffQuery = query(collection(db, "staff"), where("adminId", "==", currentUser.uid));
+            const rechargeOffersQuery = query(collection(db, "rechargeOffers"), where("userId", "==", currentUser.uid));
+
 
             const [customersSnapshot, packagesSnapshot, staffSnapshot] = await Promise.all([
                 getDocs(customersQuery),
@@ -203,8 +212,13 @@ export default function DashboardPage() {
                     monthlyCollection,
                 }));
             });
+
+            const unsubscribeRechargeOffers = onSnapshot(rechargeOffersQuery, (snapshot) => {
+                const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeOffer));
+                setRechargeOffers(offers);
+            });
             
-            unsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments);
+            unsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments, unsubscribeRechargeOffers);
 
         } catch (error) {
             console.error("Error fetching admin stats:", error);
@@ -612,7 +626,11 @@ export default function DashboardPage() {
       return;
     }
 
-    const totalRechargeAmount = parseFloat(pkg.packageAmount) * rechargeMonths;
+    const baseAmount = parseFloat(pkg.packageAmount);
+    const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+    const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+    const totalRechargeAmount = baseAmount * rechargeMonths - discount;
+
     let description;
     const customerDocRef = doc(db, "customers", searchedCustomer.id);
 
@@ -633,6 +651,10 @@ export default function DashboardPage() {
             const newBalance = currentBalance + totalRechargeAmount;
             updateData.balanceAmount = newBalance;
             description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
+        }
+        
+        if (discount > 0) {
+            description += ` (Discount of ₹${discount} applied).`;
         }
 
         await updateDoc(customerDocRef, updateData);
@@ -990,7 +1012,12 @@ export default function DashboardPage() {
     };
 
     const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
-    const totalRechargeAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) * rechargeMonths : 0;
+    
+    const baseAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) : 0;
+    const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+    const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+    const totalRechargeAmount = baseAmount * rechargeMonths - discount;
+
     const newBalance = searchedCustomer && selectedPackageDetails && !paymentReceivedForRecharge
         ? parseFloat(String(searchedCustomer.balanceAmount)) + totalRechargeAmount
         : searchedCustomer?.balanceAmount;
@@ -1237,6 +1264,18 @@ export default function DashboardPage() {
 
                     {selectedPackageDetails && (
                         <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                             {offer && (
+                                <>
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>Original Amount:</span>
+                                    <span>₹{(baseAmount * rechargeMonths).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between font-semibold text-destructive">
+                                    <span>Discount ({offer.discountPercentage}%):</span>
+                                    <span>- ₹{discount.toLocaleString()}</span>
+                                </div>
+                                </>
+                            )}
                             <div className="flex justify-between">
                                 <span>Recharge Amount:</span>
                                 <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>

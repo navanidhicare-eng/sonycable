@@ -64,6 +64,12 @@ interface Area {
   label: string;
 }
 
+interface RechargeOffer {
+  id: string;
+  months: number;
+  discountPercentage: number;
+}
+
 
 export default function RechargePage() {
   const { toast } = useToast();
@@ -72,6 +78,7 @@ export default function RechargePage() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [rechargeOffers, setRechargeOffers] = useState<RechargeOffer[]>([]);
   const [areas, setAreas] = useState<Area[]>([{ value: "all", label: "All Areas" }]);
   const [loading, setLoading] = useState(true);
 
@@ -119,6 +126,15 @@ export default function RechargePage() {
         toast({ variant: "destructive", title: "Failed to fetch packages" });
     });
 
+    const rechargeOffersQuery = query(collection(db, "rechargeOffers"), where("userId", "==", user.uid));
+    const offersUnsubscribe = onSnapshot(rechargeOffersQuery, (snapshot) => {
+        const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeOffer));
+        setRechargeOffers(offersData);
+    }, (error) => {
+        console.error("Error fetching recharge offers:", error);
+        toast({ variant: "destructive", title: "Failed to fetch offers" });
+    });
+
     const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
     const areasUnsubscribe = onSnapshot(areasQuery, (snapshot) => {
         const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
@@ -132,6 +148,7 @@ export default function RechargePage() {
         customersUnsubscribe();
         packagesUnsubscribe();
         areasUnsubscribe();
+        offersUnsubscribe();
     }
 
   }, [user, authLoading, toast]);
@@ -162,7 +179,11 @@ export default function RechargePage() {
       return;
     }
 
-    const rechargeAmount = parseFloat(pkg.packageAmount) * rechargeMonths;
+    const baseAmount = parseFloat(pkg.packageAmount);
+    const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+    const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+    const totalRechargeAmount = baseAmount * rechargeMonths - discount;
+
     let description;
     const customerDocRef = doc(db, "customers", currentCustomer.id);
 
@@ -177,11 +198,15 @@ export default function RechargePage() {
         };
 
         if (paymentReceived) {
-            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${rechargeAmount}). Payment received.`;
+            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
         } else {
-            const newBalance = currentCustomer.balanceAmount + rechargeAmount;
+            const newBalance = currentCustomer.balanceAmount + totalRechargeAmount;
             updateData.balanceAmount = newBalance;
-            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${rechargeAmount} added to collection balance.`;
+            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
+        }
+
+        if (discount > 0) {
+            description += ` (Discount of ₹${discount.toLocaleString()} applied).`;
         }
 
         await updateDoc(customerDocRef, updateData);
@@ -191,7 +216,7 @@ export default function RechargePage() {
             customerName: currentCustomer.name,
             packageId: pkg.id,
             packageName: pkg.packageName,
-            amount: rechargeAmount,
+            amount: totalRechargeAmount,
             months: rechargeMonths,
             paymentReceived: paymentReceived,
             rechargeDate: newRechargeDate,
@@ -225,8 +250,10 @@ export default function RechargePage() {
   };
   
   const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
-  
-  const totalRechargeAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) * rechargeMonths : 0;
+  const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+  const baseAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) : 0;
+  const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+  const totalRechargeAmount = baseAmount * rechargeMonths - discount;
 
   const newBalance = currentCustomer && selectedPackageDetails && !paymentReceived
         ? parseFloat(String(currentCustomer.balanceAmount)) + totalRechargeAmount
@@ -368,6 +395,18 @@ export default function RechargePage() {
 
                 {selectedPackageDetails && (
                     <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                        {offer && (
+                            <>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Original Amount:</span>
+                                <span>₹{(baseAmount * rechargeMonths).toLocaleString()}</span>
+                            </div>
+                             <div className="flex justify-between font-semibold text-destructive">
+                                <span>Discount ({offer.discountPercentage}%):</span>
+                                <span>- ₹{discount.toLocaleString()}</span>
+                            </div>
+                            </>
+                        )}
                         <div className="flex justify-between">
                             <span>Recharge Amount:</span>
                             <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>

@@ -35,6 +35,7 @@ Calculator,
   Tv,
   Store,
   Send,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -261,6 +262,14 @@ function DashboardLayout({
                         <Link href="/dashboard/complaints">
                         <MessageSquareWarning />
                         <span>Complaints</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
+                        <Link href="/dashboard/recharge-offers">
+                        <Gift />
+                        <span>Recharge Offers</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

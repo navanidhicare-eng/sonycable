@@ -31,10 +31,17 @@ interface Customer {
   userId: string; // Admin's UID
 }
 
+interface RechargeOffer {
+  id: string;
+  months: number;
+  discountPercentage: number;
+}
+
 export default function RequestRechargePage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [packages, setPackages] = useState<Package[]>([]);
+  const [rechargeOffers, setRechargeOffers] = useState<RechargeOffer[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [rechargeMonths, setRechargeMonths] = useState(1);
@@ -67,16 +74,23 @@ export default function RequestRechargePage() {
 
         if (customerData.userId) {
           const packagesQuery = query(collection(db, "packages"), where("userId", "==", customerData.userId));
-          const unsubscribe = onSnapshot(packagesQuery, (snapshot) => {
+          const offersQuery = query(collection(db, "rechargeOffers"), where("userId", "==", customerData.userId));
+
+          const unsubPackages = onSnapshot(packagesQuery, (snapshot) => {
             const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Package));
             setPackages(packagesData);
-            setLoading(false);
           }, (error) => {
             console.error("Error fetching packages:", error);
             toast({ variant: "destructive", title: "Failed to load packages." });
-            setLoading(false);
           });
-          return unsubscribe;
+
+          const unsubOffers = onSnapshot(offersQuery, (snapshot) => {
+            const offersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeOffer));
+            setRechargeOffers(offersData);
+          });
+          
+          setLoading(false);
+          return [unsubPackages, unsubOffers];
         } else {
           setLoading(false);
         }
@@ -87,13 +101,13 @@ export default function RequestRechargePage() {
       }
     };
 
-    let unsubscribe: (() => void) | undefined;
-    fetchInitialData().then(unsub => {
-      if (unsub) unsubscribe = unsub;
+    let unsubscribes: (() => void)[] | undefined;
+    fetchInitialData().then(unsubs => {
+      if (unsubs) unsubscribes = unsubs;
     });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribes) unsubscribes.forEach(unsub => unsub());
     };
   }, [authLoading, user, toast]);
 
@@ -123,7 +137,10 @@ export default function RequestRechargePage() {
         return;
       }
       
-      const totalAmount = parseFloat(selectedPackage.packageAmount) * rechargeMonths;
+      const baseAmount = parseFloat(selectedPackage.packageAmount);
+      const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+      const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+      const totalAmount = baseAmount * rechargeMonths - discount;
 
       await addDoc(collection(db, 'rechargeRequests'), {
         customerId: customer.id,
@@ -161,7 +178,10 @@ export default function RequestRechargePage() {
     setRechargeMonths(1);
   };
   
-  const totalAmount = selectedPackage ? parseFloat(selectedPackage.packageAmount) * rechargeMonths : 0;
+  const baseAmount = selectedPackage ? parseFloat(selectedPackage.packageAmount) : 0;
+  const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+  const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+  const totalAmount = baseAmount * rechargeMonths - discount;
 
   if (loading || authLoading) {
     return (
@@ -214,10 +234,23 @@ export default function RequestRechargePage() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="text-center text-sm text-muted-foreground p-3 bg-muted rounded-md">
-                  You are requesting <span className="font-bold text-foreground">{selectedPackage.packageName}</span> for <span className="font-bold text-foreground">{rechargeMonths} month(s)</span>.
-                  <br/>
-                  Total Amount: <span className="font-bold text-foreground text-base">₹{totalAmount.toLocaleString()}</span>
+                <div className="text-center text-sm text-muted-foreground p-3 bg-muted rounded-md space-y-1">
+                  {offer && (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Original Amount:</span>
+                        <span className="font-bold text-foreground">₹{(baseAmount * rechargeMonths).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-destructive">
+                        <span>Discount ({offer.discountPercentage}%):</span>
+                        <span className="font-bold">- ₹{discount.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Total Amount:</span>
+                    <span className="font-bold text-foreground text-base">₹{totalAmount.toLocaleString()}</span>
+                  </div>
                 </div>
               </>
             )}
