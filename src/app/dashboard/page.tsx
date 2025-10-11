@@ -416,9 +416,13 @@ export default function DashboardPage() {
         const newExpiryDate = new Date(newRechargeDate);
         newExpiryDate.setDate(newExpiryDate.getDate() + 30);
         
+        const currentBalance = customerData.balanceAmount || 0;
+        const newBalance = currentBalance + parseFloat(request.packageAmount);
+
         transaction.update(customerDocRef, { 
             lastRechargeDate: Timestamp.fromDate(newRechargeDate),
-            expiryDate: Timestamp.fromDate(newExpiryDate)
+            expiryDate: Timestamp.fromDate(newExpiryDate),
+            balanceAmount: newBalance,
         });
         
         const rechargesColRef = collection(db, "recharges");
@@ -428,7 +432,7 @@ export default function DashboardPage() {
             customerName: request.customerName,
             packageName: request.packageName,
             amount: parseFloat(request.packageAmount),
-            paymentReceived: true, 
+            paymentReceived: false, // Balance is added, so payment is not collected upfront
             rechargeDate: Timestamp.fromDate(newRechargeDate),
             rechargedBy: 'SYSTEM_AUTO', 
             adminId: currentUser.uid,
@@ -1240,3 +1244,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
