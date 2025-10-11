@@ -127,6 +127,7 @@ export default function DashboardPage() {
   const [packages, setPackages] = useState<RechargePackage[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [paymentReceivedForRecharge, setPaymentReceivedForRecharge] = useState(false);
+  const [rechargeMonths, setRechargeMonths] = useState(1);
 
 
   useEffect(() => {
@@ -550,6 +551,7 @@ export default function DashboardPage() {
   const openRechargeDialog = (customer: Customer) => {
     setSearchedCustomer(customer);
     setSelectedPackage(null);
+    setRechargeMonths(1);
     setPaymentReceivedForRecharge(false);
     setIsRechargeDialogOpen(true);
     setIsRechargeSearchDialogOpen(false);
@@ -608,14 +610,14 @@ export default function DashboardPage() {
       return;
     }
 
-    const rechargeAmount = parseFloat(pkg.packageAmount);
+    const totalRechargeAmount = parseFloat(pkg.packageAmount) * rechargeMonths;
     let description;
     const customerDocRef = doc(db, "customers", searchedCustomer.id);
 
     try {
         const newRechargeDate = new Date();
         const newExpiryDate = new Date(newRechargeDate);
-        newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+        newExpiryDate.setDate(newExpiryDate.getDate() + 30 * rechargeMonths);
 
         let updateData: any = {
             expiryDate: Timestamp.fromDate(newExpiryDate),
@@ -623,12 +625,12 @@ export default function DashboardPage() {
         };
 
         if (paymentReceivedForRecharge) {
-            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ₹${rechargeAmount}. Payment received.`;
+            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
         } else {
             const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
-            const newBalance = currentBalance + rechargeAmount;
+            const newBalance = currentBalance + totalRechargeAmount;
             updateData.balanceAmount = newBalance;
-            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName}. ₹${rechargeAmount} added to collection balance.`;
+            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
         }
 
         await updateDoc(customerDocRef, updateData);
@@ -638,7 +640,8 @@ export default function DashboardPage() {
             customerName: searchedCustomer.name,
             packageId: pkg.id,
             packageName: pkg.packageName,
-            amount: rechargeAmount,
+            amount: totalRechargeAmount,
+            months: rechargeMonths,
             paymentReceived: paymentReceivedForRecharge,
             rechargeDate: newRechargeDate,
             rechargedBy: currentUser.uid, // staff uid
@@ -985,8 +988,9 @@ export default function DashboardPage() {
     };
 
     const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
+    const totalRechargeAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) * rechargeMonths : 0;
     const newBalance = searchedCustomer && selectedPackageDetails && !paymentReceivedForRecharge
-        ? parseFloat(String(searchedCustomer.balanceAmount)) + parseFloat(selectedPackageDetails.packageAmount)
+        ? parseFloat(String(searchedCustomer.balanceAmount)) + totalRechargeAmount
         : searchedCustomer?.balanceAmount;
 
 
@@ -1213,9 +1217,28 @@ export default function DashboardPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="months" className="text-right">Months</Label>
+                        <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Select number of months" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[...Array(12)].map((_, i) => (
+                                    <SelectItem key={i + 1} value={String(i + 1)}>
+                                    {i + 1} Month(s)
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
                     {selectedPackageDetails && (
                         <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                            <div className="flex justify-between">
+                                <span>Recharge Amount:</span>
+                                <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>
+                            </div>
                             <div className="flex justify-between">
                                 <span>New Balance After Recharge:</span>
                                 <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
@@ -1244,5 +1267,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
