@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp, getDocs, runTransaction } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp, getDocs, runTransaction, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -132,46 +132,72 @@ export default function StaffComplaintsPage() {
   };
 
   const handleResolveComplaint = async () => {
-    if (!currentComplaint) return;
-
+    if (!currentComplaint || !user) return;
+  
     try {
+      const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+      const staffSnapshot = await getDocs(staffQuery);
+      if (staffSnapshot.empty) {
+        throw new Error("Staff details not found");
+      }
+      const staffData = staffSnapshot.docs[0].data() as Staff;
+      
       await runTransaction(db, async (transaction) => {
         const complaintDocRef = doc(db, "complaints", currentComplaint.id);
         const amountValue = parseFloat(resolutionAmount);
-
-        if (!isNaN(amountValue) && amountValue > 0 && !paymentCollected) {
+  
+        const updatePayload: any = {
+          status: "Resolved",
+          resolutionNotes: resolutionNotes,
+        };
+  
+        if (!isNaN(amountValue) && amountValue > 0) {
+          updatePayload.resolutionAmount = amountValue;
+          updatePayload.paymentCollected = paymentCollected;
+  
+          if (paymentCollected) {
+            // Add to staff's collection wallet by creating a payment record
+            const paymentRef = doc(collection(db, "payments"));
+            transaction.set(paymentRef, {
+              customerId: currentComplaint.customerId,
+              customerName: currentComplaint.customerName,
+              amount: amountValue,
+              method: "cash", // Assuming cash for service calls, or could be a new method
+              description: `Complaint Service Charge: ${resolutionNotes || 'N/A'}`,
+              collectedBy: user.uid,
+              collectionDate: new Date(),
+              adminId: staffData.adminId,
+            });
+          } else {
+            // Add to customer's outstanding balance
             const customerDocRef = doc(db, "customers", currentComplaint.customerId);
             const customerDoc = await transaction.get(customerDocRef);
             if (!customerDoc.exists()) {
-                throw new Error("Customer not found");
+              throw new Error("Customer not found");
             }
             const currentBalance = customerDoc.data().balanceAmount || 0;
             const newBalance = currentBalance + amountValue;
             transaction.update(customerDocRef, { balanceAmount: newBalance });
+          }
         }
-
-        transaction.update(complaintDocRef, {
-            status: "Resolved",
-            resolutionNotes: resolutionNotes,
-            resolutionAmount: !isNaN(amountValue) ? amountValue : null,
-            paymentCollected: !isNaN(amountValue) ? paymentCollected : null,
-        });
+  
+        transaction.update(complaintDocRef, updatePayload);
       });
-
+  
       toast({
-          title: "Complaint Resolved",
-          description: "The complaint has been marked as resolved.",
+        title: "Complaint Resolved",
+        description: "The complaint has been marked as resolved.",
       });
-
+  
       setIsResolveDialogOpen(false);
       setCurrentComplaint(null);
     } catch(error) {
-        console.error("Error resolving complaint:", error);
-        toast({
-            variant: "destructive",
-            title: "Resolution Failed",
-            description: "Could not update the complaint status.",
-        });
+      console.error("Error resolving complaint:", error);
+      toast({
+        variant: "destructive",
+        title: "Resolution Failed",
+        description: "Could not update the complaint status.",
+      });
     }
   };
 
