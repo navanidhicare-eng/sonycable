@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,8 +70,7 @@ interface RechargeOffer {
   discountPercentage: number;
 }
 
-
-export default function RechargePage() {
+function RechargePageContent() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
@@ -261,7 +260,7 @@ export default function RechargePage() {
 
 
   return (
-    <main className="min-h-screen w-full font-body text-foreground">
+    <>
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
         <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
@@ -436,6 +435,16 @@ export default function RechargePage() {
             </DialogContent>
         </Dialog>
       )}
+    </>
+  );
+}
+
+export default function RechargePage() {
+  return (
+    <main className="min-h-screen w-full font-body text-foreground">
+      <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+        <RechargePageContent />
+      </Suspense>
     </main>
   );
 }
