@@ -12,13 +12,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, getDocs, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, addDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { Loader2, Send, User, ArrowLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 interface Package {
   id: string;
@@ -32,11 +33,14 @@ interface Customer {
   userId: string; // Admin's UID
   stbId: string;
   mobile: string;
+  expiryDate?: Timestamp;
 }
 
 interface Staff {
     adminId: string;
 }
+
+type RequestType = 'Renewal' | 'Recharge';
 
 export default function RequestRechargeForCustomerPage() {
   const { user, loading: authLoading } = useAuth();
@@ -49,6 +53,8 @@ export default function RequestRechargeForCustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const params = useParams();
   const customerId = params.customerId as string;
+
+  const requestType: RequestType = (customer?.expiryDate && customer.expiryDate.toDate() > new Date()) ? 'Renewal' : 'Recharge';
 
   useEffect(() => {
     if (authLoading || !user || !customerId) {
@@ -138,11 +144,12 @@ export default function RequestRechargeForCustomerPage() {
         requestDate: new Date(),
         status: 'Pending',
         type: 'Staff',
+        requestSubtype: requestType, // Add the subtype here
       });
 
       toast({
         title: "Request Sent",
-        description: `Your request for ${selectedPackage.packageName} has been sent to the admin for approval.`,
+        description: `Your ${requestType} request for ${selectedPackage.packageName} has been sent to the admin for approval.`,
       });
       setSelectedPackage(null);
       router.push('/dashboard/reminders-staff');
@@ -193,10 +200,17 @@ export default function RequestRechargeForCustomerPage() {
         </div>
         <Card className="w-full max-w-lg mx-auto">
           <CardHeader>
-            <CardTitle className="text-2xl">Request a Recharge</CardTitle>
-            <CardDescription>
-              Select a package and send a request for the customer.
-            </CardDescription>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="text-2xl">Request a Recharge</CardTitle>
+                <CardDescription>
+                  Select a package and send a request for the customer.
+                </CardDescription>
+              </div>
+              <Badge variant={requestType === 'Renewal' ? 'default' : 'destructive'}>
+                {requestType} Request
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center rounded-md border border-dashed p-3">

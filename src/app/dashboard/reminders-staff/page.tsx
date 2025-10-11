@@ -102,7 +102,7 @@ export default function StaffRemindersPage() {
                         return expiryDate <= threeDaysFromNow;
                     });
                 
-                customersData.sort((a, b) => a.expiryDate!.seconds - b.expiryDate!.seconds);
+                customersData.sort((a, b) => (a.expiryDate?.seconds ?? 0) - (b.expiryDate?.seconds ?? 0));
                 setExpiringCustomers(customersData);
                 setLoading(false);
             }, (error) => {
@@ -225,21 +225,12 @@ export default function StaffRemindersPage() {
                                         <Pencil className="h-4 w-4" />
                                     </Link>
                                 </Button>
-                               {isExpired ? (
-                                <Button variant="outline" size="sm" asChild>
+                                <Button variant={isExpired ? "destructive" : "default"} size="sm" asChild>
                                   <Link href={`/dashboard/request-recharge/${customer.id}`}>
                                     <Send className="mr-2 h-4 w-4" />
-                                    Request Recharge
+                                    {isExpired ? 'Request Recharge' : 'Renewal'}
                                   </Link>
                                 </Button>
-                               ) : (
-                                <Button size="sm" asChild>
-                                    <Link href={`/dashboard/recharge?customerName=${encodeURIComponent(customer.name)}`}>
-                                        <CreditCard className="mr-2 h-4 w-4" />
-                                        Renewal
-                                    </Link>
-                                </Button>
-                               )}
                             </TableCell>
                           </TableRow>
                         )
@@ -293,21 +284,12 @@ export default function StaffRemindersPage() {
                                                 <Pencil className="h-4 w-4" />
                                            </Link>
                                         </Button>
-                                        {isExpired ? (
-                                            <Button className="flex-1" asChild>
-                                              <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                                <Send className="mr-2 h-4 w-4" />
-                                                Request Recharge
-                                              </Link>
-                                            </Button>
-                                        ) : (
-                                            <Button className="flex-1" asChild>
-                                                <Link href={`/dashboard/recharge?customerName=${encodeURIComponent(customer.name)}`}>
-                                                    <CreditCard className="mr-2 h-4 w-4" />
-                                                    Renewal
-                                                </Link>
-                                            </Button>
-                                        )}
+                                        <Button className="flex-1" variant={isExpired ? "destructive" : "default"} asChild>
+                                          <Link href={`/dashboard/request-recharge/${customer.id}`}>
+                                            <Send className="mr-2 h-4 w-4" />
+                                            {isExpired ? 'Request Recharge' : 'Renewal'}
+                                          </Link>
+                                        </Button>
                                     </div>
                                 </div>
                             </AccordionContent>
