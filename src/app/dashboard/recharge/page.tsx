@@ -40,6 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, Timestamp } from "firebase/firestore";
+import { useSearchParams } from "next/navigation";
 
 interface Customer {
   id: string;
@@ -67,6 +68,7 @@ interface Area {
 export default function RechargePage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -79,6 +81,14 @@ export default function RechargePage() {
   const [paymentReceived, setPaymentReceived] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  
+  useEffect(() => {
+    const customerNameFromUrl = searchParams.get('customerName');
+    if (customerNameFromUrl) {
+      setSearchTerm(decodeURIComponent(customerNameFromUrl));
+    }
+  }, [searchParams]);
+
 
   useEffect(() => {
     if (authLoading || !user) {

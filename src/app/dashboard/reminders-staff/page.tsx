@@ -11,12 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Phone } from "lucide-react";
+import { Loader2, Phone, Pencil, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, Timestamp, getDocs } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface Customer {
   id: string;
@@ -186,12 +187,22 @@ export default function StaffRemindersPage() {
                         <TableCell className={`font-bold ${daysLeft(customer.expiryDate) === 0 ? 'text-destructive' : ''}`}>
                             {daysLeft(customer.expiryDate) === 0 ? 'Today' : daysLeft(customer.expiryDate)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex gap-1">
                           <Button variant="ghost" size="icon" asChild>
                             <a href={`tel:${customer.mobile}`}>
                               <Phone className="h-4 w-4" />
                             </a>
                           </Button>
+                           <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                    <Pencil className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                           <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/dashboard/recharge?customerName=${encodeURIComponent(customer.name)}`}>
+                                <CreditCard className="h-4 w-4" />
+                              </Link>
+                            </Button>
                         </TableCell>
                       </TableRow>
                     ))
