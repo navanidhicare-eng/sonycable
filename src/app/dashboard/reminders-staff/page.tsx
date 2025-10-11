@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -43,10 +43,15 @@ interface Staff {
 }
 
 export default function StaffRemindersPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [expiringCustomers, setExpiringCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isCollectionAgent = useMemo(() => {
+    if (!userRole) return false;
+    return /collection|collation/i.test(userRole);
+  }, [userRole]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -244,11 +249,13 @@ export default function StaffRemindersPage() {
                                   <Phone className="h-4 w-4" />
                                 </a>
                               </Button>
-                               <Button variant="ghost" size="icon" asChild>
+                              {!isCollectionAgent && (
+                                <Button variant="ghost" size="icon" asChild>
                                     <Link href={`/dashboard/customers/${customer.id}/edit`}>
                                         <Pencil className="h-4 w-4" />
                                     </Link>
                                 </Button>
+                              )}
                                 <Button variant={isExpired ? "destructive" : "default"} size="sm" asChild>
                                   <Link href={`/dashboard/request-recharge/${customer.id}`}>
                                     <Send className="mr-2 h-4 w-4" />
@@ -304,11 +311,13 @@ export default function StaffRemindersPage() {
                                             <Phone className="h-4 w-4" />
                                           </a>
                                         </Button>
-                                        <Button variant="secondary" size="icon" asChild>
-                                           <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                                                <Pencil className="h-4 w-4" />
-                                           </Link>
-                                        </Button>
+                                        {!isCollectionAgent && (
+                                          <Button variant="secondary" size="icon" asChild>
+                                            <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                                  <Pencil className="h-4 w-4" />
+                                            </Link>
+                                          </Button>
+                                        )}
                                         <Button className="flex-1" variant={isExpired ? "destructive" : "default"} asChild>
                                           <Link href={`/dashboard/request-recharge/${customer.id}`}>
                                             <Send className="mr-2 h-4 w-4" />
@@ -335,5 +344,3 @@ export default function StaffRemindersPage() {
     </main>
   );
 }
-
-    
