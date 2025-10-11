@@ -103,14 +103,17 @@ export default function CustomerHistoryPage() {
         const rechargesQuery = query(collection(db, "recharges"), where("customerId", "==", customerId));
 
         const paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
-            const payments = snapshot.docs.map(doc => ({
-                id: doc.id,
-                date: doc.data().collectionDate.toDate().toISOString(),
-                description: `Payment via ${doc.data().method}`,
-                amount: doc.data().amount,
-                method: doc.data().method,
-                type: 'Payment'
-            } as Transaction));
+            const payments = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    date: data.collectionDate.toDate().toISOString(),
+                    description: data.description || `Payment via ${data.method}`,
+                    amount: data.amount,
+                    method: data.method,
+                    type: 'Payment'
+                } as Transaction;
+            });
             setPaymentHistory(payments);
         });
 
