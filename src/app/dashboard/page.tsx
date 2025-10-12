@@ -48,6 +48,10 @@ interface RechargeRequest {
     adminId: string;
     type: 'Auto' | 'Manual' | 'Staff';
     requestSubtype?: 'Renewal' | 'Recharge';
+    customerDetails?: {
+        mobile: string;
+        customerId: string;
+    }
 }
 
 interface DashboardStats {
@@ -146,21 +150,23 @@ export default function DashboardPage() {
     }
     
     setFirestoreLoading(true);
+    let allUnsubscribes: (() => void)[] = [];
 
     const fetchAdminData = async () => {
-        let unsubscribes: (() => void)[] = [];
         try {
             const customersQuery = query(collection(db, "customers"), where("userId", "==", currentUser.uid));
             const packagesQuery = query(collection(db, "packages"), where("userId", "==", currentUser.uid));
             const staffQuery = query(collection(db, "staff"), where("adminId", "==", currentUser.uid));
             const rechargeOffersQuery = query(collection(db, "rechargeOffers"), where("userId", "==", currentUser.uid));
 
-
             const [customersSnapshot, packagesSnapshot, staffSnapshot] = await Promise.all([
                 getDocs(customersQuery),
                 getDocs(packagesQuery),
                 getDocs(staffQuery),
             ]);
+            
+            const customersData = customersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data() as Omit<Customer, 'id'>}));
+            const customerMap = new Map(customersData.map(c => [c.id, c]));
 
             const totalPending = customersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
 
@@ -182,7 +188,15 @@ export default function DashboardPage() {
                 setSettlementRequests(requests);
             });
             const unsubscribeRechargeRequests = onSnapshot(rechargeRequestQuery, (snapshot) => {
-                const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
+                const requests = snapshot.docs.map(doc => {
+                    const reqData = doc.data() as Omit<RechargeRequest, 'id' | 'customerDetails'>;
+                    const customer = customerMap.get(reqData.customerId);
+                    return {
+                        id: doc.id,
+                        ...reqData,
+                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId } : undefined
+                    };
+                });
                 requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
                 setRechargeRequests(requests);
             });
@@ -218,7 +232,7 @@ export default function DashboardPage() {
                 setRechargeOffers(offers);
             });
             
-            unsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments, unsubscribeRechargeOffers);
+            allUnsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments, unsubscribeRechargeOffers);
 
         } catch (error) {
             console.error("Error fetching admin stats:", error);
@@ -226,17 +240,15 @@ export default function DashboardPage() {
         } finally {
             setFirestoreLoading(false);
         }
-        return unsubscribes;
     };
 
     const fetchStaffData = async () => {
-        let unsubscribes: (() => void)[] = [];
         try {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
             const staffSnapshot = await getDocs(staffQuery);
             if (staffSnapshot.empty) {
                 setFirestoreLoading(false);
-                return [];
+                return;
             }
             
             const staffDocData = staffSnapshot.docs[0].data() as StaffData;
@@ -249,7 +261,7 @@ export default function DashboardPage() {
                 const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
                 setTotalPendingForStaff(totalPending);
             });
-            unsubscribes.push(unsubscribeAllCustomers);
+            allUnsubscribes.push(unsubscribeAllCustomers);
 
 
             if (!isCollectionAgent) {
@@ -258,7 +270,7 @@ export default function DashboardPage() {
                     const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
                     setPackages(packagesData);
                 });
-                unsubscribes.push(unsubscribePackages);
+                allUnsubscribes.push(unsubscribePackages);
             }
             
 
@@ -308,7 +320,7 @@ export default function DashboardPage() {
                 setSettlementRequests(requests);
             });
 
-            unsubscribes.push(unsubscribePayments, unsubscribeSettlements);
+            allUnsubscribes.push(unsubscribePayments, unsubscribeSettlements);
 
         } catch(error) {
             console.error("Error fetching staff data:", error);
@@ -316,21 +328,15 @@ export default function DashboardPage() {
         } finally {
              setFirestoreLoading(false);
         }
-        return unsubscribes;
     };
 
-    let allUnsubscribes: (() => void)[] = [];
-    const fetchData = async () => {
-      if (userRole === "Admin") {
-        allUnsubscribes = (await fetchAdminData()) || [];
-      } else if (userRole) { // Check if userRole is not null/empty
-        allUnsubscribes = (await fetchStaffData()) || [];
-      } else {
-        setFirestoreLoading(false);
-      }
-    };
-
-    fetchData();
+    if (userRole === "Admin") {
+      fetchAdminData();
+    } else if (userRole) {
+      fetchStaffData();
+    } else {
+      setFirestoreLoading(false);
+    }
     
     return () => {
       allUnsubscribes.forEach(unsub => unsub());
@@ -765,6 +771,9 @@ export default function DashboardPage() {
                         <div>
                             <p className="font-semibold">{req.customerName}</p>
                             <p className="text-sm text-muted-foreground">
+                                ID: {req.customerDetails?.customerId} | Mobile: {req.customerDetails?.mobile}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
                                 Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span> {req.months && ` for ${req.months} month(s)`}
                             </p>
                             <Badge variant="outline" className="mt-1">{req.type} Request</Badge>
