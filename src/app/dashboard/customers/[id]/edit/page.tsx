@@ -75,6 +75,14 @@ export default function EditCustomerPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+        customerName: "",
+        mobileNumber: "",
+        balanceAmount: 0,
+        area: undefined,
+        stbId: "",
+        customerId: "",
+    },
   });
 
   useEffect(() => {
