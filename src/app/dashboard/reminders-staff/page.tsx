@@ -59,9 +59,8 @@ export default function StaffRemindersPage() {
       return;
     }
 
-    setLoading(true);
-
     const fetchReminders = async () => {
+        setLoading(true);
         try {
             // 1. Get Staff's adminId and assigned areas
             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
@@ -75,7 +74,7 @@ export default function StaffRemindersPage() {
 
             const staffData = staffSnapshot.docs[0].data() as Staff;
             const adminId = staffData.adminId;
-            const staffAreas = staffData.area;
+            const staffAreas = staffData.area || [];
 
             if (!adminId) {
                 setLoading(false);

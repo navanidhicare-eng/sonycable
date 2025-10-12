@@ -54,6 +54,8 @@ export default function StaffCustomersPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[]>([]);
+  const [adminId, setAdminId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -61,8 +63,7 @@ export default function StaffCustomersPage() {
       return;
     }
 
-    const fetchStaffAndCustomers = async () => {
-        setLoading(true);
+    const fetchStaffDetails = async () => {
         try {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
             const staffSnapshot = await getDocs(staffQuery);
@@ -70,50 +71,67 @@ export default function StaffCustomersPage() {
             if (staffSnapshot.empty) {
                 toast({ variant: "destructive", title: "Staff details not found." });
                 setLoading(false);
-                return;
+                return null;
             }
 
             const staffData = staffSnapshot.docs[0].data() as Staff;
-            const adminId = staffData.adminId;
-            const staffAreas = staffData.area || [];
-
-            if (adminId) {
-                const areasQuery = query(collection(db, "areas"), where("userId", "==", adminId));
-                onSnapshot(areasQuery, (snapshot) => {
-                    const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
-                    setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
-                });
-
-                const customersQuery = query(
-                    collection(db, "customers"), 
-                    where("userId", "==", adminId),
-                    where("area", "in", staffAreas.length > 0 ? staffAreas : ["-"])
-                );
-
-                const unsubscribe = onSnapshot(customersQuery, (snapshot) => {
-                    const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-                    customersData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
-                    setCustomers(customersData);
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching customers:", error);
-                    toast({ variant: "destructive", title: "Failed to fetch customers" });
-                    setLoading(false);
-                });
-                return unsubscribe;
-            }
+            setAdminId(staffData.adminId);
+            setStaffAssignedAreas(staffData.area || []);
+            return { adminId: staffData.adminId, assignedAreas: staffData.area || [] };
         } catch (error) {
-            console.error("Error fetching data:", error);
-            toast({ variant: "destructive", title: "An error occurred." });
+            console.error("Error fetching staff data:", error);
+            toast({ variant: "destructive", title: "An error occurred fetching your details." });
+            setLoading(false);
+            return null;
+        }
+    };
+
+    const setupListeners = (adminId: string, assignedAreas: string[]) => {
+        const unsubscribes: (() => void)[] = [];
+
+        const areasQuery = query(collection(db, "areas"), where("userId", "==", adminId));
+        unsubscribes.push(onSnapshot(areasQuery, (snapshot) => {
+            const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+            setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+        }));
+
+        let customersQuery;
+        if (assignedAreas.length > 0) {
+            customersQuery = query(
+                collection(db, "customers"), 
+                where("userId", "==", adminId),
+                where("area", "in", assignedAreas)
+            );
+        } else {
+             // If no areas assigned, fetch no customers
+            customersQuery = query(collection(db, "customers"), where("userId", "==", "nonexistent"));
+        }
+
+        unsubscribes.push(onSnapshot(customersQuery, (snapshot) => {
+            const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+            customersData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+            setCustomers(customersData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching customers:", error);
+            toast({ variant: "destructive", title: "Failed to fetch customers" });
+            setLoading(false);
+        }));
+
+        return () => unsubscribes.forEach(unsub => unsub());
+    };
+    
+    let unsubscribeAll: (() => void) | undefined;
+    fetchStaffDetails().then(staffDetails => {
+        if(staffDetails?.adminId) {
+             unsubscribeAll = setupListeners(staffDetails.adminId, staffDetails.assignedAreas);
+        } else {
             setLoading(false);
         }
-    }
-    
-    let unsubscribe: (() => void) | undefined;
-    fetchStaffAndCustomers().then(unsub => unsubscribe = unsub);
+    });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeAll) unsubscribeAll();
     };
 
   }, [user, authLoading, toast]);

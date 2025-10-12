@@ -102,64 +102,72 @@ export default function PaymentsCollectionsPage() {
       return;
     }
     
-    let unsubscribes: (() => void)[] = [];
-    
     const fetchStaffAndData = async () => {
-      setLoading(true);
-      try {
-        const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-        const staffSnapshot = await getDocs(staffQuery);
+        setLoading(true);
+        try {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+            const staffSnapshot = await getDocs(staffQuery);
 
-        if (!staffSnapshot.empty) {
-          const staffData = staffSnapshot.docs[0].data() as Staff;
-          const fetchedAdminId = staffData.adminId;
-          const fetchedAreas = staffData.area;
-
-          setAdminId(fetchedAdminId);
-          setStaffAssignedAreas(fetchedAreas);
-          
-          if (fetchedAdminId) {
-            const areasQuery = query(collection(db, "areas"), where("userId", "==", fetchedAdminId));
-            unsubscribes.push(onSnapshot(areasQuery, (snapshot) => {
-                const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
-                setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
-            }));
+            if (staffSnapshot.empty) {
+                console.log("No staff document found for UID:", user.uid);
+                setLoading(false);
+                return;
+            }
             
-            const collectionsQuery = query(
-              collection(db, "customers"),
-              where("userId", "==", fetchedAdminId)
-            );
-            unsubscribes.push(onSnapshot(collectionsQuery, (snapshot) => {
-              const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
-              setAllCustomers(collectionsData);
-            }));
+            const staffData = staffSnapshot.docs[0].data() as Staff;
+            const fetchedAdminId = staffData.adminId;
+            const fetchedAreas = staffData.area || [];
 
-            const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", fetchedAdminId));
-             unsubscribes.push(onSnapshot(paymentsQuery, (snapshot) => {
-                setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment)))
-            }));
+            setAdminId(fetchedAdminId);
+            setStaffAssignedAreas(fetchedAreas);
             
-            const allStaffQuery = query(collection(db, "staff"), where("adminId", "==", fetchedAdminId));
-            unsubscribes.push(onSnapshot(allStaffQuery, (snapshot) => {
-                setStaffList(snapshot.docs.map(doc => ({ uid: doc.data().uid, name: doc.data().name })))
-            }));
+            if (fetchedAdminId) {
+                const unsubscribes: (() => void)[] = [];
+                
+                const areasQuery = query(collection(db, "areas"), where("userId", "==", fetchedAdminId));
+                unsubscribes.push(onSnapshot(areasQuery, (snapshot) => {
+                    const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+                    setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+                }));
+                
+                const collectionsQuery = query(
+                  collection(db, "customers"),
+                  where("userId", "==", fetchedAdminId)
+                );
+                unsubscribes.push(onSnapshot(collectionsQuery, (snapshot) => {
+                  const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection));
+                  setAllCustomers(collectionsData);
+                  if(!loading) setLoading(false);
+                }));
 
-          }
-        } else {
-             console.log("No staff document found for UID:", user.uid);
+                const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", fetchedAdminId));
+                unsubscribes.push(onSnapshot(paymentsQuery, (snapshot) => {
+                    setPayments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment)))
+                }));
+                
+                const allStaffQuery = query(collection(db, "staff"), where("adminId", "==", fetchedAdminId));
+                unsubscribes.push(onSnapshot(allStaffQuery, (snapshot) => {
+                    setStaffList(snapshot.docs.map(doc => ({ uid: doc.data().uid, name: doc.data().name })))
+                }));
+
+                setLoading(false);
+                return () => unsubscribes.forEach(unsub => unsub());
+            } else {
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error("Error fetching staff details:", error);
+            toast({ variant: "destructive", title: "Failed to load staff data" });
+            setLoading(false);
         }
-      } catch (error) {
-        console.error("Error fetching staff details:", error);
-        toast({ variant: "destructive", title: "Failed to load staff data" });
-      } finally {
-        setLoading(false);
-      }
     };
 
-    fetchStaffAndData();
+    const unsubscribePromise = fetchStaffAndData();
 
     return () => {
-      unsubscribes.forEach(unsub => unsub());
+      unsubscribePromise.then(unsub => {
+        if(unsub) unsub();
+      });
     };
   }, [user, authLoading, toast]);
 
@@ -232,7 +240,7 @@ export default function PaymentsCollectionsPage() {
             customerName: currentCustomer.name,
             amount: collectedAmount,
             method: paymentMethod,
-            collectedBy: user?.uid,
+            collectedBy: user.uid,
             collectionDate: new Date(),
             adminId: adminId,
         });
