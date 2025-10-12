@@ -168,37 +168,39 @@ export default function PaymentsCollectionsPage() {
         customersInAssignedAreas = customersWithBalance.filter(c => staffAssignedAreas.includes(c.area));
     }
     
+    let filtered;
     if (!searchTerm.trim()) {
-        return customersInAssignedAreas.filter(c => filterArea === 'all' || c.area === filterArea);
-    }
-    
-    const searchTermLower = searchTerm.toLowerCase();
+        filtered = customersInAssignedAreas.filter(c => filterArea === 'all' || c.area === filterArea);
+    } else {
+        const searchTermLower = searchTerm.toLowerCase();
+        const isNumericOrStringId = /^[a-zA-Z0-9]+$/.test(searchTerm);
 
-    // Prioritize exact match for Customer ID or STB ID if search term is numeric
-    const isNumericOrStringId = /^[a-zA-Z0-9]+$/.test(searchTerm);
-
-    if (isNumericOrStringId) {
-        const exactMatch = customersInAssignedAreas.find(c => 
-            (c.customerId.toLowerCase() === searchTermLower) || (c.stbId.toLowerCase() === searchTermLower)
-        );
-        if (exactMatch && (filterArea === 'all' || exactMatch.area === filterArea)) {
-            return [exactMatch];
+        if (isNumericOrStringId) {
+            const exactMatch = customersInAssignedAreas.find(c => 
+                (c.customerId.toLowerCase() === searchTermLower) || (c.stbId.toLowerCase() === searchTermLower)
+            );
+            if (exactMatch && (filterArea === 'all' || exactMatch.area === filterArea)) {
+                return [exactMatch];
+            }
         }
+        
+        filtered = customersInAssignedAreas.filter((collection) => {
+            const matchesSearch =
+                collection.name.toLowerCase().includes(searchTermLower) ||
+                collection.mobile.includes(searchTerm) ||
+                (collection.stbId && collection.stbId.toLowerCase().includes(searchTermLower)) ||
+                (collection.customerId && collection.customerId.toLowerCase().includes(searchTermLower));
+
+            const matchesArea =
+                filterArea === "all" || collection.area === filterArea;
+
+            return matchesSearch && matchesArea;
+        });
     }
 
+    // Sort the final list by balanceAmount in descending order
+    return filtered.sort((a, b) => parseFloat(String(b.balanceAmount)) - parseFloat(String(a.balanceAmount)));
 
-    return customersInAssignedAreas.filter((collection) => {
-      const matchesSearch =
-        collection.name.toLowerCase().includes(searchTermLower) ||
-        collection.mobile.includes(searchTerm) ||
-        (collection.stbId && collection.stbId.toLowerCase().includes(searchTermLower)) ||
-        (collection.customerId && collection.customerId.toLowerCase().includes(searchTermLower));
-
-      const matchesArea =
-        filterArea === "all" || collection.area === filterArea;
-
-      return matchesSearch && matchesArea;
-    });
   }, [searchTerm, filterArea, allCustomers, staffAssignedAreas]);
 
   const openCollectDialog = (customer: Collection) => {
