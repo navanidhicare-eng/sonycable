@@ -77,14 +77,17 @@ export default function StaffCustomersPage() {
             const adminId = staffData.adminId;
             const staffAreas = staffData.area || [];
 
-            const areaOpts = staffAreas.map(a => ({ value: a, label: a }));
-            setAreaOptions([{ value: "all", label: "All Areas" }, ...areaOpts]);
-
             if (adminId) {
-                 const customersQuery = query(
+                const areasQuery = query(collection(db, "areas"), where("userId", "==", adminId));
+                onSnapshot(areasQuery, (snapshot) => {
+                    const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+                    setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+                });
+
+                const customersQuery = query(
                     collection(db, "customers"), 
                     where("userId", "==", adminId),
-                    where("area", "in", staffAreas.length > 0 ? staffAreas : ["-"]) // Firestore disallows empty 'in' arrays
+                    where("area", "in", staffAreas.length > 0 ? staffAreas : ["-"])
                 );
 
                 const unsubscribe = onSnapshot(customersQuery, (snapshot) => {

@@ -117,10 +117,14 @@ export default function PaymentsCollectionsPage() {
 
           setAdminId(fetchedAdminId);
           setStaffAssignedAreas(fetchedAreas);
-          const areaOpts = fetchedAreas.map(a => ({ value: a, label: a }));
-          setAreaOptions([{ value: "all", label: "All Areas" }, ...areaOpts]);
-
+          
           if (fetchedAdminId) {
+            const areasQuery = query(collection(db, "areas"), where("userId", "==", fetchedAdminId));
+            unsubscribes.push(onSnapshot(areasQuery, (snapshot) => {
+                const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+                setAreaOptions([{ value: "all", label: "All Areas" }, ...areasData]);
+            }));
+            
             const collectionsQuery = query(
               collection(db, "customers"),
               where("userId", "==", fetchedAdminId)
