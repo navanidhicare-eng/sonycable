@@ -53,6 +53,8 @@ export default function StaffRemindersPage() {
     return /collection|collation/i.test(userRole);
   }, [userRole]);
 
+  const isNetworkServiceAgent = userRole === "Network Service Agent";
+
   useEffect(() => {
     if (authLoading || !user) {
       if(!authLoading) setLoading(false);
@@ -248,7 +250,7 @@ export default function StaffRemindersPage() {
                                   <Phone className="h-4 w-4" />
                                 </a>
                               </Button>
-                              {!isCollectionAgent && (
+                              {!isNetworkServiceAgent && (
                                 <Button variant="ghost" size="icon" asChild>
                                     <Link href={`/dashboard/customers/${customer.id}/edit`}>
                                         <Pencil className="h-4 w-4" />
@@ -310,7 +312,7 @@ export default function StaffRemindersPage() {
                                             <Phone className="h-4 w-4" />
                                           </a>
                                         </Button>
-                                        {!isCollectionAgent && (
+                                        {!isNetworkServiceAgent && (
                                           <Button variant="secondary" size="icon" asChild>
                                             <Link href={`/dashboard/customers/${customer.id}/edit`}>
                                                   <Pencil className="h-4 w-4" />

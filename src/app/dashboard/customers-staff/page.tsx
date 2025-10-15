@@ -52,10 +52,12 @@ export default function StaffCustomersPage() {
     { value: "all", label: "All Areas" },
   ]);
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[]>([]);
   const [adminId, setAdminId] = useState<string | null>(null);
+
+  const isNetworkServiceAgent = userRole === "Network Service Agent";
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -223,11 +225,13 @@ export default function StaffCustomersPage() {
                         <TableCell>{customer.stbId}</TableCell>
                         <TableCell>{customer.customerId}</TableCell>
                         <TableCell className="flex gap-1">
-                            <Button variant="ghost" size="icon" asChild>
-                                <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                                    <Pencil className="h-4 w-4" />
-                                </Link>
-                            </Button>
+                            {!isNetworkServiceAgent && (
+                                <Button variant="ghost" size="icon" asChild>
+                                    <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            )}
                              <Button variant="ghost" size="icon" asChild>
                                 <Link href={`/dashboard/customers/${customer.id}/history`}>
                                     <History className="h-4 w-4" />
