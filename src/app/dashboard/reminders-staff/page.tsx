@@ -48,12 +48,10 @@ export default function StaffRemindersPage() {
   const [expiringCustomers, setExpiringCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isCollectionAgent = useMemo(() => {
+  const isNetworkServiceAgent = useMemo(() => {
     if (!userRole) return false;
-    return /collection|collation/i.test(userRole);
+    return userRole.toLowerCase().replace(/\s/g, '') === 'networkserviceagent';
   }, [userRole]);
-
-  const isNetworkServiceAgent = userRole === "Network Service Agent";
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -100,7 +98,7 @@ export default function StaffRemindersPage() {
                     .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
                     .filter(customer => {
                         // Filter by staff's assigned area
-                        if (!staffAreas.includes(customer.area)) {
+                        if (staffAreas.length > 0 && !staffAreas.includes(customer.area)) {
                             return false;
                         }
                         // Filter by expiry date

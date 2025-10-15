@@ -57,7 +57,11 @@ export default function StaffCustomersPage() {
   const [staffAssignedAreas, setStaffAssignedAreas] = useState<string[]>([]);
   const [adminId, setAdminId] = useState<string | null>(null);
 
-  const isNetworkServiceAgent = userRole === "Network Service Agent";
+  const isNetworkServiceAgent = useMemo(() => {
+    if (!userRole) return false;
+    return userRole.toLowerCase().replace(/\s/g, '') === 'networkserviceagent';
+  }, [userRole]);
+
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -66,6 +70,7 @@ export default function StaffCustomersPage() {
     }
 
     const fetchStaffDetails = async () => {
+        setLoading(true);
         try {
             const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
             const staffSnapshot = await getDocs(staffQuery);
@@ -77,9 +82,12 @@ export default function StaffCustomersPage() {
             }
 
             const staffData = staffSnapshot.docs[0].data() as Staff;
-            setAdminId(staffData.adminId);
-            setStaffAssignedAreas(staffData.area || []);
-            return { adminId: staffData.adminId, assignedAreas: staffData.area || [] };
+            const fetchedAdminId = staffData.adminId;
+            const fetchedAreas = staffData.area || [];
+            
+            setAdminId(fetchedAdminId);
+            setStaffAssignedAreas(fetchedAreas);
+            return { adminId: fetchedAdminId, assignedAreas: fetchedAreas };
         } catch (error) {
             console.error("Error fetching staff data:", error);
             toast({ variant: "destructive", title: "An error occurred fetching your details." });
