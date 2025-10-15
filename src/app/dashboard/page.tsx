@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -736,24 +736,51 @@ export default function DashboardPage() {
     </Card>
   );
   
-  const StaffRechargeCard = () => (
-    <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer" onClick={() => setIsRechargeSearchDialogOpen(true)}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-                Recharge
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-white" />
-        </CardHeader>
-        <CardContent>
-            <div className="flex items-center justify-between">
-                <p className="text-xs">
-                    Recharge a customer account
-                </p>
-                <ArrowRight className="h-5 w-5" />
-            </div>
-        </CardContent>
-    </Card>
-  );
+  const StaffRechargeCard = () => {
+    const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
+    
+    if(isNetworkServiceAgent) {
+       return (
+        <Card className="bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+            <Link href="/dashboard/request-recharge" className="block h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                        Request Recharge
+                    </CardTitle>
+                    <Send className="h-4 w-4 text-white" />
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs">
+                            Request a customer recharge from admin
+                        </p>
+                        <ArrowRight className="h-5 w-5" />
+                    </div>
+                </CardContent>
+            </Link>
+        </Card>
+       );
+    }
+
+    return (
+        <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer" onClick={() => setIsRechargeSearchDialogOpen(true)}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                    Recharge
+                </CardTitle>
+                <CreditCard className="h-4 w-4 text-white" />
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between">
+                    <p className="text-xs">
+                        Recharge a customer account
+                    </p>
+                    <ArrowRight className="h-5 w-5" />
+                </div>
+            </CardContent>
+        </Card>
+    );
+  };
 
 
    const RechargeRequestsCard = () => {
@@ -897,20 +924,16 @@ export default function DashboardPage() {
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        { !isCollectionAgent && (
-            <>
-                <StaffRechargeCard />
-                <Card className="bg-red-100 text-red-800">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Outstanding Balance</CardTitle>
-                        <CircleDollarSign className="h-4 w-4 text-red-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">₹{totalPendingForStaff.toLocaleString()}</div>
-                    </CardContent>
-                </Card>
-            </>
-        )}
+        <StaffRechargeCard />
+        <Card className="bg-red-100 text-red-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Outstanding Balance</CardTitle>
+                <CircleDollarSign className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">₹{totalPendingForStaff.toLocaleString()}</div>
+            </CardContent>
+        </Card>
         <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

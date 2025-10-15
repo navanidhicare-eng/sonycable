@@ -72,6 +72,8 @@ function DashboardLayout({
   };
   
   const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
+  const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
+
 
   return (
     <>
@@ -105,14 +107,16 @@ function DashboardLayout({
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton asChild onClick={handleLinkClick}>
-                            <Link href="/dashboard/recharge">
-                            <CreditCard />
-                            <span>Recharge</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    {!isNetworkServiceAgent && (
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild onClick={handleLinkClick}>
+                                <Link href="/dashboard/recharge">
+                                <CreditCard />
+                                <span>Recharge</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    )}
                      <SidebarMenuItem>
                         <SidebarMenuButton asChild onClick={handleLinkClick}>
                             <Link href="/dashboard/request-recharge">
