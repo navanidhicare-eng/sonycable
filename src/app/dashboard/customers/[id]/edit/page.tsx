@@ -70,7 +70,7 @@ export default function EditCustomerPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [areas, setAreas] = useState<Area[]>([]);
 
   const form = useForm<FormValues>({
@@ -182,6 +182,7 @@ export default function EditCustomerPage() {
     }
   }
 
+  const isNetworkServiceAgent = userRole === "Network Service Agent";
   const isLoading = authLoading || isSubmitting || pageLoading;
 
   return (
@@ -243,7 +244,7 @@ export default function EditCustomerPage() {
                         <FormItem>
                         <FormLabel>Balance Amount (₹)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="Enter opening balance" {...field} />
+                            <Input type="number" placeholder="Enter opening balance" {...field} disabled={isNetworkServiceAgent} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
