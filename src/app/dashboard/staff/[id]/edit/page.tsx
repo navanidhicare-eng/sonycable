@@ -41,7 +41,10 @@ const formSchema = z.object({
   }),
   role: z.string({ required_error: "Please select a role." }),
   commission: z.string().min(1, "Commission is required."),
-  enrollmentCommission: z.string().min(1, "Enrollment commission is required."),
+  enrollmentCommission: z.preprocess(
+    (val) => (val === "" || val === undefined ? "0" : val),
+    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
+  ),
   email: z.string().email("Please enter a valid email address.").optional(), // Email is not editable
 });
 
@@ -70,7 +73,7 @@ export default function EditStaffPage() {
       staffName: "",
       mobileNumber: "",
       commission: "",
-      enrollmentCommission: "",
+      enrollmentCommission: 0,
       area: [],
     },
   });
@@ -92,7 +95,7 @@ export default function EditStaffPage() {
                     area: staffData.area || [],
                     role: staffData.role,
                     commission: staffData.commission,
-                    enrollmentCommission: staffData.enrollmentCommission,
+                    enrollmentCommission: staffData.enrollmentCommission || 0,
                     email: staffData.email
                 });
             } else {
@@ -143,7 +146,7 @@ export default function EditStaffPage() {
         area: data.area,
         role: data.role,
         commission: data.commission,
-        enrollmentCommission: parseFloat(data.enrollmentCommission),
+        enrollmentCommission: data.enrollmentCommission,
       });
 
       toast({

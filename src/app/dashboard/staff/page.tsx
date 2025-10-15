@@ -39,7 +39,7 @@ interface Staff {
   role: string;
   email: string;
   commission: string;
-  enrollmentCommission: number;
+  enrollmentCommission?: number;
   createdAt: {
     seconds: number;
     nanoseconds: number;

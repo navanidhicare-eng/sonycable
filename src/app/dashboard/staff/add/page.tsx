@@ -41,7 +41,10 @@ const formSchema = z.object({
   }),
   role: z.string({ required_error: "Please select a role." }),
   commission: z.string().min(1, "Commission is required."),
-  enrollmentCommission: z.string().min(1, "Enrollment commission is required."),
+  enrollmentCommission: z.preprocess(
+    (val) => (val === "" || val === undefined ? "0" : val),
+    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
+  ),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
@@ -70,7 +73,7 @@ export default function AddStaffPage() {
       email: "",
       password: "",
       commission: "",
-      enrollmentCommission: "",
+      enrollmentCommission: 0,
       area: [],
     },
   });
@@ -127,7 +130,7 @@ export default function AddStaffPage() {
         area: data.area,
         role: data.role,
         commission: data.commission,
-        enrollmentCommission: parseFloat(data.enrollmentCommission),
+        enrollmentCommission: data.enrollmentCommission,
         email: data.email,
         adminId: user.uid,
         createdAt: new Date(),
