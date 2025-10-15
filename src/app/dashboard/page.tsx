@@ -65,6 +65,7 @@ interface DashboardStats {
 }
 
 interface StaffData {
+    id: string;
     name: string;
     commission: string;
     enrollmentCommission?: number;
@@ -83,6 +84,9 @@ interface Customer {
   stbId: string;
   expiryDate?: Timestamp;
   lastRechargeDate?: Timestamp;
+  connectionReference?: string;
+  monthlyCommission?: string;
+  createdAt: Timestamp;
 }
 
 interface RechargePackage {
@@ -95,6 +99,13 @@ interface RechargeOffer {
   id: string;
   months: number;
   discountPercentage: number;
+}
+
+interface Recharge {
+    id: string;
+    customerId: string;
+    amount: number;
+    rechargeDate: Timestamp;
 }
 
 export default function DashboardPage() {
@@ -251,26 +262,32 @@ export default function DashboardPage() {
                 return;
             }
             
-            const staffDocData = staffSnapshot.docs[0].data() as StaffData;
+            const staffDocData = {id: staffSnapshot.docs[0].id, ...staffSnapshot.docs[0].data()} as StaffData;
             setStaffData(staffDocData);
-            const commissionRate = parseFloat(staffDocData.commission.replace('%', ''));
+            const commissionRate = parseFloat(staffDocData.commission.replace('%', '')) || 0;
             const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
 
             const allCustomersQuery = query(collection(db, "customers"), where("userId", "==", staffDocData.adminId));
-            const unsubscribeAllCustomers = onSnapshot(allCustomersQuery, (snapshot) => {
+            const allCustomersSnapshot = await getDocs(allCustomersQuery);
+            const allAdminCustomers = allCustomersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data() as Omit<Customer, 'id'>}));
+            
+            const allRechargesQuery = query(collection(db, "recharges"), where("adminId", "==", staffDocData.adminId));
+            const allRechargesSnapshot = await getDocs(allRechargesQuery);
+            const allAdminRecharges = allRechargesSnapshot.docs.map(doc => doc.data() as Recharge);
+
+            
+            allUnsubscribes.push(onSnapshot(allCustomersQuery, (snapshot) => {
                 const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
                 setTotalPendingForStaff(totalPending);
-            });
-            allUnsubscribes.push(unsubscribeAllCustomers);
+            }));
 
 
             if (!isCollectionAgent) {
                 const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
-                const unsubscribePackages = onSnapshot(packagesQuery, (snapshot) => {
+                allUnsubscribes.push(onSnapshot(packagesQuery, (snapshot) => {
                     const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
                     setPackages(packagesData);
-                });
-                allUnsubscribes.push(unsubscribePackages);
+                }));
             }
             
 
@@ -280,47 +297,74 @@ export default function DashboardPage() {
                 where("staffId", "==", currentUser.uid),
                 where("status", "==", "approved")
             );
-            const approvedSettlementsSnapshot = await getDocs(approvedSettlementsQuery);
-            let lastSettlementDate: Date | null = null;
-            if (!approvedSettlementsSnapshot.empty) {
-                const dates = approvedSettlementsSnapshot.docs.map(doc => doc.data().createdAt.toDate());
-                lastSettlementDate = new Date(Math.max(...dates.map(date => date.getTime())));
-            }
             
             const paymentsQuery = query(
               collection(db, "payments"),
               where("collectedBy", "==", currentUser.uid)
             );
 
-            const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
-                const now = new Date();
-                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                let todaysCollection = 0;
+            allUnsubscribes.push(onSnapshot(approvedSettlementsQuery, (approvedSettlementsSnapshot) => {
+                let lastSettlementDate: Date | null = null;
+                if (!approvedSettlementsSnapshot.empty) {
+                    const dates = approvedSettlementsSnapshot.docs.map(doc => doc.data().createdAt.toDate());
+                    lastSettlementDate = new Date(Math.max(...dates.map(date => date.getTime())));
+                }
 
-                const paymentsAfterSettlement = snapshot.docs.filter(doc => {
-                    const paymentDate = doc.data().collectionDate.toDate();
-                    if (paymentDate >= todayStart) {
-                        todaysCollection += doc.data().amount;
-                    }
-                    if (!lastSettlementDate) return true;
-                    return paymentDate > lastSettlementDate;
-                });
-                
-                setTodaysCollectionForStaff(todaysCollection);
-                const totalCollection = paymentsAfterSettlement.reduce((acc, doc) => acc + doc.data().amount, 0);
-                const totalCommission = (totalCollection * commissionRate) / 100;
-                setStaffWallet({ walletAmount: totalCollection, commissionAmount: totalCommission });
-            });
+                allUnsubscribes.push(onSnapshot(paymentsQuery, (paymentsSnapshot) => {
+                    const now = new Date();
+                    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    let todaysCollection = 0;
+
+                    const paymentsAfterSettlement = paymentsSnapshot.docs.filter(doc => {
+                        const paymentDate = doc.data().collectionDate.toDate();
+                        if (paymentDate >= todayStart) {
+                            todaysCollection += doc.data().amount;
+                        }
+                        if (!lastSettlementDate) return true;
+                        return paymentDate > lastSettlementDate;
+                    });
+                    
+                    setTodaysCollectionForStaff(todaysCollection);
+                    const totalCollection = paymentsAfterSettlement.reduce((acc, doc) => acc + doc.data().amount, 0);
+                    const collectionCommission = (totalCollection * commissionRate) / 100;
+                    
+                    // Enrollment Commission
+                    const enrollmentCommissionPerCustomer = staffDocData.enrollmentCommission || 0;
+                    const newCustomersByStaff = allAdminCustomers.filter(c => {
+                        if (c.userId !== staffDocData.adminId || c.connectionReference !== staffDocData.id) return false;
+                        if (!lastSettlementDate) return true;
+                        return c.createdAt.toDate() > lastSettlementDate;
+                    });
+                    const totalEnrollmentCommission = newCustomersByStaff.length * enrollmentCommissionPerCustomer;
+                    
+                    // Monthly Recharge Commission
+                    const referredCustomers = allAdminCustomers.filter(c => c.connectionReference === staffDocData.id);
+                    let monthlyRechargeCommission = 0;
+                    referredCustomers.forEach(cust => {
+                        const monthlyCommRate = parseFloat(cust.monthlyCommission || '0');
+                        if (monthlyCommRate > 0) {
+                            const customerRecharges = allAdminRecharges.filter(r => {
+                                if (r.customerId !== cust.id) return false;
+                                if (!lastSettlementDate) return true;
+                                return r.rechargeDate.toDate() > lastSettlementDate;
+                            });
+                            const totalRechargeAmount = customerRecharges.reduce((sum, r) => sum + r.amount, 0);
+                            monthlyRechargeCommission += (totalRechargeAmount * monthlyCommRate) / 100;
+                        }
+                    });
+
+                    const totalCommission = collectionCommission + totalEnrollmentCommission + monthlyRechargeCommission;
+                    setStaffWallet({ walletAmount: totalCollection, commissionAmount: totalCommission });
+                }));
+            }));
 
 
             const allSettlementsQuery = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
-            const unsubscribeSettlements = onSnapshot(allSettlementsQuery, (snapshot) => {
+            allUnsubscribes.push(onSnapshot(allSettlementsQuery, (snapshot) => {
                  const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
                 requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
                 setSettlementRequests(requests);
-            });
-
-            allUnsubscribes.push(unsubscribePayments, unsubscribeSettlements);
+            }));
 
         } catch(error) {
             console.error("Error fetching staff data:", error);
@@ -1302,7 +1346,7 @@ export default function DashboardPage() {
                                     <span>Original Amount:</span>
                                     <span>₹{(baseAmount * rechargeMonths).toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between font-semibold text-destructive">
+                                 <div className="flex justify-between font-semibold text-destructive">
                                     <span>Discount ({offer.discountPercentage}%):</span>
                                     <span>- ₹{discount.toLocaleString()}</span>
                                 </div>

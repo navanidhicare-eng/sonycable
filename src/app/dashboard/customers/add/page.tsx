@@ -423,11 +423,22 @@ export default function AddCustomerPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Connection Reference</FormLabel>
-                       <FormControl>
-                        <Input placeholder="Enter Staff ID or Customer ID of referrer" {...field} />
-                      </FormControl>
+                       <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Staff who referred this connection" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {staff.map(s => (
+                                <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
                        <FormDescription>
-                        Enter the ID of the staff or customer who referred this new connection.
+                        Select the staff who referred this new connection.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -439,12 +450,12 @@ export default function AddCustomerPage() {
                   name="monthlyCommission"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Monthly Commission (%)</FormLabel>
+                      <FormLabel>Monthly Commission (%) for referring staff</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="e.g., 5" {...field} />
                       </FormControl>
                        <FormDescription>
-                        Commission percentage for the referring staff member.
+                        Commission percentage on monthly recharge for the referring staff member.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
