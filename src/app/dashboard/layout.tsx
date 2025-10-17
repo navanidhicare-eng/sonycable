@@ -36,6 +36,7 @@ Calculator,
   Store,
   Send,
   Gift,
+  Notebook,
 } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -258,6 +259,14 @@ function DashboardLayout({
                     <Link href="/dashboard/mso-payments">
                       <ArrowRightLeft />
                       <span>MSO Payments</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
+                    <Link href="/dashboard/my-notes">
+                      <Notebook />
+                      <span>My Notes</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
