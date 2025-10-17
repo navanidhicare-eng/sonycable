@@ -27,7 +27,7 @@ import {
   UserPlus,
   Megaphone,
   LogOut,
-Calculator,
+  Calculator,
   BellRing,
   Shield,
   Wallet,
@@ -37,6 +37,7 @@ Calculator,
   Send,
   Gift,
   Notebook,
+  GitBranch,
 } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -195,6 +196,14 @@ function DashboardLayout({
                     <Link href="/dashboard/staff-wallets">
                       <Wallet />
                       <span>Staff Wallets</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
+                    <Link href="/dashboard/olt-vlan">
+                      <GitBranch />
+                      <span>OLT VLAN</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
