@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,6 +31,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -48,11 +55,15 @@ import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where } from "fi
 
 const formSchema = z.object({
   oltName: z.string().min(1, "OLT Name is required."),
+  newOltName: z.string().optional(),
   vlanId: z.preprocess(
     (a) => parseInt(z.string().parse(a), 10),
     z.number().min(1, "VLAN ID must be a positive number.")
   ),
   description: z.string().optional(),
+}).refine(data => data.oltName !== 'new' || (data.newOltName && data.newOltName.length > 0), {
+    message: "New OLT name is required.",
+    path: ["newOltName"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -72,15 +83,24 @@ export default function OltVlanPage() {
   const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OltVlan | null>(null);
+  const [oltFilter, setOltFilter] = useState("all");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       oltName: "",
+      newOltName: "",
       vlanId: "" as any,
       description: "",
     },
   });
+
+  const selectedOltName = form.watch("oltName");
+
+  const uniqueOltNames = useMemo(() => {
+    const names = new Set(oltVlans.map(item => item.oltName));
+    return Array.from(names).sort();
+  }, [oltVlans]);
 
   useEffect(() => {
     if (!user) return;
@@ -95,19 +115,36 @@ export default function OltVlanPage() {
     return () => unsubscribe();
   }, [user]);
 
+  const filteredVlans = useMemo(() => {
+    if (oltFilter === "all") {
+      return oltVlans;
+    }
+    return oltVlans.filter(item => item.oltName === oltFilter);
+  }, [oltFilter, oltVlans]);
+
   async function onSubmit(data: FormValues) {
     if (!user) return;
     setIsSubmitting(true);
+
+    const finalOltName = data.oltName === 'new' ? data.newOltName : data.oltName;
+    
     try {
       await addDoc(collection(db, "oltVlans"), {
-        ...data,
+        oltName: finalOltName,
+        vlanId: data.vlanId,
+        description: data.description,
         userId: user.uid,
       });
       toast({
         title: "OLT/VLAN Added",
-        description: `Successfully added ${data.oltName} with VLAN ID ${data.vlanId}.`,
+        description: `Successfully added ${finalOltName} with VLAN ID ${data.vlanId}.`,
       });
-      form.reset();
+      form.reset({
+        oltName: "",
+        newOltName: "",
+        vlanId: "" as any,
+        description: "",
+      });
     } catch (error) {
       toast({
         variant: "destructive",
@@ -141,7 +178,7 @@ export default function OltVlanPage() {
     <>
       <main className="min-h-screen w-full font-body text-foreground">
         <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
-          <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center">
+          <header className="mb-10 flex w-full max-w-5xl flex-col items-center text-center">
               <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
                 OLT VLAN Management
               </h1>
@@ -150,7 +187,7 @@ export default function OltVlanPage() {
               </p>
           </header>
 
-          <div className="grid w-full max-w-4xl gap-8 lg:grid-cols-5">
+          <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-5">
             <div className="lg:col-span-2">
               <Card>
                 <CardHeader>
@@ -168,13 +205,38 @@ export default function OltVlanPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>OLT Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., OLT-Main-Branch" {...field} />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select an OLT or add new" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {uniqueOltNames.map(name => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                    <SelectItem value="new">Add new OLT...</SelectItem>
+                                </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+                      {selectedOltName === 'new' && (
+                        <FormField
+                          control={form.control}
+                          name="newOltName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>New OLT Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., OLT-New-Site" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                       <FormField
                         control={form.control}
                         name="vlanId"
@@ -218,6 +280,19 @@ export default function OltVlanPage() {
                <Card>
                   <CardHeader>
                       <CardTitle>Existing Configurations</CardTitle>
+                       <div className="pt-2">
+                            <Select value={oltFilter} onValueChange={setOltFilter}>
+                                <SelectTrigger className="w-full sm:w-[220px]">
+                                    <SelectValue placeholder="Filter by OLT" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All OLTs</SelectItem>
+                                    {uniqueOltNames.map(name => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                       </div>
                   </CardHeader>
                   <CardContent>
                       {loading ? (
@@ -235,8 +310,8 @@ export default function OltVlanPage() {
                                   </TableRow>
                               </TableHeader>
                               <TableBody>
-                                  {oltVlans.length > 0 ? (
-                                  oltVlans.map((item) => (
+                                  {filteredVlans.length > 0 ? (
+                                  filteredVlans.map((item) => (
                                       <TableRow key={item.id}>
                                       <TableCell className="font-medium">{item.oltName}</TableCell>
                                       <TableCell className="font-semibold text-primary">{item.vlanId}</TableCell>
@@ -283,3 +358,5 @@ export default function OltVlanPage() {
     </>
   );
 }
+
+    
