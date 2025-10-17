@@ -116,10 +116,12 @@ export default function OltVlanPage() {
   }, [user]);
 
   const filteredVlans = useMemo(() => {
-    if (oltFilter === "all") {
-      return oltVlans;
+    let filtered = oltVlans;
+    if (oltFilter !== "all") {
+      filtered = oltVlans.filter(item => item.oltName === oltFilter);
     }
-    return oltVlans.filter(item => item.oltName === oltFilter);
+    // Sort the filtered results
+    return filtered.sort((a, b) => a.vlanId - b.vlanId);
   }, [oltFilter, oltVlans]);
 
   async function onSubmit(data: FormValues) {
@@ -358,5 +360,3 @@ export default function OltVlanPage() {
     </>
   );
 }
-
-    
