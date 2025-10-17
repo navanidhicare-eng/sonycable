@@ -108,6 +108,14 @@ interface Recharge {
     rechargeDate: Timestamp;
 }
 
+interface Complaint {
+  id: string;
+  customerName: string;
+  stbId: string;
+  complaint: string;
+}
+
+
 export default function DashboardPage() {
   const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
@@ -129,6 +137,7 @@ export default function DashboardPage() {
   const [staffData, setStaffData] = useState<StaffData | null>(null);
   const [totalPendingForStaff, setTotalPendingForStaff] = useState(0);
   const [todaysCollectionForStaff, setTodaysCollectionForStaff] = useState(0);
+  const [pendingComplaints, setPendingComplaints] = useState<Complaint[]>([]);
 
 
   // States for Customer Search Dialog (Collections)
@@ -281,6 +290,17 @@ export default function DashboardPage() {
                 setTotalPendingForStaff(totalPending);
             }));
 
+            const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", staffDocData.adminId), where("status", "==", "Pending"));
+            allUnsubscribes.push(onSnapshot(rechargeRequestQuery, (snapshot) => {
+                const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
+                setRechargeRequests(requests);
+            }));
+            
+            const complaintsQuery = query(collection(db, "complaints"), where("userId", "==", staffDocData.adminId), where("status", "==", "Pending"));
+            allUnsubscribes.push(onSnapshot(complaintsQuery, (snapshot) => {
+                 const complaintsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
+                 setPendingComplaints(complaintsData);
+            }));
 
             if (!isCollectionAgent) {
                 const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
@@ -827,7 +847,7 @@ export default function DashboardPage() {
   };
 
 
-   const RechargeRequestsCard = () => {
+   const RechargeRequestsCard = ({ canApprove }: { canApprove: boolean }) => {
     if (rechargeRequests.length === 0) return null;
 
     return (
@@ -849,14 +869,18 @@ export default function DashboardPage() {
                             </p>
                             <Badge variant="outline" className="mt-1">{req.type} Request</Badge>
                         </div>
-                        <div className="flex gap-2 self-end sm:self-center">
-                            <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
-                                Approve
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
-                                Reject
-                            </Button>
-                        </div>
+                         {canApprove ? (
+                            <div className="flex gap-2 self-end sm:self-center">
+                                <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
+                                    Approve
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
+                                    Reject
+                                </Button>
+                            </div>
+                        ) : (
+                             <Badge>Pending</Badge>
+                        )}
                     </div>
                 ))}
             </CardContent>
@@ -892,11 +916,40 @@ export default function DashboardPage() {
         </Card>
     );
    };
+   
+    const ComplaintsCard = () => {
+        if (pendingComplaints.length === 0) return null;
+        return (
+            <Card className="md:col-span-2 lg:col-span-3 animate-slide-in-fade-in">
+                <CardHeader>
+                    <CardTitle>Pending Complaints</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {pendingComplaints.slice(0, 3).map(complaint => (
+                         <div key={complaint.id} className="flex items-start justify-between rounded-lg border p-3">
+                             <div>
+                                 <p className="font-semibold">{complaint.customerName}</p>
+                                 <p className="text-sm text-muted-foreground">{complaint.complaint}</p>
+                             </div>
+                             <Button asChild variant="secondary" size="sm">
+                                <Link href="/dashboard/complaints-staff">View</Link>
+                             </Button>
+                         </div>
+                    ))}
+                    {pendingComplaints.length > 3 && (
+                        <Button asChild variant="outline" className="w-full">
+                            <Link href="/dashboard/complaints-staff">View all {pendingComplaints.length} complaints</Link>
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    };
 
 
   const AdminDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:col-span-3">
-        <RechargeRequestsCard />
+        <RechargeRequestsCard canApprove={true} />
         <SettlementRequestsCard />
         <AdminCollectionCard />
         <Card className="bg-red-100 text-red-800 animate-slide-in-fade-in">
@@ -964,10 +1017,13 @@ export default function DashboardPage() {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
      
      const { walletAmount, commissionAmount } = staffWallet;
-     const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
+     const canApproveRecharge = userRole !== 'Network Service Agent' && !/collection|collation/i.test(userRole || '');
+
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <RechargeRequestsCard canApprove={canApproveRecharge} />
+        <ComplaintsCard />
         <StaffRechargeCard />
         <Card className="bg-red-100 text-red-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
