@@ -221,25 +221,25 @@ export default function MyNotesPage() {
                     {categories.map((category) => (
                         <Card key={category.id} className="mb-4">
                             <AccordionItem value={category.id} className="border-b-0">
-                                <AccordionTrigger className="p-4 hover:no-underline">
-                                    <div className="flex justify-between w-full items-center">
+                                <div className="flex justify-between w-full items-center p-4">
+                                    <AccordionTrigger className="p-0 flex-1 hover:no-underline">
                                         <div className="flex items-center gap-3">
                                             <GripVertical className="h-5 w-5 text-muted-foreground" />
                                             <span className="font-semibold text-lg">{category.name}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 pr-2">
-                                           <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openNoteDialog(category); }}>
-                                                <PlusCircle className="mr-2 h-4 w-4" /> Add Note
-                                            </Button>
-                                            <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openCategoryDialog(category); }}>
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openDeleteDialog('category', category.id); }}>
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        </div>
+                                    </AccordionTrigger>
+                                    <div className="flex items-center gap-2 pl-4">
+                                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openNoteDialog(category); }}>
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Add Note
+                                        </Button>
+                                        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openCategoryDialog(category); }}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openDeleteDialog('category', category.id); }}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
                                     </div>
-                                </AccordionTrigger>
+                                </div>
                                 <AccordionContent>
                                     <div className="p-4 pt-0">
                                         {notes.filter(n => n.categoryId === category.id).length > 0 ? (
