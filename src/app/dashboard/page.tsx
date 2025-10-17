@@ -1023,7 +1023,6 @@ export default function DashboardPage() {
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <RechargeRequestsCard canApprove={canApproveRecharge} />
-        <ComplaintsCard />
         <StaffRechargeCard />
         <Card className="bg-red-100 text-red-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1090,6 +1089,7 @@ export default function DashboardPage() {
                 </p>
             </CardContent>
         </Card>
+        <ComplaintsCard />
         <Card className="md:col-span-2 lg:col-span-3">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1440,3 +1440,4 @@ export default function DashboardPage() {
     </>
   );
 }
+
