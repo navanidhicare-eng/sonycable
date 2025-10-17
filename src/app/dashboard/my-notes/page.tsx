@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -45,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Pencil, Trash2, Notebook, GripVertical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, writeBatch, Timestamp } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, writeBatch, Timestamp, getDocs } from "firebase/firestore";
 import { format } from "date-fns";
 
 // Schemas
@@ -71,14 +70,18 @@ interface Note {
   categoryId: string;
   createdAt: Timestamp;
 }
+interface Staff {
+  adminId: string;
+}
 
 export default function MyNotesPage() {
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataScopeId, setDataScopeId] = useState<string | null>(null); // This will be adminId or user.uid
 
   // State for dialogs
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -96,36 +99,63 @@ export default function MyNotesPage() {
   const noteForm = useForm<NoteFormValues>({ resolver: zodResolver(noteSchema) });
 
   useEffect(() => {
-    if (!user) return;
-    setLoading(true);
-    const catQuery = query(collection(db, "noteCategories"), where("userId", "==", user.uid));
-    const notesQuery = query(collection(db, "notes"), where("userId", "==", user.uid));
+    if (!user) {
+        if(!authLoading) setLoading(false);
+        return;
+    };
+
+    const determineScope = async () => {
+        setLoading(true);
+        let scopeId: string | null = null;
+        if (userRole === 'Admin') {
+            scopeId = user.uid;
+        } else if (userRole) {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+            if (!staffSnapshot.empty) {
+                const staffData = staffSnapshot.docs[0].data() as Staff;
+                scopeId = staffData.adminId;
+            }
+        }
+        setDataScopeId(scopeId);
+    };
+    
+    determineScope();
+
+  }, [user, userRole, authLoading]);
+
+  useEffect(() => {
+    if (!dataScopeId) return;
+    
+    const catQuery = query(collection(db, "noteCategories"), where("userId", "==", dataScopeId));
+    const notesQuery = query(collection(db, "notes"), where("userId", "==", dataScopeId));
 
     const unsubCategories = onSnapshot(catQuery, (snapshot) => {
       const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
       setCategories(cats);
-    });
+    }, () => setLoading(false));
+
     const unsubNotes = onSnapshot(notesQuery, (snapshot) => {
       const noteData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
       setNotes(noteData);
       setLoading(false);
-    });
+    }, () => setLoading(false));
 
     return () => {
       unsubCategories();
       unsubNotes();
     };
-  }, [user]);
+  }, [dataScopeId]);
 
   // Handlers for Category
   const handleCategorySubmit = async (data: CategoryFormValues) => {
-    if (!user) return;
+    if (!dataScopeId) return;
     try {
       if (editingCategory) {
         await updateDoc(doc(db, "noteCategories", editingCategory.id), { name: data.name });
         toast({ title: "Category Updated" });
       } else {
-        await addDoc(collection(db, "noteCategories"), { ...data, userId: user.uid });
+        await addDoc(collection(db, "noteCategories"), { ...data, userId: dataScopeId });
         toast({ title: "Category Created" });
       }
       setIsCategoryDialogOpen(false);
@@ -138,13 +168,13 @@ export default function MyNotesPage() {
   
   // Handlers for Note
   const handleNoteSubmit = async (data: NoteFormValues) => {
-    if (!user || !activeCategoryId) return;
+    if (!dataScopeId || !activeCategoryId) return;
     try {
       if (editingNote) {
         await updateDoc(doc(db, "notes", editingNote.id), data);
         toast({ title: "Note Updated" });
       } else {
-        await addDoc(collection(db, "notes"), { ...data, categoryId: activeCategoryId, userId: user.uid, createdAt: new Date() });
+        await addDoc(collection(db, "notes"), { ...data, categoryId: activeCategoryId, userId: dataScopeId, createdAt: new Date() });
         toast({ title: "Note Created" });
       }
       setIsNoteDialogOpen(false);

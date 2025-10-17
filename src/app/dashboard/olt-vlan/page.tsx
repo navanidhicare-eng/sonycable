@@ -51,7 +51,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where, getDocs } from "firebase/firestore";
 
 const formSchema = z.object({
   oltName: z.string().min(1, "OLT Name is required."),
@@ -75,12 +75,17 @@ interface OltVlan {
   description?: string;
 }
 
+interface Staff {
+  adminId: string;
+}
+
 export default function OltVlanPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [oltVlans, setOltVlans] = useState<OltVlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataScopeId, setDataScopeId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OltVlan | null>(null);
   const [oltFilter, setOltFilter] = useState("all");
@@ -104,28 +109,51 @@ export default function OltVlanPage() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    const q = query(collection(db, "oltVlans"), where("userId", "==", user.uid));
+
+    const determineScope = async () => {
+        setLoading(true);
+        let scopeId: string | null = null;
+        if (userRole === 'Admin') {
+            scopeId = user.uid;
+        } else if (userRole) {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+            if (!staffSnapshot.empty) {
+                const staffData = staffSnapshot.docs[0].data() as Staff;
+                scopeId = staffData.adminId;
+            }
+        }
+        setDataScopeId(scopeId);
+    };
+    determineScope();
+  }, [user, userRole]);
+
+  useEffect(() => {
+    if (!dataScopeId) {
+        if(!authLoading) setLoading(false);
+        return;
+    }
+    const q = query(collection(db, "oltVlans"), where("userId", "==", dataScopeId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OltVlan));
       data.sort((a, b) => a.oltName.localeCompare(b.oltName) || a.vlanId - b.vlanId);
       setOltVlans(data);
       setLoading(false);
-    });
+    }, () => setLoading(false));
+
     return () => unsubscribe();
-  }, [user]);
+  }, [dataScopeId, authLoading]);
 
   const filteredVlans = useMemo(() => {
     let filtered = oltVlans;
     if (oltFilter !== "all") {
       filtered = oltVlans.filter(item => item.oltName === oltFilter);
     }
-    // Sort the filtered results
     return filtered.sort((a, b) => a.vlanId - b.vlanId);
   }, [oltFilter, oltVlans]);
 
   async function onSubmit(data: FormValues) {
-    if (!user) return;
+    if (!dataScopeId) return;
     setIsSubmitting(true);
 
     const finalOltName = data.oltName === 'new' ? data.newOltName : data.oltName;
@@ -135,7 +163,7 @@ export default function OltVlanPage() {
         oltName: finalOltName,
         vlanId: data.vlanId,
         description: data.description,
-        userId: user.uid,
+        userId: dataScopeId,
       });
       toast({
         title: "OLT/VLAN Added",
