@@ -163,6 +163,22 @@ function DashboardLayout({
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
+                    <Link href="/dashboard/my-notes">
+                      <Notebook />
+                      <span>My Notes</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild onClick={handleLinkClick}>
+                    <Link href="/dashboard/olt-vlan">
+                      <GitBranch />
+                      <span>OLT VLAN</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                </>
             )}
             {!authLoading && userRole === 'Admin' && (
