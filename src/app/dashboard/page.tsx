@@ -1017,7 +1017,7 @@ export default function DashboardPage() {
      const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
      
      const { walletAmount, commissionAmount } = staffWallet;
-     const canApproveRecharge = userRole !== 'Network Service Agent' && !/collection|collation/i.test(userRole || '');
+     const canApproveRecharge = userRole?.toLowerCase().replace(/\s/g, "") !== 'networkserviceagent' && !/collection|collation/i.test(userRole || '');
 
 
      return (
