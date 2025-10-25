@@ -24,12 +24,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Search, User, Loader2, Send } from "lucide-react";
+import { Search, User, Loader2, Send, ShieldAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 interface Customer {
@@ -39,6 +48,7 @@ interface Customer {
   mobile: string;
   customerId: string;
   userId: string; // Admin's UID
+  balanceAmount?: number;
 }
 
 interface Staff {
@@ -66,9 +76,10 @@ export default function StaffRequestRechargePage() {
   const [searchError, setSearchError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [adminId, setAdminId] = useState<string | null>(null);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [isBalanceAlertDialogOpen, setIsBalanceAlertDialogOpen] = useState(false);
 
 
   const form = useForm<FormValues>({
@@ -159,6 +170,12 @@ export default function StaffRequestRechargePage() {
         toast({ variant: 'destructive', title: 'Package not found' });
         return;
     }
+
+    const isNetworkAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
+    if(isNetworkAgent && (foundCustomer.balanceAmount || 0) >= 600) {
+        setIsBalanceAlertDialogOpen(true);
+        return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -219,6 +236,7 @@ export default function StaffRequestRechargePage() {
   const totalAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) * rechargeMonths : 0;
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
         <Card className="w-full max-w-2xl">
@@ -326,5 +344,27 @@ export default function StaffRequestRechargePage() {
         </Card>
       </div>
     </main>
+
+    <AlertDialog open={isBalanceAlertDialogOpen} onOpenChange={setIsBalanceAlertDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+                <ShieldAlert className="h-6 w-6 text-destructive" />
+                High Balance Alert
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+                The customer <span className="font-bold">{foundCustomer?.name}</span> has a high outstanding balance of <span className="font-bold text-destructive">₹{foundCustomer?.balanceAmount?.toLocaleString()}</span>.
+                <br/><br/>
+                Please ask the customer to clear the outstanding balance before requesting a recharge.
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsBalanceAlertDialogOpen(false)}>
+                OK
+            </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
