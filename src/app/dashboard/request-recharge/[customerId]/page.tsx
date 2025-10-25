@@ -13,13 +13,22 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, getDocs, addDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
-import { Loader2, Send, User, ArrowLeft } from 'lucide-react';
+import { Loader2, Send, User, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Package {
   id: string;
@@ -34,6 +43,7 @@ interface Customer {
   stbId: string;
   mobile: string;
   expiryDate?: Timestamp;
+  balanceAmount?: number;
 }
 
 interface Staff {
@@ -43,7 +53,7 @@ interface Staff {
 type RequestType = 'Renewal' | 'Recharge';
 
 export default function RequestRechargeForCustomerPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const [packages, setPackages] = useState<Package[]>([]);
@@ -54,6 +64,8 @@ export default function RequestRechargeForCustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const params = useParams();
   const customerId = params.customerId as string;
+  const [isBalanceAlertDialogOpen, setIsBalanceAlertDialogOpen] = useState(false);
+
 
   const requestType: RequestType = (customer?.expiryDate && customer.expiryDate.toDate() > new Date()) ? 'Renewal' : 'Recharge';
 
@@ -114,6 +126,12 @@ export default function RequestRechargeForCustomerPage() {
     if (!selectedPackage || !customer) {
       toast({ variant: "destructive", title: "Please select a package." });
       return;
+    }
+
+    const isNetworkAgent = userRole?.toLowerCase().replace(/\s/g, '') === 'networkserviceagent';
+    if(isNetworkAgent && (customer.balanceAmount || 0) >= 600) {
+        setIsBalanceAlertDialogOpen(true);
+        return;
     }
 
     setIsSubmitting(true);
@@ -195,6 +213,7 @@ export default function RequestRechargeForCustomerPage() {
   }
 
   return (
+    <>
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto p-4 py-8 md:p-12">
         <div className="mb-4">
@@ -283,5 +302,28 @@ export default function RequestRechargeForCustomerPage() {
         </Card>
       </div>
     </main>
+
+    <AlertDialog open={isBalanceAlertDialogOpen} onOpenChange={setIsBalanceAlertDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+                <ShieldAlert className="h-6 w-6 text-destructive" />
+                High Balance Alert
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+                The customer <span className="font-bold">{customer.name}</span> has a high outstanding balance of <span className="font-bold text-destructive">₹{customer.balanceAmount?.toLocaleString()}</span>.
+                <br/><br/>
+                Please ask the customer to clear the outstanding balance before requesting a recharge.
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsBalanceAlertDialogOpen(false)}>
+                OK
+            </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
+
