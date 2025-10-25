@@ -308,17 +308,17 @@ export default function RequestRechargeForCustomerPage() {
         <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
                 <ShieldAlert className="h-6 w-6 text-destructive" />
-                High Balance Alert
+                అధిక బ్యాలెన్స్ హెచ్చరిక
             </AlertDialogTitle>
             <AlertDialogDescription>
-                The customer <span className="font-bold">{customer.name}</span> has a high outstanding balance of <span className="font-bold text-destructive">₹{customer.balanceAmount?.toLocaleString()}</span>.
+                కస్టమర్ <span className="font-bold">{customer.name}</span> కు అధిక బకాయి బ్యాలెన్స్ <span className="font-bold text-destructive">₹{customer.balanceAmount?.toLocaleString()}</span> ఉంది.
                 <br/><br/>
-                Please ask the customer to clear the outstanding balance before requesting a recharge.
+                దయచేసి రీఛార్జ్ అభ్యర్థన చేసే ముందు, బకాయి ఉన్న బ్యాలెన్స్‌ను చెల్లించమని కస్టమర్‌ను అడగండి.
             </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
             <AlertDialogAction onClick={() => setIsBalanceAlertDialogOpen(false)}>
-                OK
+                సరే
             </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -326,4 +326,3 @@ export default function RequestRechargeForCustomerPage() {
     </>
   );
 }
-
