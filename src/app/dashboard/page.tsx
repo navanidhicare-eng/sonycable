@@ -116,7 +116,6 @@ interface Complaint {
   complaint: string;
 }
 
-
 export default function DashboardPage() {
   const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
@@ -163,7 +162,7 @@ export default function DashboardPage() {
   const [rechargeMonths, setRechargeMonths] = useState(1);
 
   // For notification sound
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevRequestCount = useRef(0);
   const isInitialMount = useRef(true);
   const [highlightNewRequest, setHighlightNewRequest] = useState(false);
@@ -415,22 +414,27 @@ export default function DashboardPage() {
   }, [currentUser, userRole, authLoading, toast]);
 
     useEffect(() => {
-    if (userRole && userRole !== 'Admin') {
-      if (isInitialMount.current) {
+    if (isInitialMount.current) {
         isInitialMount.current = false;
-        prevRequestCount.current = rechargeRequests.length;
         return;
-      }
-      
-      if (rechargeRequests.length > prevRequestCount.current) {
-        audioRef.current?.play().catch(e => console.error("Audio play failed:", e));
-        setHighlightNewRequest(true);
-        setTimeout(() => setHighlightNewRequest(false), 2000); // Highlight for 2 seconds
-      }
-
-      prevRequestCount.current = rechargeRequests.length;
     }
-  }, [rechargeRequests, userRole]);
+    if (userRole && userRole !== 'Admin') {
+      if (rechargeRequests.length > prevRequestCount.current) {
+        const promise = audioRef.current?.play();
+        if (promise !== undefined) {
+            promise.catch(error => {
+                // Autoplay was prevented.
+                console.warn("Audio autoplay was prevented by the browser.");
+            }).then(() => {
+                // Autoplay started!
+            });
+        }
+        setHighlightNewRequest(true);
+        setTimeout(() => setHighlightNewRequest(false), 2000); 
+      }
+    }
+    prevRequestCount.current = rechargeRequests.length;
+  }, [rechargeRequests.length, userRole]);
 
 
   const getWelcomeMessage = () => {
@@ -878,7 +882,7 @@ export default function DashboardPage() {
     return (
         <Card className={cn(
             "md:col-span-2 lg:col-span-3",
-            highlightNewRequest && "animate-pulse border-primary shadow-lg"
+            highlightNewRequest && "animate-pulse"
         )}>
             <CardHeader>
                 <CardTitle>Recharge Requests</CardTitle>
@@ -1052,6 +1056,30 @@ export default function DashboardPage() {
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <RechargeRequestsCard canApprove={canApproveRecharge} />
+        <Card className="md:col-span-2 lg:col-span-3">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 text-primary" />
+                    మీ కమీషన్ ప్రయోజనాలు
+                </CardTitle>
+                <CardDescription>మీరు సంపాదించడానికి ఇక్కడ కొన్ని మార్గాలు ఉన్నాయి:</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                <div>
+                    <h4 className="font-semibold">కలెక్షన్ కమీషన్</h4>
+                    <p className="text-muted-foreground">మీరు కస్టమర్ల నుండి వసూలు చేసే మొత్తం డబ్బుపై మీకు {staffData?.commission || 'N/A'} కమీషన్ వస్తుంది.</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold">కొత్త కస్టమర్ కమీషన్</h4>
+                    <p className="text-muted-foreground">మీరు చేర్పించే ప్రతి కొత్త కస్టమర్‌కు, మీకు ఒకేసారి ₹{staffData?.enrollmentCommission?.toLocaleString() || 'N/A'} స్థిరమైన కమీషన్ లభిస్తుంది.</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold">నెలవారీ రీఛార్జ్ కమీషన్</h4>
+                    <p className="text-muted-foreground">మీరు రిఫర్ చేసిన కస్టమర్లు చేసే ప్రతి నెలవారీ రీఛార్జ్‌పై మీకు ముందుగా నిర్ణయించిన శాతం ప్రకారం కమీషన్ వస్తుంది.</p>
+                </div>
+            </CardContent>
+        </Card>
+        <ComplaintsCard />
         <StaffRechargeCard />
         <Card className="bg-red-100 text-red-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1116,30 +1144,6 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground mt-2">
                    {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}
                 </p>
-            </CardContent>
-        </Card>
-        <ComplaintsCard />
-        <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Gift className="h-5 w-5 text-primary" />
-                    మీ కమీషన్ ప్రయోజనాలు
-                </CardTitle>
-                <CardDescription>మీరు సంపాదించడానికి ఇక్కడ కొన్ని మార్గాలు ఉన్నాయి:</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-                <div>
-                    <h4 className="font-semibold">కలెక్షన్ కమీషన్</h4>
-                    <p className="text-muted-foreground">మీరు కస్టమర్ల నుండి వసూలు చేసే మొత్తం డబ్బుపై మీకు {staffData?.commission || 'N/A'} కమీషన్ వస్తుంది.</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold">కొత్త కస్టమర్ కమీషన్</h4>
-                    <p className="text-muted-foreground">మీరు చేర్పించే ప్రతి కొత్త కస్టమర్‌కు, మీకు ఒకేసారి ₹{staffData?.enrollmentCommission?.toLocaleString() || 'N/A'} స్థిరమైన కమీషన్ లభిస్తుంది.</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold">నెలవారీ రీఛార్జ్ కమీషన్</h4>
-                    <p className="text-muted-foreground">మీరు రిఫర్ చేసిన కస్టమర్లు చేసే ప్రతి నెలవారీ రీఛార్జ్‌పై మీకు ముందుగా నిర్ణయించిన శాతం ప్రకారం కమీషన్ వస్తుంది.</p>
-                </div>
             </CardContent>
         </Card>
      </div>
@@ -1207,226 +1211,199 @@ export default function DashboardPage() {
 
         {renderDashboard()}
 
-        <audio ref={audioRef} src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjQ1LjEwMAAAAAAAAAAAAAAA//tAnxAAAAAAAAAAAAAAAAAAAAAAAAD/4BwDAAATaA4AAABYAwMAAAAAAwAlQAAAQEJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU'i's/4BwDAAATaA4AAABYAwMAAAAAAwAlQAAAQEJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUKEJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU'IeeeAA=" />
-      </div>
-    </main>
-    <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-            <DialogTitle>Confirm Settlement</DialogTitle>
-            <DialogDescription>
-                Are you sure you want to send the collected amount of{" "}
-                <span className="font-bold text-foreground">₹{staffWallet.walletAmount.toLocaleString()}</span> to the admin? This action cannot be undone.
-            </DialogDescription>
-        </DialogHeader>
-        <div className="py-4">
-            <div className="flex items-center space-x-2">
-                <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
-                <Label htmlFor="commission-received">Commission Received (₹{staffWallet.commissionAmount.toLocaleString()})</Label>
-            </div>
-        </div>
-        <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSettleDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSettleCollection}>Confirm & Send</Button>
-        </DialogFooter>
-        </DialogContent>
-    </Dialog>
+        <audio ref={audioRef} src={"data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjQ1LjEwMAAAAAAAAAAAAAAA//tAnxAAAAAAAAAAAAAAAAAAAAAAAAD/4BwDAAATaA4AAABYAwMAAAAAAwAlQAAAQEJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU..."} />
 
-    <Dialog open={isCustomerSearchDialogOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) cleanupSearchDialog(setIsCustomerSearchDialogOpen);
-        else setIsCustomerSearchDialogOpen(true);
-    }}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>Find Customer Balance</DialogTitle>
-                <DialogDescription>
-                    Enter Customer ID or Mobile Number to find their pending balance.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="flex items-center space-x-2">
-                <div className="grid flex-1 gap-2">
-                    <Label htmlFor="search" className="sr-only">
-                        Search
-                    </Label>
-                    <Input
-                        id="search"
-                        placeholder="Customer ID, Mobile, Name..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <Button type="submit" size="sm" className="px-3" onClick={() => handleCustomerSearch('collection')} disabled={isSearching}>
-                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    <span className="sr-only">Search</span>
-                </Button>
-            </div>
-             <div className="mt-4 space-y-2">
-                {searchError && <p className="text-sm font-medium text-destructive">{searchError}</p>}
-                {searchedCustomer && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{searchedCustomer.name}</CardTitle>
-                             <p className="text-sm text-muted-foreground">Area: {searchedCustomer.area}</p>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-lg font-bold">
-                                Pending Balance: <span className="text-primary">₹{searchedCustomer.balanceAmount.toLocaleString()}</span>
-                            </p>
-                            <Button className="w-full" onClick={() => openCollectDialog(searchedCustomer)}>
-                                <HandCoins className="mr-2 h-4 w-4" />
-                                Collect
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-            <DialogFooter className="sm:justify-start">
-                <Button type="button" variant="secondary" onClick={() => cleanupSearchDialog(setIsCustomerSearchDialogOpen)}>
-                    Close
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-    
-    <Dialog open={isRechargeSearchDialogOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) cleanupSearchDialog(setIsRechargeSearchDialogOpen);
-        else setIsRechargeSearchDialogOpen(true);
-    }}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>Recharge Customer</DialogTitle>
-                <DialogDescription>
-                    Enter Customer ID, Mobile, STB ID or Name to find a customer to recharge.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="flex items-center space-x-2">
-                <div className="grid flex-1 gap-2">
-                    <Label htmlFor="recharge-search" className="sr-only">
-                        Search
-                    </Label>
-                    <Input
-                        id="recharge-search"
-                        placeholder="Customer ID, Mobile, Name..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <Button type="submit" size="sm" className="px-3" onClick={() => handleCustomerSearch('recharge')} disabled={isSearching}>
-                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    <span className="sr-only">Search</span>
-                </Button>
-            </div>
-             <div className="mt-4 space-y-2">
-                {searchError && <p className="text-sm font-medium text-destructive">{searchError}</p>}
-            </div>
-            <DialogFooter className="sm:justify-start">
-                <Button type="button" variant="secondary" onClick={() => cleanupSearchDialog(setIsRechargeSearchDialogOpen)}>
-                    Close
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-
-
-    {searchedCustomer && (
-        <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Collect from {searchedCustomer.name}</DialogTitle>
-              <DialogDescription>
-                Record the payment collected from the customer. Amount due: ₹
-                {searchedCustomer.balanceAmount}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">
-                  Amount (₹)
-                </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={amountCollected}
-                  onChange={(e) => setAmountCollected(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Method</Label>
-                <RadioGroup
-                  defaultValue="cash"
-                  className="col-span-3 flex items-center gap-4"
-                  onValueChange={setPaymentMethod}
-                  value={paymentMethod}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cash" id="r-cash-dash" />
-                    <Label htmlFor="r-cash-dash">Cash</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="upi" id="r-upi-dash" />
-                    <Label htmlFor="r-upi-dash">UPI</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" onClick={handleConfirmCollection}>
-                Confirm Collection
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-      
-       {searchedCustomer && userRole?.toLowerCase().replace(/\s/g, '') !== 'collectionagent' && (
-         <Dialog open={isRechargeDialogOpen} onOpenChange={(isOpen) => {
-            if(!isOpen) setSearchedCustomer(null);
-            setIsRechargeDialogOpen(isOpen);
-         }}>
-            <DialogContent className="sm:max-w-[425px]">
+        {/* Dialog for Settle Collection */}
+-
+        <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
+            <DialogContent>
                 <DialogHeader>
+                    <DialogTitle>Confirm Settlement</DialogTitle>
+                    <DialogDescription>
+                        You are about to send your collected amount to the admin for settlement. Review the details below.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="space-y-2 rounded-md bg-muted p-4 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Collection:</span>
+                        <span className="font-bold">₹{staffWallet.walletAmount.toLocaleString()}</span>
+                    </div>
+                    {commissionReceived && (
+                        <>
+                         <div className="flex justify-between">
+                            <span className="text-muted-foreground">Commission Earned:</span>
+                            <span className="font-bold text-green-600">- ₹{staffWallet.commissionAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between border-t mt-2 pt-2">
+                            <span className="text-muted-foreground">Net Amount to Send:</span>
+                            <span className="font-bold text-lg">₹{(staffWallet.walletAmount - staffWallet.commissionAmount).toLocaleString()}</span>
+                        </div>
+                        </>
+                    )}
+                     {!commissionReceived && (
+                        <div className="flex justify-between border-t mt-2 pt-2">
+                             <span className="text-muted-foreground">Amount to Send to Admin:</span>
+                            <span className="font-bold text-lg">₹{staffWallet.walletAmount.toLocaleString()}</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center space-x-2 pt-4">
+                    <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
+                    <Label htmlFor="commission-received">I have received my commission from the admin.</Label>
+                </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsSettleDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSettleCollection}>Send Request</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Dialog for Customer Search (Collections) */}
+        <Dialog open={isCustomerSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsCustomerSearchDialogOpen)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Find Customer for Collection</DialogTitle>
+                    <DialogDescription>Search for a customer by their Name, Mobile, STB ID, or Customer ID.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="Enter search term..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Button onClick={() => handleCustomerSearch('collection')} disabled={isSearching}>
+                            {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4" />}
+                            Search
+                        </Button>
+                    </div>
+                    {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+                    {searchedCustomer && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>{searchedCustomer.name}</CardTitle>
+                                <CardDescription>STB: {searchedCustomer.stbId} | Balance: ₹{searchedCustomer.balanceAmount}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button className="w-full" onClick={() => openCollectDialog(searchedCustomer)}>
+                                    <HandCoins className="mr-2 h-4 w-4" />
+                                    Proceed to Collect
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+        
+         {/* Dialog for Customer Search (Recharge) */}
+        <Dialog open={isRechargeSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsRechargeSearchDialogOpen)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Find Customer to Recharge</DialogTitle>
+                    <DialogDescription>Search for a customer to recharge their account.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="Enter search term..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <Button onClick={() => handleCustomerSearch('recharge')} disabled={isSearching}>
+                             {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4" />}
+                            Search
+                        </Button>
+                    </div>
+                    {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+                </div>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialog for Collection */}
+        {searchedCustomer && (
+            <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
+                <DialogContent>
+                     <DialogHeader>
+                        <DialogTitle>Collect from {searchedCustomer.name}</DialogTitle>
+                        <DialogDescription>Amount due: ₹{searchedCustomer.balanceAmount}</DialogDescription>
+                    </DialogHeader>
+                     <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="amount" className="text-right">Amount (₹)</Label>
+                            <Input id="amount" type="number" value={amountCollected} onChange={(e) => setAmountCollected(e.target.value)} className="col-span-3"/>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Method</Label>
+                            <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="col-span-3 flex items-center gap-4">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="cash" id="r-cash" />
+                                    <Label htmlFor="r-cash">Cash</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="upi" id="r-upi" />
+                                    <Label htmlFor="r-upi">UPI</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handleConfirmCollection}>Confirm Collection</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
+
+        {/* Dialog for Recharge */}
+        {searchedCustomer && (
+            <Dialog open={isRechargeDialogOpen} onOpenChange={setIsRechargeDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
                     <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
                     <DialogDescription>Select a package to continue with the recharge.</DialogDescription>
                     <div className="text-sm">
                         Current Balance: <span className="font-bold text-lg">₹{searchedCustomer.balanceAmount}</span>
                     </div>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="package" className="text-right">Package</Label>
-                        <Select onValueChange={setSelectedPackage}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select a package" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {packages.map((pkg) => (
-                                    <SelectItem key={pkg.id} value={pkg.id}>
-                                        {pkg.packageName} - ₹{pkg.packageAmount}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                      <Label htmlFor="package" className="text-right">
+                        Package
+                      </Label>
+                      <Select onValueChange={setSelectedPackage}>
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Select a package" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {packages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                              {pkg.packageName} - ₹{pkg.packageAmount}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="months" className="text-right">Months</Label>
-                        <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select number of months" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {[...Array(12)].map((_, i) => (
-                                    <SelectItem key={i + 1} value={String(i + 1)}>
-                                    {i + 1} Month(s)
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                      <Label htmlFor="months" className="text-right">
+                        Months
+                      </Label>
+                       <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Select number of months" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...Array(12)].map((_, i) => (
+                            <SelectItem key={i + 1} value={String(i + 1)}>
+                              {i + 1} Month(s)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     {selectedPackageDetails && (
                         <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
-                             {offer && (
+                            {offer && (
                                 <>
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Original Amount:</span>
@@ -1446,27 +1423,29 @@ export default function DashboardPage() {
                                 <span>New Balance After Recharge:</span>
                                 <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
                             </div>
-                             {paymentReceivedForRecharge && (
+                                {paymentReceivedForRecharge && (
                                 <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
                             )}
                         </div>
                     )}
-                    
+
                     <div className="flex items-center space-x-2 justify-center pt-2">
                         <Checkbox 
-                        id="payment-received-recharge" 
-                        checked={paymentReceivedForRecharge} 
-                        onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
+                          id="payment-received-recharge" 
+                          checked={paymentReceivedForRecharge} 
+                          onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
                         />
                         <Label htmlFor="payment-received-recharge" className="text-xs">Payment Received (amount will not be added to balance)</Label>
                     </div>
-                </div>
-                <DialogFooter>
+                  </div>
+                  <DialogFooter>
                     <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-       )}
+                  </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
+      </div>
+    </main>
     </>
   );
 }
