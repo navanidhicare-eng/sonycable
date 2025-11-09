@@ -102,12 +102,23 @@ export default {
           '0%': { transform: 'translateX(100%)' },
           '100%': { transform: 'translateX(-100%)' },
         },
+         'highlight': {
+          '0%, 100%': {
+            borderColor: 'hsl(var(--border))',
+            boxShadow: 'none',
+          },
+          '50%': {
+            borderColor: 'hsl(var(--primary))',
+            boxShadow: '0 0 10px hsl(var(--primary) / 0.5)',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'slide-in-fade-in': 'slide-in-fade-in 0.5s ease-out forwards',
         'marquee': 'marquee 30s linear infinite',
+        'pulse': 'highlight 2s ease-in-out',
       },
     },
   },
