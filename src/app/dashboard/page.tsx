@@ -116,6 +116,8 @@ interface Complaint {
   complaint: string;
 }
 
+const notificationSound = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+
 export default function DashboardPage() {
   const { user: currentUser, userRole, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
@@ -421,11 +423,14 @@ export default function DashboardPage() {
                 audioRef.current.play().catch(() => {});
                 hasInteracted.current = true;
                 window.removeEventListener('click', primeAudio);
+                window.removeEventListener('touchstart', primeAudio);
             }
         };
         window.addEventListener('click', primeAudio);
+        window.addEventListener('touchstart', primeAudio);
         return () => {
             window.removeEventListener('click', primeAudio);
+            window.removeEventListener('touchstart', primeAudio);
         };
     }, []);
 
@@ -1068,6 +1073,17 @@ export default function DashboardPage() {
 
      return (
      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StaffRechargeCard />
+        <Card className="bg-red-100 text-red-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Outstanding Balance</CardTitle>
+                <CircleDollarSign className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">₹{totalPendingForStaff.toLocaleString()}</div>
+            </CardContent>
+        </Card>
+        <StaffCollectionCard />
         <RechargeRequestsCard canApprove={canApproveRecharge} />
         <Card className="md:col-span-2 lg:col-span-3">
             <CardHeader>
@@ -1093,17 +1109,6 @@ export default function DashboardPage() {
             </CardContent>
         </Card>
         <ComplaintsCard />
-        <StaffRechargeCard />
-        <Card className="bg-red-100 text-red-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Outstanding Balance</CardTitle>
-                <CircleDollarSign className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">₹{totalPendingForStaff.toLocaleString()}</div>
-            </CardContent>
-        </Card>
-        <StaffCollectionCard />
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -1221,7 +1226,7 @@ export default function DashboardPage() {
              { !authLoading && !firestoreLoading && getWelcomeMessage() }
           </p>
         </header>
-        <audio ref={audioRef} src={"data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"} />
+        <audio ref={audioRef} src={notificationSound} />
 
         {renderDashboard()}
 
@@ -1461,4 +1466,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
