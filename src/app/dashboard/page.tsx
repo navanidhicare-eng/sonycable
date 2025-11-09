@@ -162,9 +162,11 @@ export default function DashboardPage() {
   const [rechargeMonths, setRechargeMonths] = useState(1);
 
   // For notification sound
+  const audioRef = useRef<HTMLAudioElement>(null);
   const prevRequestCount = useRef(0);
   const isInitialMount = useRef(true);
   const [highlightNewRequest, setHighlightNewRequest] = useState(false);
+  const hasInteracted = useRef(false);
 
 
   useEffect(() => {
@@ -413,18 +415,39 @@ export default function DashboardPage() {
   }, [currentUser, userRole, authLoading, toast]);
 
     useEffect(() => {
-    if (isInitialMount.current) {
-        isInitialMount.current = false;
-        return;
-    }
-    if (userRole && userRole !== 'Admin') {
-      if (rechargeRequests.length > prevRequestCount.current) {
-        setHighlightNewRequest(true);
-        setTimeout(() => setHighlightNewRequest(false), 2000); 
-      }
-    }
-    prevRequestCount.current = rechargeRequests.length;
-  }, [rechargeRequests.length, userRole]);
+        const primeAudio = () => {
+            if (audioRef.current && !hasInteracted.current) {
+                audioRef.current.volume = 0;
+                audioRef.current.play().catch(() => {});
+                hasInteracted.current = true;
+                window.removeEventListener('click', primeAudio);
+            }
+        };
+        window.addEventListener('click', primeAudio);
+        return () => {
+            window.removeEventListener('click', primeAudio);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            prevRequestCount.current = rechargeRequests.length;
+            return;
+        }
+
+        if (userRole && userRole !== 'Admin') {
+            if (rechargeRequests.length > prevRequestCount.current) {
+                setHighlightNewRequest(true);
+                if (audioRef.current) {
+                    audioRef.current.volume = 1;
+                    audioRef.current.play().catch(e => console.error("Audio play failed:", e));
+                }
+                setTimeout(() => setHighlightNewRequest(false), 2000); 
+            }
+        }
+        prevRequestCount.current = rechargeRequests.length;
+    }, [rechargeRequests.length, userRole]);
 
 
   const getWelcomeMessage = () => {
@@ -1198,11 +1221,12 @@ export default function DashboardPage() {
              { !authLoading && !firestoreLoading && getWelcomeMessage() }
           </p>
         </header>
+        <audio ref={audioRef} src={"data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"} />
 
         {renderDashboard()}
 
         {/* Dialog for Settle Collection */}
--
+
         <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
             <DialogContent>
                 <DialogHeader>
@@ -1438,4 +1462,3 @@ export default function DashboardPage() {
   );
 }
 
-    
