@@ -288,6 +288,7 @@ export default function DashboardPage() {
             const allCustomersQuery = query(collection(db, "customers"), where("userId", "==", staffDocData.adminId));
             const allCustomersSnapshot = await getDocs(allCustomersQuery);
             const allAdminCustomers = allCustomersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data() as Omit<Customer, 'id'>}));
+            const customerMap = new Map(allAdminCustomers.map(c => [c.id, c]));
             
             const allRechargesQuery = query(collection(db, "recharges"), where("adminId", "==", staffDocData.adminId));
             const allRechargesSnapshot = await getDocs(allRechargesQuery);
@@ -301,7 +302,16 @@ export default function DashboardPage() {
 
             const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", staffDocData.adminId), where("status", "==", "Pending"));
             allUnsubscribes.push(onSnapshot(rechargeRequestQuery, (snapshot) => {
-                const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
+                 const requests = snapshot.docs.map(doc => {
+                    const reqData = doc.data() as Omit<RechargeRequest, 'id' | 'customerDetails'>;
+                    const customer = customerMap.get(reqData.customerId);
+                    return {
+                        id: doc.id,
+                        ...reqData,
+                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId } : undefined
+                    };
+                });
+                requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
                 setRechargeRequests(requests);
             }));
             
@@ -1466,3 +1476,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
