@@ -52,6 +52,7 @@ interface RechargeRequest {
     customerDetails?: {
         mobile: string;
         customerId: string;
+        balanceAmount: number;
     }
 }
 
@@ -223,7 +224,7 @@ export default function DashboardPage() {
                     return {
                         id: doc.id,
                         ...reqData,
-                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId } : undefined
+                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId, balanceAmount: customer.balanceAmount } : undefined
                     };
                 });
                 requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
@@ -308,7 +309,7 @@ export default function DashboardPage() {
                     return {
                         id: doc.id,
                         ...reqData,
-                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId } : undefined
+                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId, balanceAmount: customer.balanceAmount } : undefined
                     };
                 });
                 requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
@@ -924,6 +925,11 @@ export default function DashboardPage() {
                             <p className="text-sm text-muted-foreground">
                                 ID: {req.customerDetails?.customerId} | Mobile: {req.customerDetails?.mobile}
                             </p>
+                            {req.customerDetails?.balanceAmount && req.customerDetails.balanceAmount > 0 && (
+                                <p className="text-sm text-destructive font-semibold">
+                                    Current Balance: ₹{req.customerDetails.balanceAmount}
+                                </p>
+                            )}
                             <p className="text-sm text-muted-foreground mt-1">
                                 Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span> {req.months && ` for ${req.months} month(s)`}
                             </p>
@@ -1008,7 +1014,7 @@ export default function DashboardPage() {
 
 
   const AdminDashboard = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:col-span-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <RechargeRequestsCard canApprove={true} />
         <SettlementRequestsCard />
         <AdminCollectionCard />
@@ -1476,5 +1482,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
