@@ -27,8 +27,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Network, LogIn } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { collection, query, where, getDocs, doc, updateDoc, limit } from "firebase/firestore";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const formSchema = z.object({
   email: z.string().min(1, { message: "Email or Mobile Number is required." }),
@@ -69,15 +69,6 @@ export default function LoginPage() {
         const staffData = staffSnapshot.docs[0].data();
         userRole = staffData.role || "Staff"; // Use the specific role from DB
         destination = "/dashboard";
-      } else {
-        // 3. Check for Customer
-        const customerQuery = query(collection(db, "customers"), where("uid", "==", user.uid));
-        const customerSnapshot = await getDocs(customerQuery);
-        if (!customerSnapshot.empty) {
-          const customerId = customerSnapshot.docs[0].id;
-          userRole = "Customer";
-          destination = `/customer/${customerId}`;
-        }
       }
     }
 
@@ -110,44 +101,6 @@ export default function LoginPage() {
     try {
       await handleLogin(loginEmail, data);
     } catch (error: any) {
-      // JIT Account Creation for old customers
-      const isJitCondition = 
-        (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') && 
-        isMobile && 
-        data.password === '12345678';
-
-      if (isJitCondition) {
-        try {
-          const customerQuery = query(
-            collection(db, "customers"),
-            where("mobile", "==", data.email),
-            limit(1)
-          );
-          const customerSnapshot = await getDocs(customerQuery);
-
-          if (!customerSnapshot.empty) {
-            const customerDoc = customerSnapshot.docs[0];
-            const customerData = customerDoc.data();
-            
-            if (!customerData.uid) {
-              const userCredential = await createUserWithEmailAndPassword(auth, loginEmail, data.password);
-              const newCustomerUser = userCredential.user;
-
-              await updateDoc(doc(db, "customers", customerDoc.id), {
-                uid: newCustomerUser.uid,
-                passwordChangeRequired: true,
-              });
-              
-              // Now that the account is created, try logging in again
-              await handleLogin(loginEmail, data);
-              setIsSubmitting(false);
-              return;
-            }
-          }
-        } catch (jitError: any) {
-            console.error("JIT Creation/Login Error:", jitError);
-        }
-      }
 
       console.error("Firebase Auth Error:", error);
       let errorMessage = "An error occurred during login.";
@@ -174,7 +127,7 @@ export default function LoginPage() {
         <CardHeader className="items-center text-center">
             <Network className="h-10 w-10 text-primary mb-2" />
           <CardTitle className="text-2xl">SONY CABLE NETWORK</CardTitle>
-          <CardDescription>Admin, Staff & Customer Login</CardDescription>
+          <CardDescription>Admin & Staff Login</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

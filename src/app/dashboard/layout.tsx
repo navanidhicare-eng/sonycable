@@ -137,16 +137,14 @@ function DashboardLayout({
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
-                {isCollectionAgent && (
-                    <SidebarMenuItem>
-                        <SidebarMenuButton asChild onClick={handleLinkClick}>
-                            <Link href="/dashboard/my-collection-history">
-                            <History />
-                            <span>My Collection History</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                )}
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild onClick={handleLinkClick}>
+                        <Link href="/dashboard/my-collection-history">
+                        <History />
+                        <span>My Collection History</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
                  <SidebarMenuItem>
                     <SidebarMenuButton asChild onClick={handleLinkClick}>
                         <Link href="/dashboard/reminders-staff">

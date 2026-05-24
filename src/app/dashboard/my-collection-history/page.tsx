@@ -36,9 +36,11 @@ interface CollectionHistoryItem {
 
 interface Settlement {
   id: string;
+  amount?: number;
   amountToSend: number;
   status: 'pending' | 'approved';
   createdAt: Timestamp;
+  commission?: number;
 }
 
 
@@ -138,7 +140,7 @@ export default function MyCollectionHistoryPage() {
     const totalCollected = filteredCollections.reduce((sum, item) => sum + item.amount, 0);
     const totalSettled = filteredSettlements
         .filter(s => s.status === 'approved')
-        .reduce((sum, item) => sum + item.amountToSend, 0);
+        .reduce((sum, item) => sum + (item.amount ?? item.amountToSend), 0);
     
     const remainingBalance = totalCollected - totalSettled;
 

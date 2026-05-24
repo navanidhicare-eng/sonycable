@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ interface SettlementRequest {
   amount: number;
   commission: number;
   amountToSend: number;
-  status: 'pending' | 'approved';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   createdAt: Timestamp;
 }
 
@@ -89,6 +89,7 @@ interface Customer {
   connectionReference?: string;
   monthlyCommission?: string;
   createdAt: Timestamp;
+  userId: string;
 }
 
 interface RechargePackage {
@@ -124,6 +125,7 @@ export default function DashboardPage() {
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
+  const [settlementAmount, setSettlementAmount] = useState("");
   const [settlementRequests, setSettlementRequests] = useState<SettlementRequest[]>([]);
   const [rechargeRequests, setRechargeRequests] = useState<RechargeRequest[]>([]);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
@@ -137,6 +139,7 @@ export default function DashboardPage() {
       totalPending: 0,
   });
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
+  const [allPayments, setAllPayments] = useState<any[]>([]);
   const [staffData, setStaffData] = useState<StaffData | null>(null);
   const [totalPendingForStaff, setTotalPendingForStaff] = useState(0);
   const [todaysCollectionForStaff, setTodaysCollectionForStaff] = useState(0);
@@ -231,31 +234,33 @@ export default function DashboardPage() {
                 setRechargeRequests(requests);
             });
              const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
-                const now = new Date();
-                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-                let todaysCollection = 0;
-                let monthlyCollection = 0;
-
-                snapshot.forEach(doc => {
-                    const payment = doc.data();
-                    const paymentDate = payment.collectionDate.toDate();
-
-                    if (paymentDate >= monthStart) {
-                        monthlyCollection += payment.amount;
-                    }
-                    if (paymentDate >= todayStart) {
-                        todaysCollection += payment.amount;
-                    }
-                });
-                
-                setStats(prevStats => ({
-                    ...prevStats,
-                    todaysCollection,
-                    monthlyCollection,
-                }));
-            });
+                 const now = new Date();
+                 const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                 const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+ 
+                 let todaysCollection = 0;
+                 let monthlyCollection = 0;
+ 
+                 const paymentsList = snapshot.docs.map(doc => doc.data());
+                 setAllPayments(paymentsList);
+ 
+                 paymentsList.forEach(payment => {
+                     const paymentDate = payment.collectionDate.toDate();
+ 
+                     if (paymentDate >= monthStart) {
+                         monthlyCollection += payment.amount;
+                     }
+                     if (paymentDate >= todayStart) {
+                         todaysCollection += payment.amount;
+                     }
+                 });
+                 
+                 setStats(prevStats => ({
+                     ...prevStats,
+                     todaysCollection,
+                     monthlyCollection,
+                 }));
+             });
 
             const unsubscribeRechargeOffers = onSnapshot(rechargeOffersQuery, (snapshot) => {
                 const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeOffer));
@@ -344,57 +349,51 @@ export default function DashboardPage() {
             );
 
             allUnsubscribes.push(onSnapshot(approvedSettlementsQuery, (approvedSettlementsSnapshot) => {
-                let lastSettlementDate: Date | null = null;
-                if (!approvedSettlementsSnapshot.empty) {
-                    const dates = approvedSettlementsSnapshot.docs.map(doc => doc.data().createdAt.toDate());
-                    lastSettlementDate = new Date(Math.max(...dates.map(date => date.getTime())));
-                }
+                const approvedSettlements = approvedSettlementsSnapshot.docs.map(doc => doc.data());
+                const totalSettledEver = approvedSettlements.reduce((sum, doc) => sum + (doc.amount || 0), 0);
+                const totalSettledCommissionEver = approvedSettlements.reduce((sum, doc) => sum + (doc.commission || 0), 0);
 
                 allUnsubscribes.push(onSnapshot(paymentsQuery, (paymentsSnapshot) => {
                     const now = new Date();
                     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                     let todaysCollection = 0;
 
-                    const paymentsAfterSettlement = paymentsSnapshot.docs.filter(doc => {
-                        const paymentDate = doc.data().collectionDate.toDate();
+                    const allPayments = paymentsSnapshot.docs.map(doc => {
+                        const data = doc.data();
+                        const paymentDate = data.collectionDate.toDate();
                         if (paymentDate >= todayStart) {
-                            todaysCollection += doc.data().amount;
+                            todaysCollection += data.amount;
                         }
-                        if (!lastSettlementDate) return true;
-                        return paymentDate > lastSettlementDate;
+                        return data;
                     });
                     
                     setTodaysCollectionForStaff(todaysCollection);
-                    const totalCollection = paymentsAfterSettlement.reduce((acc, doc) => acc + doc.data().amount, 0);
-                    const collectionCommission = (totalCollection * commissionRate) / 100;
+                    const totalCollectionEver = allPayments.reduce((acc, p) => acc + p.amount, 0);
+                    const walletAmount = totalCollectionEver - totalSettledEver;
+                    const collectionCommissionEver = (totalCollectionEver * commissionRate) / 100;
                     
                     // Enrollment Commission
                     const enrollmentCommissionPerCustomer = staffDocData.enrollmentCommission || 0;
-                    const newCustomersByStaff = allAdminCustomers.filter(c => {
-                        if (c.userId !== staffDocData.adminId || c.connectionReference !== staffDocData.id) return false;
-                        if (!lastSettlementDate) return true;
-                        return c.createdAt.toDate() > lastSettlementDate;
+                    const customersByStaff = allAdminCustomers.filter(c => {
+                        return c.userId === staffDocData.adminId && c.connectionReference === staffDocData.id;
                     });
-                    const totalEnrollmentCommission = newCustomersByStaff.length * enrollmentCommissionPerCustomer;
+                    const totalEnrollmentCommission = customersByStaff.length * enrollmentCommissionPerCustomer;
                     
                     // Monthly Recharge Commission
                     const referredCustomers = allAdminCustomers.filter(c => c.connectionReference === staffDocData.id);
-                    let monthlyRechargeCommission = 0;
+                    let monthlyRechargeCommissionEver = 0;
                     referredCustomers.forEach(cust => {
                         const monthlyCommRate = parseFloat(cust.monthlyCommission || '0');
                         if (monthlyCommRate > 0) {
-                            const customerRecharges = allAdminRecharges.filter(r => {
-                                if (r.customerId !== cust.id) return false;
-                                if (!lastSettlementDate) return true;
-                                return r.rechargeDate.toDate() > lastSettlementDate;
-                            });
+                            const customerRecharges = allAdminRecharges.filter(r => r.customerId === cust.id);
                             const totalRechargeAmount = customerRecharges.reduce((sum, r) => sum + r.amount, 0);
-                            monthlyRechargeCommission += (totalRechargeAmount * monthlyCommRate) / 100;
+                            monthlyRechargeCommissionEver += (totalRechargeAmount * monthlyCommRate) / 100;
                         }
                     });
 
-                    const totalCommission = collectionCommission + totalEnrollmentCommission + monthlyRechargeCommission;
-                    setStaffWallet({ walletAmount: totalCollection, commissionAmount: totalCommission });
+                    const totalCommissionEver = collectionCommissionEver + totalEnrollmentCommission + monthlyRechargeCommissionEver;
+                    const commissionAmount = Math.max(0, totalCommissionEver - totalSettledCommissionEver);
+                    setStaffWallet({ walletAmount: walletAmount, commissionAmount: commissionAmount });
                 }));
             }));
 
@@ -479,16 +478,26 @@ export default function DashboardPage() {
   const handleSettleCollection = async () => {
     if (!currentUser || !staffData) return;
     
-    const collectionAmount = staffWallet.walletAmount;
+    const requestedAmount = parseFloat(settlementAmount);
+    if (isNaN(requestedAmount) || requestedAmount <= 0 || requestedAmount > staffWallet.walletAmount) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: `Please enter an amount between ₹1 and ₹${staffWallet.walletAmount.toLocaleString()}.`,
+      });
+      return;
+    }
+
     const commissionAmount = staffWallet.commissionAmount;
-    const amountToSend = commissionReceived ? collectionAmount - commissionAmount : collectionAmount;
+    const commissionDeduction = commissionReceived ? Math.min(commissionAmount, requestedAmount) : 0;
+    const amountToSend = requestedAmount - commissionDeduction;
 
     try {
       await addDoc(collection(db, "settlements"), {
         staffId: currentUser.uid,
         staffName: staffData.name || 'Staff Member',
-        amount: collectionAmount,
-        commission: commissionReceived ? commissionAmount : 0,
+        amount: requestedAmount,
+        commission: commissionDeduction,
         amountToSend: amountToSend,
         status: 'pending',
         createdAt: new Date(),
@@ -502,6 +511,7 @@ export default function DashboardPage() {
       
       setIsSettleDialogOpen(false);
       setCommissionReceived(false);
+      setSettlementAmount("");
     } catch (error) {
       console.error("Error sending settlement request: ", error);
       toast({
@@ -510,7 +520,7 @@ export default function DashboardPage() {
         description: "Could not send your settlement request. Please try again.",
       });
     }
-  }
+  };
 
   const handleApproveSettlement = async (requestId: string) => {
     try {
@@ -528,6 +538,51 @@ export default function DashboardPage() {
             variant: "destructive",
             title: "Approval Failed",
             description: "Could not approve the settlement. Please try again.",
+        });
+    }
+  };
+
+  const handleRejectSettlement = async (requestId: string) => {
+    try {
+      const requestDocRef = doc(db, "settlements", requestId);
+      await updateDoc(requestDocRef, {
+        status: 'rejected'
+      });
+      toast({
+          title: "Settlement Rejected",
+          description: "The settlement request has been rejected.",
+      });
+    } catch (error) {
+        console.error("Error rejecting settlement: ", error);
+        toast({
+            variant: "destructive",
+            title: "Rejection Failed",
+            description: "Could not reject the settlement request.",
+        });
+    }
+  };
+
+  const handleCancelSettlement = async () => {
+    if (!currentUser) return;
+    try {
+      const pendingRequest = settlementRequests.find(req => req.status === 'pending' && req.staffId === currentUser.uid);
+      if (!pendingRequest) return;
+      
+      const requestDocRef = doc(db, "settlements", pendingRequest.id);
+      await updateDoc(requestDocRef, {
+        status: 'cancelled'
+      });
+      
+      toast({
+          title: "Settlement Cancelled",
+          description: "Your settlement request has been cancelled.",
+      });
+    } catch (error) {
+        console.error("Error cancelling settlement: ", error);
+        toast({
+            variant: "destructive",
+            title: "Cancellation Failed",
+            description: "Could not cancel the settlement request.",
         });
     }
   };
@@ -954,34 +1009,57 @@ export default function DashboardPage() {
     );
    };
    
-   const SettlementRequestsCard = () => {
-    const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
-    if(pendingRequests.length === 0) return null;
+    const getStaffWalletAmount = (staffId: string) => {
+      const staffPayments = allPayments.filter(p => p.collectedBy === staffId);
+      const totalCollection = staffPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    return (
-         <Card className="md:col-span-2 lg:col-span-3 animate-slide-in-fade-in">
-            <CardHeader>
-                <CardTitle>Settlement Requests</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {pendingRequests.map(req => (
-                    <div key={req.id} className="flex items-center justify-between rounded-lg border p-3">
-                        <div>
-                            <p className="font-semibold">{req.staffName}</p>
-                            <p className="text-sm text-muted-foreground">
-                                Requesting to settle <span className="font-bold text-foreground">₹{req.amountToSend.toLocaleString()}</span>
-                            </p>
-                        </div>
-                        <Button onClick={() => handleApproveSettlement(req.id)}>
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Approve
-                        </Button>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-    );
-   };
+      const approvedSettlements = settlementRequests.filter(s => s.staffId === staffId && s.status === 'approved');
+      const totalSettled = approvedSettlements.reduce((sum, s) => sum + (s.amount || 0), 0);
+
+      return totalCollection - totalSettled;
+    };
+
+    const SettlementRequestsCard = () => {
+     const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
+     if(pendingRequests.length === 0) return null;
+ 
+     return (
+          <Card className="md:col-span-2 lg:col-span-3 animate-slide-in-fade-in">
+             <CardHeader>
+                 <CardTitle>Settlement Requests</CardTitle>
+             </CardHeader>
+             <CardContent className="space-y-4">
+                 {pendingRequests.map(req => {
+                     const currentWallet = getStaffWalletAmount(req.staffId);
+                     const remainingWalletIfApproved = Math.max(0, currentWallet - req.amount);
+                     return (
+                         <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border p-3 gap-3">
+                             <div>
+                                 <p className="font-semibold">{req.staffName}</p>
+                                 <p className="text-sm text-muted-foreground">
+                                     Requesting to settle <span className="font-bold text-foreground">₹{req.amountToSend.toLocaleString()}</span> (Gross: ₹{req.amount.toLocaleString()})
+                                 </p>
+                                 <p className="text-xs text-muted-foreground mt-1">
+                                     Current Wallet: ₹{currentWallet.toLocaleString()} | Remaining if approved: <span className="font-semibold text-primary">₹{remainingWalletIfApproved.toLocaleString()}</span>
+                                 </p>
+                             </div>
+                             <div className="flex gap-2">
+                                 <Button onClick={() => handleApproveSettlement(req.id)} size="sm">
+                                     <CheckCircle2 className="mr-2 h-4 w-4" />
+                                     Approve
+                                 </Button>
+                                 <Button onClick={() => handleRejectSettlement(req.id)} variant="destructive" size="sm">
+                                     <XCircle className="mr-2 h-4 w-4" />
+                                     Reject
+                                 </Button>
+                             </div>
+                         </div>
+                     );
+                 })}
+             </CardContent>
+         </Card>
+     );
+    };
    
     const ComplaintsCard = () => {
         if (pendingComplaints.length === 0) return null;
@@ -1171,10 +1249,21 @@ export default function DashboardPage() {
             </CardTitle>
             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-                <Button className="w-full" onClick={() => setIsSettleDialogOpen(true)} disabled={hasPendingRequest || walletAmount === 0}>
-                    {hasPendingRequest ? 'Approval Pending' : 'Send to Admin'}
-                </Button>
+            <CardContent className="space-y-2">
+                {hasPendingRequest ? (
+                    <>
+                        <Button className="w-full" disabled>
+                            Approval Pending
+                        </Button>
+                        <Button className="w-full" variant="outline" onClick={handleCancelSettlement}>
+                            Cancel Request
+                        </Button>
+                    </>
+                ) : (
+                    <Button className="w-full" onClick={() => { setSettlementAmount(String(walletAmount)); setIsSettleDialogOpen(true); }} disabled={walletAmount === 0}>
+                        Send to Admin
+                    </Button>
+                )}
                 <p className="text-xs text-muted-foreground mt-2">
                    {hasPendingRequest ? 'Your previous request is awaiting admin approval.' : 'Send your collected amount to the admin for settlement.'}
                 </p>
@@ -1248,45 +1337,64 @@ export default function DashboardPage() {
 
         {/* Dialog for Settle Collection */}
 
-        <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
+        <Dialog open={isSettleDialogOpen} onOpenChange={(open) => { if (!open) { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); } }}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Confirm Settlement</DialogTitle>
+                    <DialogTitle>Request Settlement</DialogTitle>
                     <DialogDescription>
-                        You are about to send your collected amount to the admin for settlement. Review the details below.
+                        Enter the amount you want to settle with the admin. Your total wallet balance is ₹{staffWallet.walletAmount.toLocaleString()}.
                     </DialogDescription>
                 </DialogHeader>
-                 <div className="space-y-2 rounded-md bg-muted p-4 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Total Collection:</span>
-                        <span className="font-bold">₹{staffWallet.walletAmount.toLocaleString()}</span>
+                 <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="settlement-amount">Settlement Amount (₹)</Label>
+                        <Input
+                            id="settlement-amount"
+                            type="number"
+                            placeholder="Enter amount to settle"
+                            value={settlementAmount}
+                            onChange={(e) => setSettlementAmount(e.target.value)}
+                            max={staffWallet.walletAmount}
+                            min={1}
+                        />
+                        <p className="text-xs text-muted-foreground">Max: ₹{staffWallet.walletAmount.toLocaleString()}</p>
                     </div>
-                    {commissionReceived && (
-                        <>
-                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Commission Earned:</span>
-                            <span className="font-bold text-green-600">- ₹{staffWallet.commissionAmount.toLocaleString()}</span>
+                    <div className="rounded-md bg-muted p-4 text-sm space-y-2">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Settlement Amount:</span>
+                            <span className="font-bold">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between border-t mt-2 pt-2">
-                            <span className="text-muted-foreground">Net Amount to Send:</span>
-                            <span className="font-bold text-lg">₹{(staffWallet.walletAmount - staffWallet.commissionAmount).toLocaleString()}</span>
+                        {commissionReceived && (
+                            <>
+                             <div className="flex justify-between">
+                                <span className="text-muted-foreground">Commission Deduction:</span>
+                                <span className="font-bold text-green-600">- ₹{Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between border-t mt-2 pt-2">
+                                <span className="text-muted-foreground">Net Amount to Send:</span>
+                                <span className="font-bold text-lg">₹{((parseFloat(settlementAmount) || 0) - Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
+                            </div>
+                            </>
+                        )}
+                         {!commissionReceived && (
+                            <div className="flex justify-between border-t mt-2 pt-2">
+                                 <span className="text-muted-foreground">Amount to Send to Admin:</span>
+                                <span className="font-bold text-lg">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between border-t border-dashed mt-2 pt-2 text-muted-foreground">
+                            <span>Remaining Wallet Balance:</span>
+                            <span className="font-semibold text-foreground">₹{Math.max(0, staffWallet.walletAmount - (parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
                         </div>
-                        </>
-                    )}
-                     {!commissionReceived && (
-                        <div className="flex justify-between border-t mt-2 pt-2">
-                             <span className="text-muted-foreground">Amount to Send to Admin:</span>
-                            <span className="font-bold text-lg">₹{staffWallet.walletAmount.toLocaleString()}</span>
-                        </div>
-                    )}
-                </div>
-                <div className="flex items-center space-x-2 pt-4">
-                    <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
-                    <Label htmlFor="commission-received">I have received my commission from the admin.</Label>
-                </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
+                        <Label htmlFor="commission-received">I have received my commission from the admin.</Label>
+                    </div>
+                 </div>
                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsSettleDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSettleCollection}>Send Request</Button>
+                    <Button variant="outline" onClick={() => { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); }}>Cancel</Button>
+                    <Button onClick={handleSettleCollection} disabled={!settlementAmount || parseFloat(settlementAmount) <= 0 || parseFloat(settlementAmount) > staffWallet.walletAmount}>Send Request</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

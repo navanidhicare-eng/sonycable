@@ -32,12 +32,6 @@ export function useAuth() {
             if (!staffSnapshot.empty) {
               const staffData = staffSnapshot.docs[0].data();
               finalRole = staffData.role || "Staff"; // Default to "Staff" if role is empty but doc exists
-            } else {
-              const customerQuery = query(collection(db, "customers"), where("uid", "==", currentUser.uid));
-              const customerSnapshot = await getDocs(customerQuery);
-              if (!customerSnapshot.empty) {
-                finalRole = "Customer";
-              }
             }
           }
           
