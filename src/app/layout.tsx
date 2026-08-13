@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'SONY CABLE NETWORK',
-  description: 'AI-powered cable bill analysis and recommendation.',
+  title: 'Navanidhi Digital System - Official DishTV Partner',
+  description: 'Navanidhi Digital System - Official DishTV Partner & Dealer Management Portal.',
 };
 
 export default function RootLayout({
@@ -13,13 +13,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="">
+    <html lang="en" className="" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased" suppressHydrationWarning>
         {children}
         <Toaster />
       </body>

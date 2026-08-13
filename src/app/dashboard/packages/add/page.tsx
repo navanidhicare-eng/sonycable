@@ -32,7 +32,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   packageName: z.string().min(1, "Package name is required."),
-  packageAmount: z.string().min(1, "Amount is required."),
+  packageAmount: z.string().min(1, "1 Month Amount is required."),
+  threeMonthAmount: z.string().optional(),
+  sixMonthAmount: z.string().optional(),
+  twelveMonthAmount: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -49,6 +52,9 @@ export default function AddPackagePage() {
     defaultValues: {
       packageName: "",
       packageAmount: "",
+      threeMonthAmount: "",
+      sixMonthAmount: "",
+      twelveMonthAmount: "",
       description: "",
     },
   });
@@ -64,9 +70,13 @@ export default function AddPackagePage() {
     }
     setIsSubmitting(true);
     try {
+      const mAmt = parseFloat(data.packageAmount) || 0;
       await addDoc(collection(db, "packages"), {
         packageName: data.packageName,
         packageAmount: data.packageAmount,
+        threeMonthAmount: data.threeMonthAmount || (mAmt ? String(mAmt * 3) : ""),
+        sixMonthAmount: data.sixMonthAmount || (mAmt ? String(mAmt * 6) : ""),
+        twelveMonthAmount: data.twelveMonthAmount || (mAmt ? String(mAmt * 12) : ""),
         description: data.description || "",
         createdAt: new Date(),
         userId: user.uid,
@@ -97,7 +107,7 @@ export default function AddPackagePage() {
           <CardHeader>
             <CardTitle className="text-2xl">Add New Package</CardTitle>
             <CardDescription>
-              Fill in the details below to add a new package.
+              Fill in the details below to add a new package with default rates.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -116,19 +126,61 @@ export default function AddPackagePage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="packageAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Package Amount (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Enter amount in INR" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="packageAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>1 Month Amount (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="e.g. 350" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="threeMonthAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>3 Months Amount (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="e.g. 1050" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sixMonthAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>6 Months Amount (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="e.g. 2100" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="twelveMonthAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>12 Months Amount (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="e.g. 4200" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="description"
