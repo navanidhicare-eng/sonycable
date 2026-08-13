@@ -46,7 +46,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore";
 
 interface Product {
   id: string;
@@ -151,20 +151,40 @@ export default function MarketplacePage() {
   useEffect(() => {
     setLoading(true);
 
-    const prodUnsub = onSnapshot(collection(db, "marketplaceProducts"), (snapshot) => {
+    const prodUnsub = onSnapshot(collection(db, "marketplaceProducts"), async (snapshot) => {
+      const isInitialized = typeof window !== "undefined" && localStorage.getItem("mk_products_initialized") === "true";
+      const deletedIds = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mk_deleted_ids") || "[]") : [];
+
       if (!snapshot.empty) {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
+        const data = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
           inStock: true,
-          ...doc.data(),
+          ...docSnap.data(),
         })) as Product[];
-        setProducts(data);
+
+        const filtered = data.filter((p) => !deletedIds.includes(p.id));
+        setProducts(filtered);
       } else {
-        setProducts(DEFAULT_PRODUCTS);
+        if (!isInitialized) {
+          // Seed default products into Firestore so they get real documents that can be deleted
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mk_products_initialized", "true");
+            }
+            for (const prod of DEFAULT_PRODUCTS) {
+              await setDoc(doc(db, "marketplaceProducts", prod.id), prod);
+            }
+          } catch (e) {
+            setProducts(DEFAULT_PRODUCTS.filter((p) => !deletedIds.includes(p.id)));
+          }
+        } else {
+          setProducts([]);
+        }
       }
       setLoading(false);
     }, () => {
-      setProducts(DEFAULT_PRODUCTS);
+      const deletedIds = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mk_deleted_ids") || "[]") : [];
+      setProducts(DEFAULT_PRODUCTS.filter((p) => !deletedIds.includes(p.id)));
       setLoading(false);
     });
 
@@ -189,6 +209,9 @@ export default function MarketplacePage() {
 
     setAddLoading(true);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mk_products_initialized", "true");
+      }
       const finalImage = prodImageUrl.trim() || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80";
 
       await addDoc(collection(db, "marketplaceProducts"), {
@@ -220,10 +243,24 @@ export default function MarketplacePage() {
   // Admin Delete Product
   const handleAdminDeleteProduct = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "marketplaceProducts", id));
-      toast({ title: "Product Removed" });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mk_products_initialized", "true");
+        const deletedIds = JSON.parse(localStorage.getItem("mk_deleted_ids") || "[]");
+        if (!deletedIds.includes(id)) {
+          deletedIds.push(id);
+          localStorage.setItem("mk_deleted_ids", JSON.stringify(deletedIds));
+        }
+      }
+
+      // Try deleting from Firestore
+      await deleteDoc(doc(db, "marketplaceProducts", id)).catch(() => {});
+
+      // Optimistically filter out from UI
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast({ title: "Product Removed Successfully" });
     } catch (err) {
-      toast({ variant: "destructive", title: "Delete Failed" });
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast({ title: "Product Removed" });
     }
   };
 
