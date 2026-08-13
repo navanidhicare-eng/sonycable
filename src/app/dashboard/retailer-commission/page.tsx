@@ -316,7 +316,7 @@ export default function RetailerCommissionPage() {
 
       list = list.filter((tx) => {
         const matchesUserUid = (tx.retailerUid && tx.retailerUid === user.uid) || (tx.retailerId && tx.retailerId === user.uid);
-        const matchesUserEmail = Boolean(user.email && tx.retailerEmail && tx.retailerEmail.toLowerCase() === user.email.toLowerCase());
+        const matchesUserEmail = Boolean(user.email && (tx as any).retailerEmail && (tx as any).retailerEmail.toLowerCase() === user.email.toLowerCase());
         
         let matchesRetailerRecord = false;
         if (currentRetailerRecord) {
@@ -850,7 +850,7 @@ export default function RetailerCommissionPage() {
             <div className="block sm:hidden space-y-3">
               {filteredTransactions.length > 0 ? (
                 filteredTransactions.map((tx) => {
-                  const isCredit = tx.type === "Credit" || (tx.type !== "Payout Debit" && !tx.type?.includes("Debit"));
+                  const isCredit = tx.type === "Credit" || (tx.type !== "Payout Debit" && !String(tx.type || "").includes("Debit"));
                   const dateStr = tx.createdAt?.seconds
                     ? new Date(tx.createdAt.seconds * 1000).toLocaleString("en-IN", {
                         dateStyle: "short",
@@ -962,7 +962,7 @@ export default function RetailerCommissionPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {filteredTransactions.length > 0 ? (
                     filteredTransactions.map((tx) => {
-                      const isCredit = tx.type === "Credit" || (tx.type !== "Payout Debit" && !tx.type?.includes("Debit"));
+                      const isCredit = tx.type === "Credit" || (tx.type !== "Payout Debit" && !String(tx.type || "").includes("Debit"));
                       const dateStr = tx.createdAt?.seconds
                         ? new Date(tx.createdAt.seconds * 1000).toLocaleString("en-IN", {
                             dateStyle: "medium",

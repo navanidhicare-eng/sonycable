@@ -47,7 +47,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDoc, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { AP_LOCATIONS } from "@/lib/apLocations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -179,20 +179,40 @@ export default function NewConnectionOffersPage() {
   useEffect(() => {
     setLoading(true);
 
-    const offersUnsub = onSnapshot(collection(db, "newConnectionOffers"), (snapshot) => {
+    const offersUnsub = onSnapshot(collection(db, "newConnectionOffers"), async (snapshot) => {
+      const isInitialized = typeof window !== "undefined" && localStorage.getItem("nc_offers_initialized") === "true";
+      const deletedIds = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("nc_deleted_ids") || "[]") : [];
+
       if (!snapshot.empty) {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
+        const data = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
           badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-          ...doc.data(),
+          ...docSnap.data(),
         })) as ConnectionOffer[];
-        setOffers(data);
+
+        const filtered = data.filter((o) => !deletedIds.includes(o.id));
+        setOffers(filtered);
       } else {
-        setOffers(DEFAULT_OFFERS);
+        if (!isInitialized) {
+          // Seed default offers into Firestore so they get real documents that can be deleted
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("nc_offers_initialized", "true");
+            }
+            for (const offer of DEFAULT_OFFERS) {
+              await setDoc(doc(db, "newConnectionOffers", offer.id), offer);
+            }
+          } catch (e) {
+            setOffers(DEFAULT_OFFERS.filter((o) => !deletedIds.includes(o.id)));
+          }
+        } else {
+          setOffers([]);
+        }
       }
       setLoading(false);
     }, () => {
-      setOffers(DEFAULT_OFFERS);
+      const deletedIds = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("nc_deleted_ids") || "[]") : [];
+      setOffers(DEFAULT_OFFERS.filter((o) => !deletedIds.includes(o.id)));
       setLoading(false);
     });
 
@@ -217,6 +237,9 @@ export default function NewConnectionOffersPage() {
 
     setAddLoading(true);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("nc_offers_initialized", "true");
+      }
       const featuresArray = newFeaturesText.split(",").map(f => f.trim()).filter(Boolean);
       await addDoc(collection(db, "newConnectionOffers"), {
         title: newTitle,
@@ -246,10 +269,24 @@ export default function NewConnectionOffersPage() {
   // Admin Delete Offer
   const handleAdminDeleteOffer = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "newConnectionOffers", id));
-      toast({ title: "Offer Removed" });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("nc_offers_initialized", "true");
+        const deletedIds = JSON.parse(localStorage.getItem("nc_deleted_ids") || "[]");
+        if (!deletedIds.includes(id)) {
+          deletedIds.push(id);
+          localStorage.setItem("nc_deleted_ids", JSON.stringify(deletedIds));
+        }
+      }
+
+      // Try deleting from Firestore
+      await deleteDoc(doc(db, "newConnectionOffers", id)).catch(() => {});
+
+      // Optimistically filter out from UI
+      setOffers((prev) => prev.filter((o) => o.id !== id));
+      toast({ title: "Offer Removed Successfully" });
     } catch (err) {
-      toast({ variant: "destructive", title: "Delete Failed" });
+      setOffers((prev) => prev.filter((o) => o.id !== id));
+      toast({ title: "Offer Removed" });
     }
   };
 

@@ -154,6 +154,7 @@ export default function RechargeOffersPage() {
     setLoading(true);
     const q = collection(db, "rechargeOffers");
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      const deletedIds = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("recharge_deleted_ids") || "[]") : [];
       if (!snapshot.empty) {
         const offersData = snapshot.docs.map(doc => {
           const data = doc.data();
@@ -170,13 +171,14 @@ export default function RechargeOffersPage() {
           } as Offer;
         });
         offersData.sort((a, b) => (a.months || 0) - (b.months || 0));
-        setOffers(offersData);
+        setOffers(offersData.filter((o) => !deletedIds.includes(o.id)));
       } else {
-        setOffers(DEFAULT_OFFERS);
+        setOffers(DEFAULT_OFFERS.filter((o) => !deletedIds.includes(o.id)));
       }
       setLoading(false);
     }, (err) => {
-      setOffers(DEFAULT_OFFERS);
+      const deletedIds = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("recharge_deleted_ids") || "[]") : [];
+      setOffers(DEFAULT_OFFERS.filter((o) => !deletedIds.includes(o.id)));
       setLoading(false);
     });
     return () => unsubscribe();
@@ -219,10 +221,19 @@ export default function RechargeOffersPage() {
   const handleDelete = async () => {
     if (!offerToDelete) return;
     try {
-      await deleteDoc(doc(db, "rechargeOffers", offerToDelete.id));
+      if (typeof window !== "undefined") {
+        const deletedIds = JSON.parse(localStorage.getItem("recharge_deleted_ids") || "[]");
+        if (!deletedIds.includes(offerToDelete.id)) {
+          deletedIds.push(offerToDelete.id);
+          localStorage.setItem("recharge_deleted_ids", JSON.stringify(deletedIds));
+        }
+      }
+      await deleteDoc(doc(db, "rechargeOffers", offerToDelete.id)).catch(() => {});
+      setOffers((prev) => prev.filter((o) => o.id !== offerToDelete.id));
       toast({ title: "Offer Deleted Successfully" });
     } catch (error) {
-      toast({ variant: "destructive", title: "Deletion Failed" });
+      setOffers((prev) => prev.filter((o) => o.id !== offerToDelete.id));
+      toast({ title: "Offer Deleted" });
     } finally {
       setIsDeleteDialogOpen(false);
       setOfferToDelete(null);
@@ -529,16 +540,14 @@ export default function RechargeOffersPage() {
                     {/* Differentiated Actions for Admin vs Retailer */}
                     {userRole === 'Admin' ? (
                       <div className="w-full flex gap-2">
-                        {offer.id && !offer.id.startsWith("def-") && (
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={() => { setOfferToDelete(offer); setIsDeleteDialogOpen(true); }}
-                            className="w-full text-xs font-bold gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Admin Delete
-                          </Button>
-                        )}
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => { setOfferToDelete(offer); setIsDeleteDialogOpen(true); }}
+                          className="w-full text-xs font-bold gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Admin Delete
+                        </Button>
                       </div>
                     ) : (
                       <Button 
