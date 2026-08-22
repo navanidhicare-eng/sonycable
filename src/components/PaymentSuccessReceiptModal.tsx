@@ -26,10 +26,27 @@ export interface ReceiptData {
   supportNumber?: string;
 }
 
+export interface RechargeReceiptData {
+  businessName?: string;
+  customerName: string;
+  customerId?: string;
+  mobile: string;
+  oldDue: number;
+  rechargeAmount: number;
+  newDue: number;
+  date: Date | string;
+  packageName?: string;
+  months?: number;
+  collectedByName?: string;
+  supportNumber?: string;
+}
+
 interface PaymentSuccessReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
-  receiptData: ReceiptData | null;
+  receiptData?: ReceiptData | null;
+  rechargeData?: RechargeReceiptData | null;
+  type?: "payment" | "recharge";
 }
 
 export const generateReceiptText = (data: ReceiptData): string => {
@@ -64,6 +81,39 @@ Sony Cable సేవలను పొందుతున్నందుకు ధ�
 ---------------------------------`;
 };
 
+export const generateRechargeReceiptText = (data: RechargeReceiptData): string => {
+  const businessName = "Sony Cable";
+  const formattedDate = typeof data.date === "string" 
+    ? data.date 
+    : data.date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+  const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
+  const packageInfo = data.packageName ? `\nప్లాన్: ${data.packageName}` : "";
+  const supportNum = "9010737882";
+
+  return `---------------------------------
+*${businessName}*
+*రీఛార్జ్ సక్సెస్‌ఫుల్! (Recharge Successful)*
+---------------------------------
+కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}
+రీఛార్జ్ చేసిన తేదీ: ${formattedDate}
+పాత బాకీ: ₹${data.oldDue.toLocaleString("en-IN")}
+రీఛార్జ్ మొత్తం: ₹${data.rechargeAmount.toLocaleString("en-IN")}
+కొత్త బాకీ: ₹${data.newDue.toLocaleString("en-IN")}
+వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
+
+Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
+హెల్ప్‌లైన్ నెంబర్: ${supportNum}
+---------------------------------`;
+};
+
 export const openWhatsAppReceipt = (mobile: string, text: string) => {
   const phone = (mobile || "").replace(/[^0-9]/g, "");
   const waPhone = phone.length === 10 ? "91" + phone : phone;
@@ -84,13 +134,25 @@ export default function PaymentSuccessReceiptModal({
   isOpen,
   onClose,
   receiptData,
+  rechargeData,
+  type = "payment",
 }: PaymentSuccessReceiptModalProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  if (!receiptData) return null;
+  const isRecharge = type === "recharge" || Boolean(rechargeData);
+  const activeData = isRecharge ? rechargeData : receiptData;
 
-  const receiptText = generateReceiptText(receiptData);
+  if (!activeData) return null;
+
+  const receiptText = isRecharge && rechargeData
+    ? generateRechargeReceiptText(rechargeData)
+    : receiptData
+    ? generateReceiptText(receiptData)
+    : "";
+
+  const customerName = activeData.customerName;
+  const mobile = activeData.mobile;
 
   const handleCopyReceipt = () => {
     navigator.clipboard.writeText(receiptText);
@@ -103,18 +165,18 @@ export default function PaymentSuccessReceiptModal({
   };
 
   const handleWhatsApp = () => {
-    openWhatsAppReceipt(receiptData.mobile, receiptText);
+    openWhatsAppReceipt(mobile, receiptText);
     toast({
       title: "Opening WhatsApp",
-      description: `Redirecting to WhatsApp chat for ${receiptData.customerName}...`,
+      description: `Redirecting to WhatsApp chat for ${customerName}...`,
     });
   };
 
   const handleSMS = () => {
-    openSmsReceipt(receiptData.mobile, receiptText);
+    openSmsReceipt(mobile, receiptText);
     toast({
       title: "Opening SMS App",
-      description: `Redirecting to SMS for ${receiptData.customerName}...`,
+      description: `Redirecting to SMS for ${customerName}...`,
     });
   };
 
@@ -126,10 +188,18 @@ export default function PaymentSuccessReceiptModal({
             <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
           </div>
           <DialogTitle className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-            Payment Successful!
+            {isRecharge ? "Recharge Successful!" : "Payment Successful!"}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground mt-1">
-            Payment of <strong className="text-foreground">₹{receiptData.paidAmount.toLocaleString("en-IN")}</strong> recorded for {receiptData.customerName}.
+            {isRecharge && rechargeData ? (
+              <>
+                Recharge of <strong className="text-foreground">₹{rechargeData.rechargeAmount.toLocaleString("en-IN")}</strong> completed for {customerName}.
+              </>
+            ) : receiptData ? (
+              <>
+                Payment of <strong className="text-foreground">₹{receiptData.paidAmount.toLocaleString("en-IN")}</strong> recorded for {customerName}.
+              </>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
 
@@ -170,7 +240,7 @@ export default function PaymentSuccessReceiptModal({
             onClick={onClose}
             className="w-full h-10 font-semibold text-slate-700 dark:text-slate-200"
           >
-            Done / Next Collection
+            {isRecharge ? "Done / Next Recharge" : "Done / Next Collection"}
           </Button>
         </div>
       </DialogContent>

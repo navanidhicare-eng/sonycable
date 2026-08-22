@@ -41,6 +41,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, Timestamp } from "firebase/firestore";
 import { useSearchParams } from "next/navigation";
+import PaymentSuccessReceiptModal, { RechargeReceiptData } from "@/components/PaymentSuccessReceiptModal";
 
 interface Customer {
   id: string;
@@ -88,6 +89,8 @@ function RechargePageContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
   const [rechargeMonths, setRechargeMonths] = useState(1);
+  const [receiptModalData, setReceiptModalData] = useState<RechargeReceiptData | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   
   useEffect(() => {
     const customerNameFromUrl = searchParams.get('customerName');
@@ -223,12 +226,31 @@ function RechargePageContent() {
             adminId: user.uid,
         });
       
+        const oldDue = parseFloat(String(currentCustomer.balanceAmount || 0));
+        const newDue = paymentReceived ? oldDue : oldDue + totalRechargeAmount;
+
         toast({
             title: "Recharge Successful",
             description: description,
         });
 
         setIsDialogOpen(false);
+
+        // Open Instant WhatsApp & SMS Recharge Receipt Modal
+        setReceiptModalData({
+          businessName: "Sony Cable",
+          customerName: currentCustomer.name,
+          customerId: currentCustomer.customerId || currentCustomer.stbId || currentCustomer.id,
+          mobile: currentCustomer.mobile || '',
+          oldDue: oldDue,
+          rechargeAmount: totalRechargeAmount,
+          newDue: newDue,
+          date: newRechargeDate,
+          packageName: pkg.packageName,
+          months: rechargeMonths,
+          collectedByName: user.displayName || 'Staff',
+        });
+        setIsReceiptModalOpen(true);
 
     } catch (error) {
         console.error("Recharge failed:", error);
@@ -435,6 +457,14 @@ function RechargePageContent() {
             </DialogContent>
         </Dialog>
       )}
+
+      {/* Instant WhatsApp & SMS Recharge Receipt Modal */}
+      <PaymentSuccessReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        rechargeData={receiptModalData}
+        type="recharge"
+      />
     </>
   );
 }

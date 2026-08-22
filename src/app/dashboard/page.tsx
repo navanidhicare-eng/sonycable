@@ -26,7 +26,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { AP_LOCATIONS } from "@/lib/apLocations";
-import PaymentSuccessReceiptModal, { ReceiptData } from "@/components/PaymentSuccessReceiptModal";
+import PaymentSuccessReceiptModal, { ReceiptData, RechargeReceiptData } from "@/components/PaymentSuccessReceiptModal";
 
 interface SettlementRequest {
   id: string;
@@ -253,6 +253,9 @@ export default function DashboardPage() {
   const [rechargeUtrNumber, setRechargeUtrNumber] = useState<string>("");
   const [isSubmittingRechargeReq, setIsSubmittingRechargeReq] = useState<boolean>(false);
   const [rechargeUtrError, setRechargeUtrError] = useState<string>("");
+
+  const [rechargeReceiptModalData, setRechargeReceiptModalData] = useState<RechargeReceiptData | null>(null);
+  const [isRechargeReceiptModalOpen, setIsRechargeReceiptModalOpen] = useState<boolean>(false);
 
   const handleOpenOfferRecharge = (cust: DishTvCustomer, months: number, amount: number) => {
     setRechargeModalCustomer(cust);
@@ -1495,12 +1498,32 @@ export default function DashboardPage() {
             adminId: staffData.adminId, // admin uid
         });
       
+        const oldDue = parseFloat(String(searchedCustomer.balanceAmount || 0));
+        const newDue = paymentReceivedForRecharge ? oldDue : oldDue + totalRechargeAmount;
+
         toast({
             title: "Recharge Successful",
             description: description,
         });
 
         setIsRechargeDialogOpen(false);
+
+        // Open Instant WhatsApp & SMS Recharge Receipt Modal
+        setRechargeReceiptModalData({
+          businessName: "Sony Cable",
+          customerName: searchedCustomer.name,
+          customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
+          mobile: searchedCustomer.mobile || '',
+          oldDue: oldDue,
+          rechargeAmount: totalRechargeAmount,
+          newDue: newDue,
+          date: newRechargeDate,
+          packageName: pkg.packageName,
+          months: rechargeMonths,
+          collectedByName: staffData?.name || currentUser.displayName || 'Staff',
+        });
+        setIsRechargeReceiptModalOpen(true);
+
         setSelectedPackage(null);
         setPaymentReceivedForRecharge(false);
         setSearchedCustomer(null);
@@ -4168,6 +4191,15 @@ export default function DashboardPage() {
           isOpen={isReceiptModalOpen}
           onClose={() => setIsReceiptModalOpen(false)}
           receiptData={receiptModalData}
+          type="payment"
+        />
+
+        {/* Recharge Success Instant WhatsApp & SMS Receipt Modal */}
+        <PaymentSuccessReceiptModal
+          isOpen={isRechargeReceiptModalOpen}
+          onClose={() => setIsRechargeReceiptModalOpen(false)}
+          rechargeData={rechargeReceiptModalData}
+          type="recharge"
         />
 
       </div>
