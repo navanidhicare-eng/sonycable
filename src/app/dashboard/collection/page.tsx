@@ -231,9 +231,9 @@ export default function CollectionPage() {
 
         // Trigger Instant WhatsApp & SMS Receipt Modal
         setReceiptModalData({
-          businessName: "SonyCable / Navanidhi Digital",
+          businessName: "Sony Cable",
           customerName: currentCustomer.name,
-          customerId: currentCustomer.stbId || currentCustomer.customerId || currentCustomer.id,
+          customerId: currentCustomer.customerId || currentCustomer.stbId || currentCustomer.id,
           mobile: currentCustomer.mobile || '',
           paidAmount: collectedAmount,
           remainingBalance: Math.max(0, newBalance),

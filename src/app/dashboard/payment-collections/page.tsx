@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { openSmsReceipt } from "@/components/PaymentSuccessReceiptModal";
+import { generateReceiptText, openWhatsAppReceipt, openSmsReceipt } from "@/components/PaymentSuccessReceiptModal";
 
 interface DishTvCustomer {
   id: string;
@@ -346,24 +346,17 @@ export default function PaymentCollectionsPage() {
   // Share Receipt via WhatsApp
   const handleShareWhatsApp = (receipt: DishTvPaymentRecord | null) => {
     if (!receipt) return;
-    const serviceName = receipt.dealerName || dealerBusinessName || "Navanidhi Digital System (DishTV Official Partner)";
-    const cleanMobile = receipt.mobile ? receipt.mobile.replace(/\D/g, "") : "";
-    const phoneWithCountry = cleanMobile.length === 10 ? `91${cleanMobile}` : cleanMobile;
-
-    const message = `🧾 *PAYMENT RECEIPT - ${serviceName.toUpperCase()}*\n` +
-      `-----------------------------------\n` +
-      `👤 *Customer Name:* ${receipt.customerName}\n` +
-      `📱 *Mobile:* ${receipt.mobile}\n` +
-      `💰 *Amount Paid:* ₹${receipt.amount?.toLocaleString()}\n` +
-      `💳 *Payment Mode:* ${receipt.paymentMethod}\n` +
-      `📅 *Date:* ${formatDate(receipt.collectedAt)}\n` +
-      (receipt.notes ? `📝 *Notes:* ${receipt.notes}\n` : "") +
-      `-----------------------------------\n` +
-      `Thank you for your payment! 🙏\n` +
-      `*- ${serviceName}*`;
-
-    const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank");
+    const receiptText = generateReceiptText({
+      businessName: "Sony Cable",
+      customerName: receipt.customerName,
+      customerId: receipt.customerId || receipt.vcNumber || receipt.id,
+      mobile: receipt.mobile,
+      paidAmount: receipt.amount,
+      remainingBalance: 0,
+      date: formatDate(receipt.collectedAt),
+      collectedByName: receipt.collectedByName || "Staff",
+    });
+    openWhatsAppReceipt(receipt.mobile, receiptText);
   };
 
   // Handle Payment Collection Submission
@@ -903,8 +896,16 @@ export default function PaymentCollectionsPage() {
               <Button
                 onClick={() => {
                   if (!selectedReceipt) return;
-                  const serviceName = selectedReceipt.dealerName || dealerBusinessName || "Navanidhi Digital";
-                  const receiptText = `---------------------------------\n*${serviceName}*\n*Payment Receipt*\n---------------------------------\nCustomer: ${selectedReceipt.customerName}\nPaid Amount: ₹${selectedReceipt.amount}\nDate: ${formatDate(selectedReceipt.collectedAt)}\n---------------------------------`;
+                  const receiptText = generateReceiptText({
+                    businessName: "Sony Cable",
+                    customerName: selectedReceipt.customerName,
+                    customerId: selectedReceipt.customerId || selectedReceipt.vcNumber || selectedReceipt.id,
+                    mobile: selectedReceipt.mobile,
+                    paidAmount: selectedReceipt.amount,
+                    remainingBalance: 0,
+                    date: formatDate(selectedReceipt.collectedAt),
+                    collectedByName: selectedReceipt.collectedByName || "Staff",
+                  });
                   openSmsReceipt(selectedReceipt.mobile, receiptText);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm w-full sm:w-auto"

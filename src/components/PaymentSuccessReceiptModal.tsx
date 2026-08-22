@@ -33,7 +33,7 @@ interface PaymentSuccessReceiptModalProps {
 }
 
 export const generateReceiptText = (data: ReceiptData): string => {
-  const businessName = data.businessName || "Navanidhi Digital";
+  const businessName = "Sony Cable";
   const formattedDate = typeof data.date === "string" 
     ? data.date 
     : data.date.toLocaleString("en-IN", {
@@ -45,22 +45,22 @@ export const generateReceiptText = (data: ReceiptData): string => {
         hour12: true,
       });
 
-  const customerIdLine = data.customerId ? `\nCustomer ID: ${data.customerId}` : "";
-  const totalBillText = data.totalBill !== undefined ? `\nTotal Bill: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
-  const supportNum = data.supportNumber || "9010737882";
+  const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
+  const totalBillText = data.totalBill !== undefined ? `\nమొత్తం బిల్లు: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
+  const supportNum = "9010737882";
 
   return `---------------------------------
 *${businessName}*
-*Payment Receipt*
+*చెల్లింపు రశీదు (Payment Receipt)*
 ---------------------------------
-Customer: ${data.customerName}${customerIdLine}${totalBillText}
-Paid Amount: ₹${data.paidAmount.toLocaleString("en-IN")}
-Balance Due: ₹${data.remainingBalance.toLocaleString("en-IN")}
-Date: ${formattedDate}
-Collected By: ${data.collectedByName || "Staff"}
+కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${totalBillText}
+చెల్లించిన మొత్తం: ₹${data.paidAmount.toLocaleString("en-IN")}
+మిగిలిన బాకీ: ₹${data.remainingBalance.toLocaleString("en-IN")}
+తేదీ: ${formattedDate}
+వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
 
-Thank you for your payment!
-Helpline: ${supportNum}
+Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
+హెల్ప్‌లైన్ నెంబర్: ${supportNum}
 ---------------------------------`;
 };
 
