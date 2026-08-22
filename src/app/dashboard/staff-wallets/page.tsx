@@ -33,6 +33,8 @@ interface Staff {
   role: string;
   commission: string;
   enrollmentCommission?: number;
+  collectionLimit?: number;
+  status?: "active" | "inactive";
 }
 
 interface Payment {
@@ -73,6 +75,8 @@ interface StaffWalletInfo {
   staffUid: string;
   staffName: string;
   role: string;
+  collectionLimit: number;
+  status: "active" | "inactive";
   walletAmount: number;
   commissionAmount: number;
 }
@@ -195,6 +199,8 @@ export default function StaffWalletsPage() {
         staffUid: staff.uid,
         staffName: staff.name,
         role: staff.role,
+        collectionLimit: staff.collectionLimit ?? 10000,
+        status: staff.status || "active",
         walletAmount: walletAmount,
         commissionAmount: commissionAmount,
       };
@@ -321,34 +327,54 @@ export default function StaffWalletsPage() {
                     <TableHead>Staff Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Wallet Amount (₹)</TableHead>
+                    <TableHead>Collection Limit (₹)</TableHead>
                     <TableHead>Commission Earned (₹)</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {staffWalletDetails.length > 0 ? (
-                    staffWalletDetails.map((staff) => (
-                      <TableRow key={staff.staffId}>
-                        <TableCell className="font-medium">{staff.staffName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{staff.role}</Badge>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          ₹{staff.walletAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-primary font-semibold">
-                          ₹{staff.commissionAmount.toLocaleString(undefined, {maximumFractionDigits: 2})}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="outline" size="sm" onClick={() => setSelectedStaff(staff)}>
-                            <History className="mr-2 h-4 w-4" /> View History
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    staffWalletDetails.map((staff) => {
+                      const isLimitReached = staff.walletAmount >= staff.collectionLimit && staff.collectionLimit > 0;
+                      return (
+                        <TableRow key={staff.staffId}>
+                          <TableCell className="font-medium">{staff.staffName}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{staff.role}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`font-semibold ${isLimitReached ? "text-rose-600 font-extrabold" : "text-emerald-600"}`}>
+                              ₹{staff.walletAmount.toLocaleString()}
+                            </span>
+                            {isLimitReached && (
+                              <span className="block text-[10px] text-rose-500 font-bold uppercase tracking-wider">
+                                Limit Reached
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            ₹{staff.collectionLimit.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-primary font-semibold">
+                            ₹{staff.commissionAmount.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={isLimitReached || staff.status === "inactive" ? "destructive" : "default"}>
+                              {isLimitReached || staff.status === "inactive" ? "Inactive" : "Active"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedStaff(staff)}>
+                              <History className="mr-2 h-4 w-4" /> View History
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         No staff members found.
                       </TableCell>
                     </TableRow>

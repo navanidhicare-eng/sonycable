@@ -45,6 +45,10 @@ const formSchema = z.object({
     (val) => (val === "" || val === undefined ? "0" : val),
     z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
   ),
+  collectionLimit: z.preprocess(
+    (val) => (val === "" || val === undefined ? "10000" : val),
+    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v) && v >= 0, "Please enter a valid collection limit.")
+  ),
   email: z.string().email("Please enter a valid email address.").optional(), // Email is not editable
 });
 
@@ -74,6 +78,7 @@ export default function EditStaffPage() {
       mobileNumber: "",
       commission: "",
       enrollmentCommission: 0,
+      collectionLimit: 10000,
       area: [],
     },
   });
@@ -96,6 +101,7 @@ export default function EditStaffPage() {
                     role: staffData.role,
                     commission: staffData.commission,
                     enrollmentCommission: staffData.enrollmentCommission || 0,
+                    collectionLimit: staffData.collectionLimit ?? 10000,
                     email: staffData.email
                 });
             } else {
@@ -147,6 +153,7 @@ export default function EditStaffPage() {
         role: data.role,
         commission: data.commission,
         enrollmentCommission: data.enrollmentCommission,
+        collectionLimit: data.collectionLimit,
       });
 
       toast({
@@ -341,6 +348,23 @@ export default function EditStaffPage() {
                           <FormMessage />
                           <FormDescriptionComponent>
                             Fixed, one-time amount for each new customer enrolled.
+                          </FormDescriptionComponent>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="collectionLimit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Collection Limit (₹)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g., 10000" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                          <FormDescriptionComponent>
+                            Max cash allowed in hand before account auto-locks (Default: ₹10,000).
                           </FormDescriptionComponent>
                         </FormItem>
                       )}

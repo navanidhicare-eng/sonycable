@@ -45,6 +45,10 @@ const formSchema = z.object({
     (val) => (val === "" || val === undefined ? "0" : val),
     z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
   ),
+  collectionLimit: z.preprocess(
+    (val) => (val === "" || val === undefined ? "10000" : val),
+    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v) && v >= 0, "Please enter a valid collection limit.")
+  ),
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
@@ -74,6 +78,7 @@ export default function AddStaffPage() {
       password: "",
       commission: "",
       enrollmentCommission: 0,
+      collectionLimit: 10000,
       area: [],
     },
   });
@@ -131,6 +136,8 @@ export default function AddStaffPage() {
         role: data.role,
         commission: data.commission,
         enrollmentCommission: data.enrollmentCommission,
+        collectionLimit: data.collectionLimit,
+        status: "active",
         email: data.email,
         adminId: user.uid,
         createdAt: new Date(),
@@ -302,6 +309,22 @@ export default function AddStaffPage() {
                       <FormMessage />
                        <FormDescriptionComponent>
                         Fixed, one-time amount for each new customer enrolled.
+                      </FormDescriptionComponent>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="collectionLimit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Collection Limit (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 10000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                       <FormDescriptionComponent>
+                        Max cash allowed in hand before account auto-locks (Default: ₹10,000).
                       </FormDescriptionComponent>
                     </FormItem>
                   )}

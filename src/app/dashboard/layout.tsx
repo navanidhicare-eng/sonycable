@@ -40,20 +40,35 @@ import {
   Notebook,
   GitBranch,
 } from 'lucide-react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userRole, shopName, loading: authLoading } = useAuth();
+  const { userRole, shopName, userStatus, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const { toast } = useToast();
   const { isMobile, setOpenMobile } = useSidebar();
+
+  useEffect(() => {
+    if (!authLoading && userStatus === 'inactive' && pathname !== '/dashboard') {
+      toast({
+        variant: "destructive",
+        title: "Account Inactive",
+        description: "Your account is inactive. Please settle your balance with Admin.",
+      });
+      router.push('/dashboard');
+    }
+  }, [authLoading, userStatus, pathname, router, toast]);
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -67,6 +82,7 @@ function DashboardLayout({
       if (typeof window !== "undefined") {
         localStorage.removeItem("userRole");
         localStorage.removeItem("shopName");
+        localStorage.removeItem("userStatus");
       }
       handleLinkClick(); // Close sidebar on logout as well
       router.push('/login');
@@ -79,8 +95,6 @@ function DashboardLayout({
   const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
   const isDealer = userRole === 'Dealer';
   const isRetailer = userRole === 'Retailer';
-
-
 
   return (
     <>
@@ -110,7 +124,7 @@ function DashboardLayout({
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-              {!authLoading && userRole && userRole !== 'Admin' && (
+              {!authLoading && userRole && userRole !== 'Admin' && userStatus !== 'inactive' && (
                 <>
                  {isRetailer ? (
                    <>

@@ -72,9 +72,11 @@ interface StaffData {
     name: string;
     commission: string;
     enrollmentCommission?: number;
+    collectionLimit?: number;
     adminId: string;
     area: string[];
     role: string;
+    status?: 'active' | 'inactive';
 }
 
 interface Customer {
@@ -146,7 +148,7 @@ interface DishTvCustomer {
 const notificationSound = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
 export default function DashboardPage() {
-  const { user: currentUser, userRole, shopName, loading: authLoading } = useAuth();
+  const { user: currentUser, userRole, shopName, userStatus, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
@@ -1350,6 +1352,15 @@ export default function DashboardPage() {
   const handleConfirmCollection = async () => {
     if (!amountCollected || !searchedCustomer || !currentUser || !staffData) return;
     
+    if (userStatus === 'inactive' || staffData.status === 'inactive') {
+      toast({
+        variant: "destructive",
+        title: "Collection Blocked 🔒",
+        description: "Your account is currently INACTIVE because you reached your collection limit. Please deposit cash with Admin to reactivate.",
+      });
+      return;
+    }
+
     const collectedAmount = parseFloat(amountCollected);
     const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
     const newBalance = currentBalance - collectedAmount;
@@ -1370,10 +1381,33 @@ export default function DashboardPage() {
             adminId: staffData.adminId,
         });
 
-        toast({
+        // Compute new wallet balance after this collection
+        const newWalletAmount = (staffWallet?.walletAmount || 0) + collectedAmount;
+        const limit = staffData.collectionLimit ?? 10000;
+
+        // Auto-Deactivation check: Lock account if limit is reached or exceeded
+        let isAutoLocked = false;
+        if (limit > 0 && newWalletAmount >= limit) {
+          isAutoLocked = true;
+          await updateDoc(doc(db, "staff", staffData.id), { status: "inactive" });
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userStatus', 'inactive');
+          }
+          setStaffData(prev => prev ? { ...prev, status: 'inactive' } : null);
+        }
+
+        if (isAutoLocked) {
+          toast({
+            variant: "destructive",
+            title: "Collection Limit Reached! 🔒",
+            description: `Limit reached (Limit: ₹${limit.toLocaleString()}). Account auto-locked! Please deposit collected cash with Admin to reactivate.`,
+          });
+        } else {
+          toast({
             title: "Collection Recorded",
             description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
-        });
+          });
+        }
 
         setIsCollectDialogOpen(false);
         setIsCustomerSearchDialogOpen(false);
@@ -2928,6 +2962,154 @@ export default function DashboardPage() {
         setIsSavingService(false);
       }
     };
+
+  const isLimitBreached = (staffData?.collectionLimit ?? 10000) > 0 && (staffWallet?.walletAmount || 0) >= (staffData?.collectionLimit ?? 10000);
+  const isInactiveStaff = !authLoading && userRole && userRole !== 'Admin' && userRole !== 'Dealer' && userRole !== 'Retailer' && (userStatus === 'inactive' || staffData?.status === 'inactive' || isLimitBreached);
+
+  if (isInactiveStaff) {
+    const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
+    
+    return (
+      <>
+        <main className="min-h-screen w-full font-body text-foreground">
+          <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12 max-w-2xl space-y-6">
+            <div className="w-full text-center sm:text-left">
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+                Staff Dashboard
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Welcome, <span className="font-semibold text-foreground">{staffData?.name || shopName || currentUser?.email}</span> ({userRole})
+              </p>
+            </div>
+
+            <div className="w-full rounded-2xl border border-destructive/40 bg-destructive/10 p-5 text-destructive flex items-start gap-4 shadow-sm">
+              <AlertCircle className="h-6 w-6 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-base md:text-lg">Account Status: Inactive (ఖాతా ఇన్యాక్టివ్‌లో ఉంది)</h3>
+                <p className="text-xs md:text-sm mt-1 text-destructive/90">
+                  Your account is currently marked as inactive. Please settle your balance with Admin to activate your account and regain full system access.
+                </p>
+              </div>
+            </div>
+
+            <Card className="w-full shadow-xl border-2 border-orange-500/30 bg-card overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent border-b border-orange-500/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                    <Wallet className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl md:text-2xl font-bold">
+                      Pending / Collected Balance Amount
+                    </CardTitle>
+                    <CardDescription className="text-xs md:text-sm mt-0.5">
+                      Total Cash in Hand / Pending Balance
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 md:p-8 space-y-6">
+                <div className="bg-gradient-to-br from-orange-500/10 via-amber-500/10 to-orange-500/5 border-2 border-orange-500/20 rounded-2xl p-6 text-center shadow-inner">
+                  <span className="text-sm font-semibold text-muted-foreground block mb-2 uppercase tracking-wide">
+                    Total Cash in Hand / Pending Balance
+                  </span>
+                  <span className="text-4xl md:text-5xl font-black text-orange-600 dark:text-orange-400 tracking-tight">
+                    ₹{staffWallet.walletAmount.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  {hasPendingRequest ? (
+                    <div className="space-y-2 text-center">
+                      <Button className="w-full py-6 text-base font-bold" disabled variant="outline">
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Settlement Request Pending with Admin...
+                      </Button>
+                      <Button className="w-full" variant="ghost" onClick={handleCancelSettlement}>
+                        Cancel Request
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full py-6 text-base font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-lg transition-all"
+                      onClick={() => { setSettlementAmount(String(staffWallet.walletAmount)); setIsSettleDialogOpen(true); }}
+                      disabled={staffWallet.walletAmount === 0}
+                    >
+                      <Send className="mr-2 h-5 w-5" /> Request Settlement with Admin (₹{staffWallet.walletAmount.toLocaleString()})
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground text-center">
+                    Once Admin approves your settlement, your cash balance will be cleared.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+
+        <Dialog open={isSettleDialogOpen} onOpenChange={setIsSettleDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Settle Collection</DialogTitle>
+              <DialogDescription>
+                Request to settle your collected funds with the admin.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="settlement-amount" className="text-right">
+                  Amount
+                </Label>
+                <Input
+                  id="settlement-amount"
+                  type="number"
+                  value={settlementAmount}
+                  onChange={(e) => setSettlementAmount(e.target.value)}
+                  className="col-span-3"
+                  max={staffWallet.walletAmount}
+                />
+              </div>
+              <div className="space-y-1 rounded-md bg-muted p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Requested Amount:</span>
+                  <span className="font-bold">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                </div>
+                {commissionReceived && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Commission Deduction:</span>
+                      <span className="font-bold text-green-600">- ₹{Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t mt-2 pt-2">
+                      <span className="text-muted-foreground">Net Amount to Send:</span>
+                      <span className="font-bold text-lg">₹{((parseFloat(settlementAmount) || 0) - Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
+                {!commissionReceived && (
+                  <div className="flex justify-between border-t mt-2 pt-2">
+                    <span className="text-muted-foreground">Amount to Send to Admin:</span>
+                    <span className="font-bold text-lg">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-dashed mt-2 pt-2 text-muted-foreground">
+                  <span>Remaining Wallet Balance:</span>
+                  <span className="font-semibold text-foreground">₹{Math.max(0, staffWallet.walletAmount - (parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="commission-received-inactive" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
+                <Label htmlFor="commission-received-inactive">I have received my commission from the admin.</Label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); }}>Cancel</Button>
+              <Button onClick={handleSettleCollection} disabled={!settlementAmount || parseFloat(settlementAmount) <= 0 || parseFloat(settlementAmount) > staffWallet.walletAmount}>Send Request</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <>
