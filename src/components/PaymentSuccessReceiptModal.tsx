@@ -51,16 +51,16 @@ interface PaymentSuccessReceiptModalProps {
 
 export const generateReceiptText = (data: ReceiptData): string => {
   const businessName = "Sony Cable";
-  const formattedDate = typeof data.date === "string" 
-    ? data.date 
+  const formattedDate = typeof data.date === "string"
+    ? data.date
     : data.date.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
 
   const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
   const totalBillText = data.totalBill !== undefined ? `\nమొత్తం బిల్లు: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
@@ -83,31 +83,32 @@ Sony Cable సేవలను పొందుతున్నందుకు ధ�
 
 export const generateRechargeReceiptText = (data: RechargeReceiptData): string => {
   const businessName = "Sony Cable";
-  const formattedDate = typeof data.date === "string" 
-    ? data.date 
+  const formattedDate = typeof data.date === "string"
+    ? data.date
     : data.date.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
 
   const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
   const packageInfo = data.packageName ? `\nప్లాన్: ${data.packageName}` : "";
+  const monthsLine = data.months ? `\nరీఛార్జ్ చేసిన నెలలు: ${data.months} నెల(లు)` : "";
   const supportNum = "9010737882";
 
   return `---------------------------------
 *${businessName}*
 *రీఛార్జ్ సక్సెస్‌ఫుల్! (Recharge Successful)*
 ---------------------------------
-కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}
+కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}${monthsLine}
 రీఛార్జ్ చేసిన తేదీ: ${formattedDate}
 పాత బాకీ: ₹${data.oldDue.toLocaleString("en-IN")}
 రీఛార్జ్ మొత్తం: ₹${data.rechargeAmount.toLocaleString("en-IN")}
-కొత్త బాకీ: ₹${data.newDue.toLocaleString("en-IN")}
-వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
+మొత్తం బాకీ: ₹${data.newDue.toLocaleString("en-IN")}
+
 
 Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
 హెల్ప్‌లైన్ నెంబర్: ${supportNum}
@@ -148,8 +149,8 @@ export default function PaymentSuccessReceiptModal({
   const receiptText = isRecharge && rechargeData
     ? generateRechargeReceiptText(rechargeData)
     : receiptData
-    ? generateReceiptText(receiptData)
-    : "";
+      ? generateReceiptText(receiptData)
+      : "";
 
   const customerName = activeData.customerName;
   const mobile = activeData.mobile;

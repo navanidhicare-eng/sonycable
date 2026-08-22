@@ -248,7 +248,7 @@ function RechargePageContent() {
           date: newRechargeDate,
           packageName: pkg.packageName,
           months: rechargeMonths,
-          collectedByName: user.displayName || 'Staff',
+          collectedByName: user.displayName || (user.email ? user.email.split('@')[0] : 'Staff'),
         });
         setIsReceiptModalOpen(true);
 

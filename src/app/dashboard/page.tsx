@@ -1520,7 +1520,7 @@ export default function DashboardPage() {
           date: newRechargeDate,
           packageName: pkg.packageName,
           months: rechargeMonths,
-          collectedByName: staffData?.name || currentUser.displayName || 'Staff',
+          collectedByName: staffData?.name || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Staff'),
         });
         setIsRechargeReceiptModalOpen(true);
 
