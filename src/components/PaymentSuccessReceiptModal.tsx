@@ -45,22 +45,22 @@ export const generateReceiptText = (data: ReceiptData): string => {
         hour12: true,
       });
 
-  const customerIdLine = data.customerId ? `\n🆔 కస్టమర్ ID: ${data.customerId}` : "";
-  const totalBillText = data.totalBill !== undefined ? `\n📋 మొత్తం బిల్లు: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
+  const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
+  const totalBillText = data.totalBill !== undefined ? `\nమొత్తం బిల్లు: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
   const supportNum = "9010737882";
 
   return `---------------------------------
-📺 *${businessName}*
-🧾 *చెల్లింపు రశీదు (Payment Receipt)*
+*${businessName}*
+*చెల్లింపు రశీదు (Payment Receipt)*
 ---------------------------------
-👤 కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${totalBillText}
-💵 చెల్లించిన మొత్తం: ₹${data.paidAmount.toLocaleString("en-IN")}
-📊 మిగిలిన బాకీ: ₹${data.remainingBalance.toLocaleString("en-IN")}
-📅 తేదీ: ${formattedDate}
-✍️ వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
+కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${totalBillText}
+చెల్లించిన మొత్తం: ₹${data.paidAmount.toLocaleString("en-IN")}
+మిగిలిన బాకీ: ₹${data.remainingBalance.toLocaleString("en-IN")}
+తేదీ: ${formattedDate}
+వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
 
-🙏 Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
-📞 హెల్ప్‌లైన్ నెంబర్: ${supportNum}
+Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
+హెల్ప్‌లైన్ నెంబర్: ${supportNum}
 ---------------------------------`;
 };
 
