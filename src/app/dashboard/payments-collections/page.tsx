@@ -45,6 +45,7 @@ import { db } from "@/lib/firebase";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import PaymentSuccessReceiptModal, { ReceiptData } from "@/components/PaymentSuccessReceiptModal";
 
 interface Collection {
     id: string;
@@ -82,6 +83,8 @@ export default function PaymentsCollectionsPage() {
   const [currentCustomer, setCurrentCustomer] = useState<Collection | null>(null);
   const [amountCollected, setAmountCollected] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptModalData, setReceiptModalData] = useState<ReceiptData | null>(null);
   const { toast } = useToast();
   
   const [allCustomers, setAllCustomers] = useState<Collection[]>([]);
@@ -249,6 +252,19 @@ export default function PaymentsCollectionsPage() {
             title: "Collection Recorded",
             description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
         });
+
+        // Trigger Instant WhatsApp & SMS Payment Receipt Modal
+        setReceiptModalData({
+          businessName: "SonyCable / Navanidhi Digital",
+          customerName: currentCustomer.name,
+          customerId: currentCustomer.stbId || currentCustomer.customerId || currentCustomer.id,
+          mobile: currentCustomer.mobile || '',
+          paidAmount: collectedAmount,
+          remainingBalance: Math.max(0, newBalance),
+          date: new Date(),
+          collectedByName: user.displayName || 'Staff',
+        });
+        setIsReceiptModalOpen(true);
 
         setIsCollectDialogOpen(false);
         setCurrentCustomer(null);
@@ -538,6 +554,13 @@ export default function PaymentsCollectionsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Payment Success Instant WhatsApp & SMS Receipt Modal */}
+      <PaymentSuccessReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        receiptData={receiptModalData}
+      />
     </>
   );
 }

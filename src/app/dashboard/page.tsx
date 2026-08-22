@@ -26,6 +26,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { AP_LOCATIONS } from "@/lib/apLocations";
+import PaymentSuccessReceiptModal, { ReceiptData } from "@/components/PaymentSuccessReceiptModal";
 
 interface SettlementRequest {
   id: string;
@@ -150,6 +151,8 @@ const notificationSound = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAE
 export default function DashboardPage() {
   const { user: currentUser, userRole, shopName, userStatus, loading: authLoading } = useAuth();
   const [isSettleDialogOpen, setIsSettleDialogOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptModalData, setReceiptModalData] = useState<ReceiptData | null>(null);
   const { toast } = useToast();
   const [commissionReceived, setCommissionReceived] = useState(false);
   const [settlementAmount, setSettlementAmount] = useState("");
@@ -1408,6 +1411,19 @@ export default function DashboardPage() {
             description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
           });
         }
+
+        // Trigger Instant WhatsApp & SMS Payment Receipt Modal
+        setReceiptModalData({
+          businessName: shopName || "SonyCable / Navanidhi Digital",
+          customerName: searchedCustomer.name,
+          customerId: searchedCustomer.stbId || searchedCustomer.customerId || searchedCustomer.id,
+          mobile: searchedCustomer.mobile || '',
+          paidAmount: collectedAmount,
+          remainingBalance: Math.max(0, newBalance),
+          date: new Date(),
+          collectedByName: staffData?.name || currentUser.displayName || 'Staff',
+        });
+        setIsReceiptModalOpen(true);
 
         setIsCollectDialogOpen(false);
         setIsCustomerSearchDialogOpen(false);
@@ -4146,6 +4162,13 @@ export default function DashboardPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Payment Success Instant WhatsApp & SMS Receipt Modal */}
+        <PaymentSuccessReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          receiptData={receiptModalData}
+        />
 
       </div>
     </main>

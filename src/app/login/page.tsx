@@ -199,12 +199,24 @@ export default function LoginPage() {
       destination = "/dashboard";
     } else {
       // 2. Check for Staff
-      const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-      const staffSnapshot = await getDocs(staffQuery);
+      let staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+      let staffSnapshot = await getDocs(staffQuery);
+
+      if (staffSnapshot.empty && user.email) {
+        staffQuery = query(collection(db, "staff"), where("email", "==", user.email));
+        staffSnapshot = await getDocs(staffQuery);
+      }
+
       if (!staffSnapshot.empty) {
         const staffData = staffSnapshot.docs[0].data();
-        userRole = staffData.role || "Staff";
-        destination = "/dashboard";
+        if (staffData.status === "inactive") {
+          // Inactive staff still go to dashboard but in restricted mode
+          userRole = staffData.role || "Staff";
+          destination = "/dashboard";
+        } else {
+          userRole = staffData.role || "Staff";
+          destination = "/dashboard";
+        }
       } else {
         // 3. Check for DishTV Dealer
         const dealerQueryByUid = query(collection(db, "dishtv_dealers"), where("uid", "==", user.uid));
@@ -241,6 +253,10 @@ export default function LoginPage() {
             }
             userRole = "Retailer";
             destination = "/dashboard";
+          } else {
+            // Fallback for valid authenticated user
+            userRole = "Staff";
+            destination = "/dashboard";
           }
         }
       }
@@ -252,7 +268,7 @@ export default function LoginPage() {
       }
       toast({
         title: "Login Successful",
-        description: `Welcome back! Redirecting to ${userRole} Dashboard...`,
+        description: `Welcome back! Redirecting to Dashboard...`,
       });
       router.push(destination);
     } else {
@@ -269,24 +285,49 @@ export default function LoginPage() {
 
     const trimmedInput = data.email.trim();
     const isEmail = trimmedInput.includes("@");
-    const loginEmail = isEmail ? trimmedInput : `${trimmedInput}@sonycable.local`;
 
-    try {
-      await handleLogin(loginEmail, data);
-    } catch (error: any) {
-      console.error("Firebase Auth Error:", error);
+    let candidateEmails: string[] = [];
+    if (isEmail) {
+      candidateEmails.push(trimmedInput);
+      const prefix = trimmedInput.split("@")[0];
+      if (prefix) {
+        candidateEmails.push(`${prefix}@sonycable.local`);
+      }
+    } else {
+      candidateEmails.push(`${trimmedInput}@sonycable.local`);
+      candidateEmails.push(`${trimmedInput}@gmail.com`);
+    }
+
+    let lastError: any = null;
+    let loggedIn = false;
+
+    for (const emailToTry of candidateEmails) {
+      try {
+        await handleLogin(emailToTry, data);
+        loggedIn = true;
+        break;
+      } catch (error: any) {
+        lastError = error;
+        if (error.message === "auth/account-inactive") {
+          break;
+        }
+      }
+    }
+
+    if (!loggedIn && lastError) {
+      console.error("Firebase Auth Error:", lastError);
       let errorMessage = "An error occurred during login.";
       if (
-        error.code === "auth/user-not-found" ||
-        error.message === "auth/unauthorized-user" ||
-        error.code === "auth/invalid-credential" ||
-        error.code === "auth/invalid-email"
+        lastError.code === "auth/user-not-found" ||
+        lastError.message === "auth/unauthorized-user" ||
+        lastError.code === "auth/invalid-credential" ||
+        lastError.code === "auth/invalid-email"
       ) {
         errorMessage = "Invalid email, username, or password. Please check your credentials.";
-      } else if (error.code === "auth/wrong-password") {
+      } else if (lastError.code === "auth/wrong-password") {
         errorMessage = "Incorrect password. Please try again.";
-      } else if (error.message === "auth/account-inactive") {
-        errorMessage = "Your dealer account is currently inactive. Please contact Admin.";
+      } else if (lastError.message === "auth/account-inactive") {
+        errorMessage = "Your account is currently inactive. Please contact Admin.";
       }
 
       toast({
@@ -294,9 +335,9 @@ export default function LoginPage() {
         title: "Login Failed",
         description: errorMessage,
       });
-    } finally {
-      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
   }
 
 

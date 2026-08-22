@@ -42,8 +42,12 @@ export function useAuth() {
             fetchedShopName = 'Navanidhi Digital';
             fetchedStatus = 'active';
           } else {
-            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-            const staffSnapshot = await getDocs(staffQuery);
+            let staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+            let staffSnapshot = await getDocs(staffQuery);
+            if (staffSnapshot.empty && currentUser.email) {
+              staffQuery = query(collection(db, "staff"), where("email", "==", currentUser.email));
+              staffSnapshot = await getDocs(staffQuery);
+            }
             if (!staffSnapshot.empty) {
               const staffData = staffSnapshot.docs[0].data();
               finalRole = staffData.role || "Staff"; // Default to "Staff" if role is empty but doc exists
@@ -79,6 +83,11 @@ export function useAuth() {
                   const rData = retailerSnapshot.docs[0].data();
                   fetchedShopName = rData.retailerName || rData.contactPerson || "Retailer";
                   fetchedStatus = "active";
+                } else {
+                  // Fallback: If logged into Firebase Auth, preserve/default role so user is not locked out
+                  finalRole = storedRole || "Staff";
+                  fetchedShopName = storedShopName || currentUser.displayName || currentUser.email?.split("@")[0] || "User";
+                  fetchedStatus = storedStatus || "active";
                 }
               }
             }

@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, HandCoins, Loader2, IndianRupee, Calendar, CheckCircle2, History, Receipt, Phone, Store, Share2, MessageCircle, Wrench, CreditCard, Zap } from "lucide-react";
+import { Search, HandCoins, Loader2, IndianRupee, Calendar, CheckCircle2, History, Receipt, Phone, Store, Share2, MessageCircle, MessageSquare, Wrench, CreditCard, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { openSmsReceipt } from "@/components/PaymentSuccessReceiptModal";
 
 interface DishTvCustomer {
   id: string;
@@ -897,7 +898,19 @@ export default function PaymentCollectionsPage() {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm w-full sm:w-auto"
               >
                 <Share2 className="h-4 w-4 mr-2" />
-                Share on WhatsApp
+                Send WhatsApp Receipt
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!selectedReceipt) return;
+                  const serviceName = selectedReceipt.dealerName || dealerBusinessName || "Navanidhi Digital";
+                  const receiptText = `---------------------------------\n*${serviceName}*\n*Payment Receipt*\n---------------------------------\nCustomer: ${selectedReceipt.customerName}\nPaid Amount: ₹${selectedReceipt.amount}\nDate: ${formatDate(selectedReceipt.collectedAt)}\n---------------------------------`;
+                  openSmsReceipt(selectedReceipt.mobile, receiptText);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm w-full sm:w-auto"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Send SMS Receipt
               </Button>
               <Button onClick={() => window.print()} variant="outline" className="w-full sm:w-auto">
                 Print Receipt

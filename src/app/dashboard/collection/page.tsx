@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import PaymentSuccessReceiptModal, { ReceiptData } from "@/components/PaymentSuccessReceiptModal";
 
 interface Collection {
     id: string;
@@ -68,6 +69,8 @@ export default function CollectionPage() {
   ]);
   const { user, userRole, loading: authLoading } = useAuth();
   const [adminId, setAdminId] = useState<string | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptModalData, setReceiptModalData] = useState<ReceiptData | null>(null);
 
 
   useEffect(() => {
@@ -225,6 +228,19 @@ export default function CollectionPage() {
             description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
           });
         }
+
+        // Trigger Instant WhatsApp & SMS Receipt Modal
+        setReceiptModalData({
+          businessName: "SonyCable / Navanidhi Digital",
+          customerName: currentCustomer.name,
+          customerId: currentCustomer.stbId || currentCustomer.customerId || currentCustomer.id,
+          mobile: currentCustomer.mobile || '',
+          paidAmount: collectedAmount,
+          remainingBalance: Math.max(0, newBalance),
+          date: new Date(),
+          collectedByName: user.displayName || 'Staff',
+        });
+        setIsReceiptModalOpen(true);
 
         setIsCollectDialogOpen(false);
         setCurrentCustomer(null);
@@ -399,6 +415,13 @@ export default function CollectionPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Payment Success Instant WhatsApp & SMS Receipt Modal */}
+      <PaymentSuccessReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        receiptData={receiptModalData}
+      />
     </>
   );
 }
