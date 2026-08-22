@@ -45,7 +45,7 @@ export const generateReceiptText = (data: ReceiptData): string => {
         hour12: true,
       });
 
-  const customerIdText = data.customerId ? ` (${data.customerId})` : "";
+  const customerIdLine = data.customerId ? `\nCustomer ID: ${data.customerId}` : "";
   const totalBillText = data.totalBill !== undefined ? `\nTotal Bill: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
   const supportNum = data.supportNumber || "9010737882";
 
@@ -53,7 +53,7 @@ export const generateReceiptText = (data: ReceiptData): string => {
 *${businessName}*
 *Payment Receipt*
 ---------------------------------
-Customer: ${data.customerName}${customerIdText}${totalBillText}
+Customer: ${data.customerName}${customerIdLine}${totalBillText}
 Paid Amount: ₹${data.paidAmount.toLocaleString("en-IN")}
 Balance Due: ₹${data.remainingBalance.toLocaleString("en-IN")}
 Date: ${formattedDate}
