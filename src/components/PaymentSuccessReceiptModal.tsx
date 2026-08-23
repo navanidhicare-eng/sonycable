@@ -14,6 +14,7 @@ import { CheckCircle2, MessageCircle, MessageSquare, Copy, Check, Sparkles } fro
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { sendAutoSms } from "@/lib/autoSms";
 
 export interface ReceiptData {
   businessName?: string;
@@ -181,9 +182,6 @@ export default function PaymentSuccessReceiptModal({
             localStorage.setItem("receipt_custom_message", msg);
           }
         }
-      }, (err) => {
-        console.error("Error reading receipt custom message setting:", err);
-      });
       return () => unsub();
     } catch (e) {
       console.error(e);
@@ -192,8 +190,6 @@ export default function PaymentSuccessReceiptModal({
 
   const isRecharge = type === "recharge" || Boolean(rechargeData);
   const activeData = isRecharge ? rechargeData : receiptData;
-
-  if (!activeData) return null;
 
   const receiptText = isRecharge && rechargeData
     ? generateRechargeReceiptText({
@@ -207,8 +203,16 @@ export default function PaymentSuccessReceiptModal({
       })
       : "";
 
-  const customerName = activeData.customerName;
-  const mobile = activeData.mobile;
+  const customerName = activeData?.customerName || "";
+  const mobile = activeData?.mobile || "";
+
+  useEffect(() => {
+    if (isOpen && mobile && receiptText) {
+      sendAutoSms({ phoneNumber: mobile, message: receiptText });
+    }
+  }, [isOpen, mobile, receiptText]);
+
+  if (!activeData) return null;
 
   const handleCopyReceipt = () => {
     navigator.clipboard.writeText(receiptText);
