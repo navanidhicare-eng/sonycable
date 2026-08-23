@@ -17,6 +17,18 @@ export async function sendAutoSms({ phoneNumber, message }: SendAutoSmsOptions):
   const cleanPhone = phoneNumber.replace(/[^0-9]/g, "").slice(-10);
   if (cleanPhone.length !== 10) return false;
 
+  // 1. Direct Native Android SmsManager Bridge (100% background without prompt)
+  if (typeof window !== "undefined" && (window as any).AndroidSmsBridge) {
+    try {
+      (window as any).AndroidSmsBridge.sendDirectSms(cleanPhone, message);
+      console.log(`[AutoSMS] Successfully sent native background SMS via SmsManager to ${cleanPhone}`);
+      return true;
+    } catch (err) {
+      console.error("[AutoSMS] Native AndroidSmsBridge error:", err);
+    }
+  }
+
+  // 2. Capacitor Plugin Fallback
   if (Capacitor.isNativePlatform()) {
     try {
       await Sms.send({
