@@ -45,6 +45,7 @@ interface DishTvPaymentRecord {
   vcNumber?: string;
   packagePlan?: string;
   amount: number;
+  remainingBalance?: number;
   paymentMethod: string;
   collectedByUid: string;
   collectedByName?: string;
@@ -352,7 +353,7 @@ export default function PaymentCollectionsPage() {
       customerId: receipt.customerId || receipt.vcNumber || receipt.id,
       mobile: receipt.mobile,
       paidAmount: receipt.amount,
-      remainingBalance: 0,
+      remainingBalance: receipt.remainingBalance !== undefined ? receipt.remainingBalance : 0,
       date: formatDate(receipt.collectedAt),
       collectedByName: receipt.collectedByName || "Staff",
     });
@@ -367,7 +368,7 @@ export default function PaymentCollectionsPage() {
     try {
       const amt = parseFloat(customAmount) || 0;
       const currentBal = selectedCustomer.balanceAmount !== undefined ? selectedCustomer.balanceAmount : (selectedCustomer.monthlyAmount || 350);
-      const newBal = Math.max(0, currentBal - amt);
+      const newBal = currentBal - amt;
       const nowTs = Timestamp.now();
       const dlrName = dealerBusinessName || selectedCustomer.dealerName || "Navanidhi Digital System (DishTV Official Partner)";
 
@@ -390,7 +391,7 @@ export default function PaymentCollectionsPage() {
       // 2. Update DishTV Customer balanceAmount & status
       await updateDoc(doc(db, "dishtv_customers", selectedCustomer.id), {
         balanceAmount: newBal,
-        status: newBal === 0 ? "Active" : selectedCustomer.status,
+        status: newBal <= 0 ? "Active" : selectedCustomer.status,
         lastRechargeDate: nowTs,
       });
 
@@ -402,6 +403,7 @@ export default function PaymentCollectionsPage() {
         vcNumber: selectedCustomer.vcNumber || "",
         packagePlan: selectedCustomer.packagePlan || "",
         amount: amt,
+        remainingBalance: newBal,
         paymentMethod: paymentMethod,
         collectedByUid: user.uid,
         collectedByName: user.displayName || user.email || "Dealer",
@@ -902,7 +904,7 @@ export default function PaymentCollectionsPage() {
                     customerId: selectedReceipt.customerId || selectedReceipt.vcNumber || selectedReceipt.id,
                     mobile: selectedReceipt.mobile,
                     paidAmount: selectedReceipt.amount,
-                    remainingBalance: 0,
+                    remainingBalance: selectedReceipt.remainingBalance !== undefined ? selectedReceipt.remainingBalance : 0,
                     date: formatDate(selectedReceipt.collectedAt),
                     collectedByName: selectedReceipt.collectedByName || "Staff",
                   });

@@ -260,7 +260,7 @@ export default function PaymentsCollectionsPage() {
           customerId: currentCustomer.customerId || currentCustomer.stbId || currentCustomer.id,
           mobile: currentCustomer.mobile || '',
           paidAmount: collectedAmount,
-          remainingBalance: Math.max(0, newBalance),
+          remainingBalance: newBalance,
           date: new Date(),
           collectedByName: user.displayName || 'Staff',
         });

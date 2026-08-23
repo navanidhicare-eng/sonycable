@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, MessageCircle, MessageSquare, Copy, Check } from "lucide-react";
+import { CheckCircle2, MessageCircle, MessageSquare, Copy, Check, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 export interface ReceiptData {
   businessName?: string;
@@ -24,6 +26,7 @@ export interface ReceiptData {
   date: Date | string;
   collectedByName?: string;
   supportNumber?: string;
+  customMessage?: string;
 }
 
 export interface RechargeReceiptData {
@@ -39,6 +42,7 @@ export interface RechargeReceiptData {
   months?: number;
   collectedByName?: string;
   supportNumber?: string;
+  customMessage?: string;
 }
 
 interface PaymentSuccessReceiptModalProps {
@@ -66,19 +70,29 @@ export const generateReceiptText = (data: ReceiptData): string => {
   const totalBillText = data.totalBill !== undefined ? `\nమొత్తం బిల్లు: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
   const supportNum = "9010737882";
 
+  // బ్యాలెన్స్ ఫార్మాటింగ్ లాజిక్
+  const balanceVal = Number(data.remainingBalance || 0);
+  const formattedBalance = balanceVal < 0
+    ? `-₹${Math.abs(balanceVal).toLocaleString("en-IN")}`
+    : `₹${balanceVal.toLocaleString("en-IN")}`;
+
+  const customMsg = data.customMessage !== undefined
+    ? data.customMessage.trim()
+    : (typeof window !== "undefined" ? (localStorage.getItem("receipt_custom_message") || "").trim() : "");
+  const customMessageLine = customMsg ? `\n\n${customMsg}` : "";
+
   return `---------------------------------
 *${businessName}*
 *చెల్లింపు రశీదు (Payment Receipt)*
 ---------------------------------
 కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${totalBillText}
 చెల్లించిన మొత్తం: ₹${data.paidAmount.toLocaleString("en-IN")}
-మిగిలిన బాకీ: ₹${data.remainingBalance.toLocaleString("en-IN")}
+మిగిలిన బాకీ: ${formattedBalance}
 తేదీ: ${formattedDate}
 వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
 
 Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
-హెల్ప్‌లైన్ నెంబర్: ${supportNum}
----------------------------------`;
+హెల్ప్లైన్ నెంబర్: ${supportNum}${customMessageLine}`;
 };
 
 export const generateRechargeReceiptText = (data: RechargeReceiptData): string => {
@@ -99,20 +113,34 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
   const monthsLine = data.months ? `\nరీఛార్జ్ చేసిన నెలలు: ${data.months} నెల(లు)` : "";
   const supportNum = "9010737882";
 
+  // బ్యాలెన్స్ ఫార్మాటింగ్ లాజిక్
+  const oldDueVal = Number(data.oldDue || 0);
+  const formattedOldDue = oldDueVal < 0
+    ? `-₹${Math.abs(oldDueVal).toLocaleString("en-IN")}`
+    : `₹${oldDueVal.toLocaleString("en-IN")}`;
+
+  const newDueVal = Number(data.newDue || 0);
+  const formattedNewDue = newDueVal < 0
+    ? `-₹${Math.abs(newDueVal).toLocaleString("en-IN")}`
+    : `₹${newDueVal.toLocaleString("en-IN")}`;
+
+  const customMsg = data.customMessage !== undefined
+    ? data.customMessage.trim()
+    : (typeof window !== "undefined" ? (localStorage.getItem("receipt_custom_message") || "").trim() : "");
+  const customMessageLine = customMsg ? `\n\n${customMsg}` : "";
+
   return `---------------------------------
 *${businessName}*
 *రీఛార్జ్ సక్సెస్‌ఫుల్! (Recharge Successful)*
 ---------------------------------
 కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}${monthsLine}
 రీఛార్జ్ చేసిన తేదీ: ${formattedDate}
-పాత బాకీ: ₹${data.oldDue.toLocaleString("en-IN")}
+పాత బాకీ: ${formattedOldDue}
 రీఛార్జ్ మొత్తం: ₹${data.rechargeAmount.toLocaleString("en-IN")}
-మొత్తం బాకీ: ₹${data.newDue.toLocaleString("en-IN")}
+మొత్తం బాకీ: ${formattedNewDue}
 
-
-Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
-హెల్ప్‌లైన్ నెంబర్: ${supportNum}
----------------------------------`;
+Sony Cable Network సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
+హెల్ప్లైన్ నెంబర్: ${supportNum}${customMessageLine}`;
 };
 
 export const openWhatsAppReceipt = (mobile: string, text: string) => {
@@ -140,6 +168,27 @@ export default function PaymentSuccessReceiptModal({
 }: PaymentSuccessReceiptModalProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [liveCustomMsg, setLiveCustomMsg] = useState<string>("");
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, "settings", "receipt_config"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const msg = (data.enabled !== false && data.customMessage) ? String(data.customMessage) : "";
+          setLiveCustomMsg(msg);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("receipt_custom_message", msg);
+          }
+        }
+      }, (err) => {
+        console.error("Error reading receipt custom message setting:", err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   const isRecharge = type === "recharge" || Boolean(rechargeData);
   const activeData = isRecharge ? rechargeData : receiptData;
@@ -147,9 +196,15 @@ export default function PaymentSuccessReceiptModal({
   if (!activeData) return null;
 
   const receiptText = isRecharge && rechargeData
-    ? generateRechargeReceiptText(rechargeData)
+    ? generateRechargeReceiptText({
+      ...rechargeData,
+      customMessage: rechargeData.customMessage ?? liveCustomMsg,
+    })
     : receiptData
-      ? generateReceiptText(receiptData)
+      ? generateReceiptText({
+        ...receiptData,
+        customMessage: receiptData.customMessage ?? liveCustomMsg,
+      })
       : "";
 
   const customerName = activeData.customerName;

@@ -9,7 +9,10 @@ import {
   CardTitle,
   CardDescription
 } from "@/components/ui/card";
-import { PlusCircle, Loader2, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { PlusCircle, Loader2, Pencil, Trash2, ArrowUp, ArrowDown, Sparkles, MessageSquare, Save } from "lucide-react";
 import Link from "next/link";
 import {
   Table,
@@ -23,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, deleteDoc, Timestamp, writeBatch } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc, Timestamp, writeBatch, getDoc, setDoc } from "firebase/firestore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +54,69 @@ export default function AnnouncementsPage() {
   const { user, loading: authLoading } = useAuth();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+
+  // Receipt Custom / Festival Message State
+  const [customReceiptMsg, setCustomReceiptMsg] = useState("");
+  const [msgEnabled, setMsgEnabled] = useState(true);
+  const [savingReceiptMsg, setSavingReceiptMsg] = useState(false);
+  const [loadingReceiptConfig, setLoadingReceiptConfig] = useState(true);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const docRef = doc(db, "settings", "receipt_config");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          setCustomReceiptMsg(d.customMessage || "");
+          setMsgEnabled(d.enabled !== false);
+        }
+      } catch (err) {
+        console.error("Error fetching receipt config:", err);
+      } finally {
+        setLoadingReceiptConfig(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const handleSaveReceiptMsg = async () => {
+    setSavingReceiptMsg(true);
+    try {
+      const docRef = doc(db, "settings", "receipt_config");
+      const msgToSave = customReceiptMsg.trim();
+      await setDoc(
+        docRef,
+        {
+          customMessage: msgToSave,
+          enabled: msgEnabled,
+          updatedAt: Timestamp.now(),
+          updatedBy: user?.email || "Admin",
+        },
+        { merge: true }
+      );
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("receipt_custom_message", msgEnabled ? msgToSave : "");
+      }
+
+      toast({
+        title: "Receipt Message Saved! 🎉",
+        description: msgEnabled && msgToSave
+          ? "This greeting/festival note will now be included on all WhatsApp & SMS receipts."
+          : "Receipt custom greeting updated.",
+      });
+    } catch (err) {
+      console.error("Error saving receipt custom message:", err);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "An error occurred while saving the receipt custom message.",
+      });
+    } finally {
+      setSavingReceiptMsg(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -146,10 +212,10 @@ export default function AnnouncementsPage() {
         <header className="mb-10 flex w-full max-w-5xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-              Scrolling Announcements
+              Announcements & Receipts
             </h1>
             <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-              Manage the scrolling text shown to customers. You can reorder them using the arrow buttons.
+              Manage scrolling announcements and configure festival greetings for customer receipts.
             </p>
           </div>
           <Button asChild className="mt-4 sm:mt-0">
@@ -159,6 +225,107 @@ export default function AnnouncementsPage() {
             </Link>
           </Button>
         </header>
+
+        {/* Receipt Custom / Festival Message Card */}
+        <Card className="w-full max-w-5xl mb-8 border-2 border-amber-500/20 bg-card shadow-sm">
+          <CardHeader className="bg-amber-500/5 border-b border-amber-500/10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold">
+                    Receipt Custom Message / Festival Wish (రశీదు పండుగ విష్ మెసేజ్)
+                  </CardTitle>
+                  <CardDescription className="mt-0.5 text-xs">
+                    Configure a custom message (e.g. Festival Greetings, Offers, Special Note) to be appended at the bottom of WhatsApp & SMS receipts.
+                  </CardDescription>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="receipt-msg-switch"
+                  checked={msgEnabled}
+                  onCheckedChange={setMsgEnabled}
+                />
+                <Label htmlFor="receipt-msg-switch" className="text-xs font-semibold cursor-pointer">
+                  {msgEnabled ? "Enabled" : "Disabled"}
+                </Label>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-4">
+            {loadingReceiptConfig ? (
+              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Loading receipt configuration...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="customMsgInput" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Custom / Festival Message Text
+                  </Label>
+                  <Textarea
+                    id="customMsgInput"
+                    rows={4}
+                    placeholder="e.g. 🎉 వినాయక చవితి శుభాకాంక్షలు! 🌸 / Happy Sankranti!"
+                    value={customReceiptMsg}
+                    onChange={(e) => setCustomReceiptMsg(e.target.value)}
+                    className="font-medium text-sm leading-relaxed"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    💡 Tip: Add festival greetings, seasonal wishes, or promo notes. Leave empty to omit custom message.
+                  </p>
+
+                  <Button
+                    onClick={handleSaveReceiptMsg}
+                    disabled={savingReceiptMsg}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-10 px-5 shadow-sm flex items-center gap-2"
+                  >
+                    {savingReceiptMsg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save Receipt Message
+                  </Button>
+                </div>
+
+                {/* Live Preview Card */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
+                    Receipt Preview (రశీదు ప్రివ్యూ)
+                  </Label>
+                  <div className="p-3.5 bg-slate-900 text-slate-100 rounded-lg font-mono text-[11px] leading-tight border border-slate-800 space-y-1">
+                    <div className="text-slate-400">---------------------------------</div>
+                    <div className="font-bold text-amber-400">*Sony Cable*</div>
+                    <div className="font-bold text-emerald-400">*చెల్లింపు రశీదు (Payment Receipt)*</div>
+                    <div className="text-slate-400">---------------------------------</div>
+                    <div>కస్టమర్ పేరు: K. Ramesh</div>
+                    <div>చెల్లించిన మొత్తం: ₹350</div>
+                    <div>మిగిలిన బాకీ: ₹0</div>
+                    <div>తేదీ: 23/08/2026, 08:00 PM</div>
+                    <div>వసూలు చేసినవారు: Staff</div>
+                    <br />
+                    <div>Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!</div>
+                    <div>హెల్ప్లైన్ నెంబర్: 9010737882</div>
+                    {msgEnabled && customReceiptMsg.trim() ? (
+                      <>
+                        <br />
+                        <div className="text-amber-300 font-bold bg-amber-950/60 p-1.5 rounded border border-amber-800/60 whitespace-pre-wrap">
+                          {customReceiptMsg.trim()}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-slate-500 italic mt-1">(No custom message set)</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="w-full max-w-5xl">
           <CardHeader>

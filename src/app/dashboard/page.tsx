@@ -1422,7 +1422,7 @@ export default function DashboardPage() {
           customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
           mobile: searchedCustomer.mobile || '',
           paidAmount: collectedAmount,
-          remainingBalance: Math.max(0, newBalance),
+          remainingBalance: newBalance,
           date: new Date(),
           collectedByName: staffData?.name || currentUser.displayName || 'Staff',
         });
