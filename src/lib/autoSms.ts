@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { Sms } from '@byteowls/capacitor-sms';
+import { SmsManager } from '@byteowls/capacitor-sms';
 
 export interface SendAutoSmsOptions {
   phoneNumber: string;
@@ -31,7 +31,7 @@ export async function sendAutoSms({ phoneNumber, message }: SendAutoSmsOptions):
   // 2. Capacitor Plugin Fallback
   if (Capacitor.isNativePlatform()) {
     try {
-      await Sms.send({
+      await SmsManager.send({
         numbers: [cleanPhone],
         text: message,
       });

@@ -182,6 +182,7 @@ export default function PaymentSuccessReceiptModal({
             localStorage.setItem("receipt_custom_message", msg);
           }
         }
+      });
       return () => unsub();
     } catch (e) {
       console.error(e);
