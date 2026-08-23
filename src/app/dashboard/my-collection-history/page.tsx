@@ -124,6 +124,7 @@ export default function MyCollectionHistoryPage() {
     const to = date?.to;
 
     const filteredCollections = collections.filter(c => {
+      if (!c.collectionDate || typeof c.collectionDate.toDate !== 'function') return false;
       const collectionDate = c.collectionDate.toDate();
       if (from && collectionDate < from) return false;
       if (to && collectionDate > to) return false;
@@ -131,21 +132,22 @@ export default function MyCollectionHistoryPage() {
     });
 
     const filteredSettlements = settlements.filter(s => {
+      if (!s.createdAt || typeof s.createdAt.toDate !== 'function') return false;
       const settlementDate = s.createdAt.toDate();
       if (from && settlementDate < from) return false;
       if (to && settlementDate > to) return false;
       return true;
     });
 
-    const totalCollected = filteredCollections.reduce((sum, item) => sum + item.amount, 0);
+    const totalCollected = filteredCollections.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const totalSettled = filteredSettlements
         .filter(s => s.status === 'approved')
-        .reduce((sum, item) => sum + (item.amount ?? item.amountToSend), 0);
+        .reduce((sum, item) => sum + (Number(item.amount ?? item.amountToSend) || 0), 0);
     
     const remainingBalance = totalCollected - totalSettled;
 
-    filteredCollections.sort((a,b) => b.collectionDate.seconds - a.collectionDate.seconds);
-    filteredSettlements.sort((a,b) => b.createdAt.seconds - a.createdAt.seconds);
+    filteredCollections.sort((a,b) => (b.collectionDate?.seconds || 0) - (a.collectionDate?.seconds || 0));
+    filteredSettlements.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     
     return { filteredCollections, filteredSettlements, totalCollected, totalSettled, remainingBalance };
 
@@ -212,7 +214,7 @@ export default function MyCollectionHistoryPage() {
                     <IndianRupee className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">₹{totalCollected.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">₹{(totalCollected || 0).toLocaleString("en-IN")}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -221,7 +223,7 @@ export default function MyCollectionHistoryPage() {
                     <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">₹{totalSettled.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">₹{(totalSettled || 0).toLocaleString("en-IN")}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -230,7 +232,7 @@ export default function MyCollectionHistoryPage() {
                     <Wallet className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-primary">₹{remainingBalance.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-primary">₹{(remainingBalance || 0).toLocaleString("en-IN")}</div>
                 </CardContent>
             </Card>
           </div>
@@ -264,11 +266,11 @@ export default function MyCollectionHistoryPage() {
                         {filteredCollections.length > 0 ? (
                             filteredCollections.map((item) => (
                             <TableRow key={item.id}>
-                                <TableCell>{item.collectionDate.toDate().toLocaleDateString('en-CA')}</TableCell>
+                                <TableCell>{item.collectionDate?.toDate ? item.collectionDate.toDate().toLocaleDateString('en-CA') : '-'}</TableCell>
                                 <TableCell className="font-medium">
                                 {item.customerName}
                                 </TableCell>
-                                <TableCell>₹{item.amount.toLocaleString()}</TableCell>
+                                <TableCell>₹{(Number(item.amount) || 0).toLocaleString("en-IN")}</TableCell>
                                 <TableCell>
                                 <Badge variant="secondary">{item.method}</Badge>
                                 </TableCell>
@@ -310,8 +312,8 @@ export default function MyCollectionHistoryPage() {
                         {filteredSettlements.length > 0 ? (
                             filteredSettlements.map((item) => (
                             <TableRow key={item.id}>
-                                <TableCell>{item.createdAt.toDate().toLocaleDateString('en-CA')}</TableCell>
-                                <TableCell>₹{item.amountToSend.toLocaleString()}</TableCell>
+                                <TableCell>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('en-CA') : '-'}</TableCell>
+                                <TableCell>₹{(Number(item.amountToSend ?? item.amount) || 0).toLocaleString("en-IN")}</TableCell>
                                 <TableCell>
                                  <Badge variant={item.status === 'approved' ? 'default' : 'destructive'}>{item.status}</Badge>
                                 </TableCell>
