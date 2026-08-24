@@ -19,6 +19,7 @@ export interface ReceiptData {
   businessName?: string;
   customerName: string;
   customerId?: string;
+  customerDocId?: string;
   mobile: string;
   totalBill?: number;
   paidAmount: number;
@@ -27,12 +28,14 @@ export interface ReceiptData {
   collectedByName?: string;
   supportNumber?: string;
   customMessage?: string;
+  ledgerUrl?: string;
 }
 
 export interface RechargeReceiptData {
   businessName?: string;
   customerName: string;
   customerId?: string;
+  customerDocId?: string;
   mobile: string;
   oldDue: number;
   rechargeAmount: number;
@@ -43,6 +46,7 @@ export interface RechargeReceiptData {
   collectedByName?: string;
   supportNumber?: string;
   customMessage?: string;
+  ledgerUrl?: string;
 }
 
 interface PaymentSuccessReceiptModalProps {
@@ -52,6 +56,28 @@ interface PaymentSuccessReceiptModalProps {
   rechargeData?: RechargeReceiptData | null;
   type?: "payment" | "recharge";
 }
+
+export const getPublicBaseUrl = (): string => {
+  if (typeof window === "undefined") return "";
+
+  // 1. If explicit app URL configured in localStorage or env
+  const savedUrl = typeof localStorage !== "undefined" ? localStorage.getItem("app_base_url") : null;
+  if (savedUrl && savedUrl.trim()) return savedUrl.trim().replace(/\/$/, "");
+
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl && envUrl.trim()) return envUrl.trim().replace(/\/$/, "");
+
+  let origin = window.location.origin;
+
+  // 2. If running on localhost, replace with local LAN IP (e.g. 192.168.1.4) so mobile devices can open the link
+  if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    const port = window.location.port ? `:${window.location.port}` : "";
+    const protocol = window.location.protocol;
+    origin = `${protocol}//192.168.1.4${port}`;
+  }
+
+  return origin;
+};
 
 export const generateReceiptText = (data: ReceiptData): string => {
   const businessName = "Sony Cable";
@@ -69,6 +95,17 @@ export const generateReceiptText = (data: ReceiptData): string => {
   const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
   const totalBillText = data.totalBill !== undefined ? `\nమొత్తం బిల్లు: ₹${data.totalBill.toLocaleString("en-IN")}` : "";
   const supportNum = "9010737882";
+
+  // పాస్‌బుక్ లెడ్జర్ లింక్ జనరేషన్
+  const docId = data.customerDocId || data.customerId;
+  let ledgerLink = data.ledgerUrl || "";
+  if (!ledgerLink && docId) {
+    const baseUrl = getPublicBaseUrl();
+    if (baseUrl) {
+      ledgerLink = `${baseUrl}/dashboard/customers/${docId}/history`;
+    }
+  }
+  const ledgerLine = ledgerLink ? `\n\nపాస్‌బుక్ లెడ్జర్ లింక్:\n${ledgerLink}` : "";
 
   // బ్యాలెన్స్ ఫార్మాటింగ్ లాజిక్
   const balanceVal = Number(data.remainingBalance || 0);
@@ -92,7 +129,7 @@ export const generateReceiptText = (data: ReceiptData): string => {
 వసూలు చేసినవారు: ${data.collectedByName || "Staff"}
 
 Sony Cable సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
-హెల్ప్లైన్ నెంబర్: ${supportNum}${customMessageLine}`;
+హెల్ప్లైన్ నెంబర్: ${supportNum}${ledgerLine}${customMessageLine}`;
 };
 
 export const generateRechargeReceiptText = (data: RechargeReceiptData): string => {
@@ -112,6 +149,17 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
   const packageInfo = data.packageName ? `\nప్లాన్: ${data.packageName}` : "";
   const monthsLine = data.months ? `\nరీఛార్జ్ చేసిన నెలలు: ${data.months} నెల(లు)` : "";
   const supportNum = "9010737882";
+
+  // పాస్‌బుక్ లెడ్జర్ లింక్ జనరేషన్
+  const docId = data.customerDocId || data.customerId;
+  let ledgerLink = data.ledgerUrl || "";
+  if (!ledgerLink && docId) {
+    const baseUrl = getPublicBaseUrl();
+    if (baseUrl) {
+      ledgerLink = `${baseUrl}/dashboard/customers/${docId}/history`;
+    }
+  }
+  const ledgerLine = ledgerLink ? `\n\nపాస్‌బుక్ లెడ్జర్ లింక్:\n${ledgerLink}` : "";
 
   // బ్యాలెన్స్ ఫార్మాటింగ్ లాజిక్
   const oldDueVal = Number(data.oldDue || 0);
@@ -140,7 +188,7 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
 మొత్తం బాకీ: ${formattedNewDue}
 
 Sony Cable Network సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
-హెల్ప్లైన్ నెంబర్: ${supportNum}${customMessageLine}`;
+హెల్ప్లైన్ నెంబర్: ${supportNum}${ledgerLine}${customMessageLine}`;
 };
 
 export const openWhatsAppReceipt = (mobile: string, text: string) => {
@@ -209,15 +257,19 @@ export default function PaymentSuccessReceiptModal({
 
   useEffect(() => {
     if (isOpen && mobile && receiptText) {
-      sendAutoSms({ phoneNumber: mobile, message: receiptText }).then((success) => {
-        if (success) {
-          setAutoSmsSent(true);
-          toast({
-            title: "SMS Sent Successfully",
-            description: `Direct SMS auto-sent to customer mobile: ${mobile}`,
-          });
-        }
-      });
+      sendAutoSms({ phoneNumber: mobile, message: receiptText })
+        .then((success) => {
+          if (success) {
+            setAutoSmsSent(true);
+            toast({
+              title: "SMS Sent Successfully",
+              description: `Direct SMS auto-sent to customer mobile: ${mobile}`,
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn("[AutoSMS] Error sending auto SMS:", err);
+        });
     } else {
       setAutoSmsSent(false);
     }
@@ -244,17 +296,22 @@ export default function PaymentSuccessReceiptModal({
   };
 
   const handleManualSMS = () => {
-    sendAutoSms({ phoneNumber: mobile, message: receiptText }).then((success) => {
-      if (success) {
-        setAutoSmsSent(true);
-        toast({
-          title: "SMS Sent",
-          description: `Direct background SMS sent to ${mobile}`,
-        });
-      } else {
+    sendAutoSms({ phoneNumber: mobile, message: receiptText })
+      .then((success) => {
+        if (success) {
+          setAutoSmsSent(true);
+          toast({
+            title: "SMS Sent",
+            description: `Direct background SMS sent to ${mobile}`,
+          });
+        } else {
+          openSmsReceipt(mobile, receiptText);
+        }
+      })
+      .catch((err) => {
+        console.warn("[AutoSMS] Manual SMS error fallback:", err);
         openSmsReceipt(mobile, receiptText);
-      }
-    });
+      });
   };
 
   return (

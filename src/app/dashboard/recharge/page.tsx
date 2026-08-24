@@ -241,6 +241,7 @@ function RechargePageContent() {
           businessName: "Sony Cable",
           customerName: currentCustomer.name,
           customerId: currentCustomer.customerId || currentCustomer.stbId || currentCustomer.id,
+          customerDocId: currentCustomer.id,
           mobile: currentCustomer.mobile || '',
           oldDue: oldDue,
           rechargeAmount: totalRechargeAmount,

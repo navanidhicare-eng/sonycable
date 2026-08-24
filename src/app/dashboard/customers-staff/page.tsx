@@ -165,38 +165,37 @@ export default function StaffCustomersPage() {
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground">
-      <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
-        <header className="mb-10 flex w-full max-w-4xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-              My Customers
-            </h1>
-            <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-              View customer information in your assigned areas.
-            </p>
-          </div>
+      <div className="container mx-auto flex flex-col items-center p-2.5 sm:p-4 py-4 sm:py-8 md:p-12 max-w-4xl">
+        <header className="mb-4 flex w-full flex-col items-start text-left">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">
+            My Customers
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground sm:text-base">
+            View customer information in your assigned areas.
+          </p>
         </header>
-        <Card className="w-full max-w-4xl">
-          <CardHeader>
-            <CardTitle>Customer List</CardTitle>
-            <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+
+        <Card className="w-full shadow-sm">
+          <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-4">
+            <CardTitle className="text-base sm:text-xl">Customer List</CardTitle>
+            <div className="mt-3 flex flex-col gap-2.5 sm:flex-row">
               <div className="relative w-full sm:max-w-xs">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search customers..."
-                  className="pl-9"
+                  className="pl-9 h-9 text-xs sm:text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <Select value={filterArea} onValueChange={setFilterArea}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs sm:text-sm">
                   <SelectValue placeholder="Filter by area" />
                 </SelectTrigger>
                 <SelectContent>
                   {areaOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem key={option.value} value={option.value} className="text-xs sm:text-sm">
                       {option.label}
                     </SelectItem>
                   ))}
@@ -204,62 +203,128 @@ export default function StaffCustomersPage() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2.5 sm:p-6 pt-0 sm:pt-0">
             {loading || authLoading ? (
                 <div className="flex justify-center items-center h-40">
                     <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
             ) : (
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Customer Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>Area</TableHead>
-                    <TableHead>STB ID</TableHead>
-                    <TableHead>Customer ID</TableHead>
-                    <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredCustomers.length > 0 ? (
+                <>
+                {/* 📱 MOBILE CARD VIEW (< md) - No horizontal scroll! */}
+                <div className="block md:hidden space-y-2">
+                  {filteredCustomers.length > 0 ? (
                     filteredCustomers.map((customer) => (
-                        <TableRow key={customer.id}>
-                        <TableCell className="font-medium">
-                            {customer.name}
-                        </TableCell>
-                        <TableCell>{customer.mobile}</TableCell>
-                        <TableCell>{customer.area}</TableCell>
-                        <TableCell>{customer.stbId}</TableCell>
-                        <TableCell>{customer.customerId}</TableCell>
-                        <TableCell className="flex gap-1">
+                      <div
+                        key={customer.id}
+                        className="p-3 rounded-xl border bg-card dark:bg-slate-900/60 shadow-xs hover:border-amber-500/50 transition-all space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2 border-b pb-2">
+                          <div>
+                            <Link
+                              href={`/dashboard/customers/${customer.id}/history`}
+                              className="font-bold text-sm text-primary hover:underline flex items-center gap-1.5"
+                            >
+                              {customer.name}
+                            </Link>
+                            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              📞 {customer.mobile}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
                             {!isNetworkServiceAgent && (
-                                <Button variant="ghost" size="icon" asChild>
-                                    <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                                        <Pencil className="h-4 w-4" />
+                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
+                                <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                  <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                                </Link>
+                              </Button>
+                            )}
+                            <Button variant="default" size="sm" className="h-7 px-2 text-xs bg-amber-600 hover:bg-amber-700 text-white" asChild>
+                              <Link href={`/dashboard/customers/${customer.id}/history`}>
+                                <History className="h-3.5 w-3.5 mr-1" /> Passbook
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1.5 text-[11px] pt-0.5">
+                          <div className="bg-muted/50 p-1.5 rounded-md">
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">Area</span>
+                            <span className="font-semibold text-foreground truncate block">{customer.area || "N/A"}</span>
+                          </div>
+                          <div className="bg-muted/50 p-1.5 rounded-md">
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">STB ID</span>
+                            <span className="font-semibold text-foreground truncate block">{customer.stbId || "N/A"}</span>
+                          </div>
+                          <div className="bg-muted/50 p-1.5 rounded-md">
+                            <span className="text-muted-foreground block text-[9px] uppercase font-bold">Cust ID</span>
+                            <span className="font-semibold text-foreground truncate block">{customer.customerId || "N/A"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl">
+                      No customers found in your assigned areas.
+                    </div>
+                  )}
+                </div>
+
+                {/* 💻 DESKTOP TABLE VIEW (>= md) */}
+                <div className="hidden md:block overflow-x-auto w-full">
+                  <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Customer Name</TableHead>
+                        <TableHead>Mobile</TableHead>
+                        <TableHead>Area</TableHead>
+                        <TableHead>STB ID</TableHead>
+                        <TableHead>Customer ID</TableHead>
+                        <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredCustomers.length > 0 ? (
+                        filteredCustomers.map((customer) => (
+                            <TableRow key={customer.id}>
+                            <TableCell className="font-medium">
+                                <Link href={`/dashboard/customers/${customer.id}/history`} className="hover:underline text-primary">
+                                  {customer.name}
+                                </Link>
+                            </TableCell>
+                            <TableCell>{customer.mobile}</TableCell>
+                            <TableCell>{customer.area}</TableCell>
+                            <TableCell>{customer.stbId}</TableCell>
+                            <TableCell>{customer.customerId}</TableCell>
+                            <TableCell className="flex gap-1">
+                                {!isNetworkServiceAgent && (
+                                    <Button variant="ghost" size="icon" asChild>
+                                        <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                )}
+                                 <Button variant="ghost" size="icon" asChild>
+                                    <Link href={`/dashboard/customers/${customer.id}/history`}>
+                                        <History className="h-4 w-4" />
                                     </Link>
                                 </Button>
-                            )}
-                             <Button variant="ghost" size="icon" asChild>
-                                <Link href={`/dashboard/customers/${customer.id}/history`}>
-                                    <History className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                        </TableCell>
+                            </TableCell>
+                            </TableRow>
+                        ))
+                        ) : (
+                        <TableRow>
+                            <TableCell
+                            colSpan={6}
+                            className="h-24 text-center"
+                            >
+                            No customers found in your assigned areas.
+                            </TableCell>
                         </TableRow>
-                    ))
-                    ) : (
-                    <TableRow>
-                        <TableCell
-                        colSpan={6}
-                        className="h-24 text-center"
-                        >
-                        No customers found in your assigned areas.
-                        </TableCell>
-                    </TableRow>
-                    )}
-                </TableBody>
-                </Table>
+                        )}
+                    </TableBody>
+                  </Table>
+                </div>
+                </>
             )}
           </CardContent>
         </Card>

@@ -34,7 +34,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Phone, HandCoins, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import PaymentSuccessReceiptModal, { ReceiptData } from "@/components/PaymentSuccessReceiptModal";
 
@@ -145,6 +145,8 @@ export default function CollectionPage() {
     return filteredCollections.reduce((sum, customer) => sum + (customer.balanceAmount || 0), 0);
   }, [filteredCollections]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const openCollectDialog = (customer: Collection) => {
     setCurrentCustomer(customer);
     setAmountCollected(customer.balanceAmount.toString());
@@ -153,46 +155,90 @@ export default function CollectionPage() {
   };
 
   const handleConfirmCollection = async () => {
-    if (!amountCollected || !currentCustomer || !user || !adminId) return;
-    
-    // Check staff account status & collection limit
-    const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
-    const staffSnap = await getDocs(staffQuery);
-    let staffDocId: string | null = null;
-    let collectionLimit = 10000;
-    
-    if (!staffSnap.empty) {
-      const staffData = staffSnap.docs[0].data();
-      staffDocId = staffSnap.docs[0].id;
-      collectionLimit = staffData.collectionLimit ?? 10000;
-
-      if (staffData.status === 'inactive') {
-        toast({
-          variant: "destructive",
-          title: "Collection Blocked 🔒",
-          description: "Your account is currently INACTIVE. Please deposit cash with Admin to reactivate.",
-        });
-        return;
-      }
-    }
+    if (!amountCollected || !currentCustomer || !user || !adminId || isSubmitting) return;
 
     const collectedAmount = parseFloat(amountCollected);
-    const newBalance = currentCustomer.balanceAmount - collectedAmount;
+    if (isNaN(collectedAmount) || collectedAmount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid collection amount.",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-        const customerDocRef = doc(db, "customers", currentCustomer.id);
-        await updateDoc(customerDocRef, {
-            balanceAmount: newBalance
-        });
+        // Backend Idempotency: Check 5-second window for duplicate submissions by same staff for same customer
+        const fiveSecondsAgo = Timestamp.fromMillis(Date.now() - 5000);
+        const recentPaymentsQuery = query(
+          collection(db, "payments"),
+          where("customerId", "==", currentCustomer.id),
+          where("collectedBy", "==", user.uid),
+          where("collectionDate", ">=", fiveSecondsAgo)
+        );
+        const recentSnap = await getDocs(recentPaymentsQuery);
+        const isDuplicate = recentSnap.docs.some(docSnap => Math.abs((docSnap.data().amount || 0) - collectedAmount) < 0.01);
+        if (isDuplicate) {
+          toast({
+            variant: "destructive",
+            title: "Duplicate Collection Prevented 🛑",
+            description: "A payment for this customer was already recorded in the last 5 seconds.",
+          });
+          return;
+        }
 
-        await addDoc(collection(db, "payments"), {
+        // Check staff account status & collection limit
+        const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+        const staffSnap = await getDocs(staffQuery);
+        let staffDocId: string | null = null;
+        let collectionLimit = 10000;
+        
+        if (!staffSnap.empty) {
+          const staffData = staffSnap.docs[0].data();
+          staffDocId = staffSnap.docs[0].id;
+          collectionLimit = staffData.collectionLimit ?? 10000;
+
+          if (staffData.status === 'inactive') {
+            toast({
+              variant: "destructive",
+              title: "Collection Blocked 🔒",
+              description: "Your account is currently INACTIVE. Please deposit cash with Admin to reactivate.",
+            });
+            return;
+          }
+        }
+
+        const customerDocRef = doc(db, "customers", currentCustomer.id);
+        const currentBalance = parseFloat(String(currentCustomer.balanceAmount));
+        let newBalance = currentBalance - collectedAmount;
+
+        // Use database transaction to lock and verify operation atomically
+        await runTransaction(db, async (transaction) => {
+          const custSnap = await transaction.get(customerDocRef);
+          if (!custSnap.exists()) {
+            throw new Error("Customer document not found");
+          }
+
+          const freshData = custSnap.data();
+          const freshBalance = parseFloat(String(freshData.balanceAmount ?? currentBalance));
+          newBalance = freshBalance - collectedAmount;
+
+          const newPaymentRef = doc(collection(db, "payments"));
+          transaction.set(newPaymentRef, {
             customerId: currentCustomer.id,
             customerName: currentCustomer.name,
             amount: collectedAmount,
             method: paymentMethod,
-            collectedBy: user?.uid,
-            collectionDate: new Date(),
+            collectedBy: user.uid,
+            collectionDate: Timestamp.now(),
             adminId: adminId,
+          });
+
+          transaction.update(customerDocRef, {
+            balanceAmount: newBalance
+          });
         });
 
         // Check if collection limit is reached and auto-lock staff account
@@ -219,13 +265,13 @@ export default function CollectionPage() {
           } else {
             toast({
               title: "Collection Recorded",
-              description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
+              description: `Collected ₹${collectedAmount} from ${currentCustomer.name} via ${paymentMethod}.`,
             });
           }
         } else {
           toast({
             title: "Collection Recorded",
-            description: `Collected ₹${amountCollected} from ${currentCustomer.name} via ${paymentMethod}.`,
+            description: `Collected ₹${collectedAmount} from ${currentCustomer.name} via ${paymentMethod}.`,
           });
         }
 
@@ -234,6 +280,7 @@ export default function CollectionPage() {
           businessName: "Sony Cable",
           customerName: currentCustomer.name,
           customerId: currentCustomer.customerId || currentCustomer.stbId || currentCustomer.id,
+          customerDocId: currentCustomer.id,
           mobile: currentCustomer.mobile || '',
           paidAmount: collectedAmount,
           remainingBalance: newBalance,
@@ -245,13 +292,15 @@ export default function CollectionPage() {
         setIsCollectDialogOpen(false);
         setCurrentCustomer(null);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error recording collection:", error);
         toast({
             variant: "destructive",
             title: "Collection Failed",
-            description: "An error occurred while recording the payment.",
+            description: error?.message || "An error occurred while recording the payment.",
         });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -366,7 +415,9 @@ export default function CollectionPage() {
       </main>
 
       {currentCustomer && (
-        <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
+        <Dialog open={isCollectDialogOpen} onOpenChange={(open) => {
+          if (!isSubmitting) setIsCollectDialogOpen(open);
+        }}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Collect from {currentCustomer.name}</DialogTitle>
@@ -383,6 +434,7 @@ export default function CollectionPage() {
                 <Input
                   id="amount"
                   type="number"
+                  disabled={isSubmitting}
                   value={amountCollected}
                   onChange={(e) => setAmountCollected(e.target.value)}
                   className="col-span-3"
@@ -395,21 +447,32 @@ export default function CollectionPage() {
                   className="col-span-3 flex items-center gap-4"
                   onValueChange={setPaymentMethod}
                   value={paymentMethod}
+                  disabled={isSubmitting}
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cash" id="r-cash" />
+                    <RadioGroupItem value="cash" id="r-cash" disabled={isSubmitting} />
                     <Label htmlFor="r-cash">Cash</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="upi" id="r-upi" />
+                    <RadioGroupItem value="upi" id="r-upi" disabled={isSubmitting} />
                     <Label htmlFor="r-upi">UPI</Label>
                   </div>
                 </RadioGroup>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" onClick={handleConfirmCollection}>
-                Confirm Collection
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setIsCollectDialogOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleConfirmCollection} disabled={isSubmitting || !amountCollected}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Confirm Collection"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

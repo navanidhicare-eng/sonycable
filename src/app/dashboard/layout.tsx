@@ -70,6 +70,25 @@ function DashboardLayout({
     }
   }, [authLoading, userStatus, pathname, router, toast]);
 
+  // Prevent unhandled promise rejections with Event objects from throwing [object Event] error overlay
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (
+        !event.reason ||
+        event.reason instanceof Event ||
+        (typeof event.reason === "object" && ("type" in event.reason || "target" in event.reason))
+      ) {
+        console.warn("[UnhandledRejection] Intercepted non-critical event rejection:", event.reason);
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    return () => {
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, []);
+
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -95,6 +114,13 @@ function DashboardLayout({
   const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
   const isDealer = userRole === 'Dealer';
   const isRetailer = userRole === 'Retailer';
+
+  // 🚫 If viewing Customer Passbook Ledger (/dashboard/customers/[id]/history), hide Admin Sidebar
+  const isCustomerHistoryPage = pathname?.includes('/customers/') && pathname?.includes('/history');
+
+  if (isCustomerHistoryPage) {
+    return <div className="min-h-screen w-full bg-background">{children}</div>;
+  }
 
   return (
     <>

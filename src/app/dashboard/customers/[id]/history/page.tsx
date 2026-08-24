@@ -7,3 +7,5 @@ export function generateStaticParams() {
 export default function CustomerHistoryPage() {
   return <CustomerHistoryClient />;
 }
+
+

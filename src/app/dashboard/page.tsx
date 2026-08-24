@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -212,6 +212,17 @@ export default function DashboardPage() {
   const [serviceAmount, setServiceAmount] = useState("250");
   const [serviceNotes, setServiceNotes] = useState("");
   const [isSavingService, setIsSavingService] = useState(false);
+
+  // States for Add Extra Due / Service Charge Modal (Passbook Ledger)
+  const [isExtraDueModalOpen, setIsExtraDueModalOpen] = useState(false);
+  const [extraDueSearchQuery, setExtraDueSearchQuery] = useState("");
+  const [extraDueCustomer, setExtraDueCustomer] = useState<Customer | null>(null);
+  const [extraDueReason, setExtraDueReason] = useState("STB Repair");
+  const [extraDueCustomReason, setExtraDueCustomReason] = useState("");
+  const [extraDueAmount, setExtraDueAmount] = useState("200");
+  const [isSubmittingExtraDue, setIsSubmittingExtraDue] = useState(false);
+  const [isSearchingExtraDue, setIsSearchingExtraDue] = useState(false);
+  const [extraDueSearchError, setExtraDueSearchError] = useState("");
 
   // States for Service Request Dialog Modal
   const [isServiceRequestOpen, setIsServiceRequestOpen] = useState(false);
@@ -1420,6 +1431,7 @@ export default function DashboardPage() {
           businessName: "Sony Cable",
           customerName: searchedCustomer.name,
           customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
+          customerDocId: searchedCustomer.id,
           mobile: searchedCustomer.mobile || '',
           paidAmount: collectedAmount,
           remainingBalance: newBalance,
@@ -1513,6 +1525,7 @@ export default function DashboardPage() {
           businessName: "Sony Cable",
           customerName: searchedCustomer.name,
           customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
+          customerDocId: searchedCustomer.id,
           mobile: searchedCustomer.mobile || '',
           oldDue: oldDue,
           rechargeAmount: totalRechargeAmount,
@@ -1535,6 +1548,121 @@ export default function DashboardPage() {
             title: "Recharge Failed",
             description: "An error occurred while processing the recharge.",
         });
+    }
+  };
+
+  const handleSearchExtraDueCustomer = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!extraDueSearchQuery.trim()) return;
+
+    setIsSearchingExtraDue(true);
+    setExtraDueSearchError("");
+    setExtraDueCustomer(null);
+
+    try {
+      const qTerm = extraDueSearchQuery.trim().toLowerCase();
+      const customersRef = collection(db, "customers");
+      const querySnapshot = await getDocs(customersRef);
+      const allCusts = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Customer));
+
+      const found = allCusts.find(c => 
+        (c.customerId && c.customerId.toLowerCase() === qTerm) ||
+        (c.mobile && c.mobile.trim() === extraDueSearchQuery.trim()) ||
+        (c.stbId && c.stbId.toLowerCase() === qTerm) ||
+        (c.name && c.name.toLowerCase().includes(qTerm))
+      );
+
+      if (found) {
+        setExtraDueCustomer(found);
+      } else {
+        setExtraDueSearchError("No customer found matching ID, Name, STB ID or Mobile.");
+      }
+    } catch (err) {
+      console.error("Search customer error:", err);
+      setExtraDueSearchError("Error searching for customer.");
+    } finally {
+      setIsSearchingExtraDue(false);
+    }
+  };
+
+  const handleAddExtraDue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!extraDueCustomer) {
+      toast({ variant: "destructive", title: "Select Customer", description: "Please search and select a customer first." });
+      return;
+    }
+    const amt = parseFloat(extraDueAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast({ variant: "destructive", title: "Invalid Amount", description: "Please enter a valid amount." });
+      return;
+    }
+
+    const finalReason = extraDueReason === "Others" 
+      ? (extraDueCustomReason.trim() || "Service Charge") 
+      : extraDueReason;
+
+    setIsSubmittingExtraDue(true);
+    try {
+      const customerDocRef = doc(db, "customers", extraDueCustomer.id);
+      const oldDue = parseFloat(String(extraDueCustomer.balanceAmount || 0));
+      const newDue = oldDue + amt;
+
+      await updateDoc(customerDocRef, {
+        balanceAmount: newDue,
+      });
+
+      const now = new Date();
+      const pkgName = `Service Charge - ${finalReason}`;
+
+      await addDoc(collection(db, "recharges"), {
+        customerId: extraDueCustomer.id,
+        customerName: extraDueCustomer.name,
+        packageName: pkgName,
+        amount: amt,
+        months: 1,
+        paymentReceived: false,
+        rechargeDate: now,
+        rechargedBy: currentUser?.uid || "staff",
+        adminId: staffData?.adminId || currentUser?.uid || "admin",
+        isExtraDue: true,
+      });
+
+      toast({
+        title: "Service Due Added! 🛠️",
+        description: `₹${amt} (${finalReason}) added to ${extraDueCustomer.name}'s balance.`,
+      });
+
+      setIsExtraDueModalOpen(false);
+
+      // Open WhatsApp & SMS Receipt Modal for Extra Service Charge
+      setRechargeReceiptModalData({
+        businessName: "Sony Cable",
+        customerName: extraDueCustomer.name,
+        customerId: extraDueCustomer.customerId || extraDueCustomer.stbId || extraDueCustomer.id,
+        customerDocId: extraDueCustomer.id,
+        mobile: extraDueCustomer.mobile || '',
+        oldDue: oldDue,
+        rechargeAmount: amt,
+        newDue: newDue,
+        date: now,
+        packageName: pkgName,
+        months: 1,
+        collectedByName: staffData?.name || currentUser?.displayName || 'Staff',
+      });
+      setIsRechargeReceiptModalOpen(true);
+
+      setExtraDueCustomer(null);
+      setExtraDueSearchQuery("");
+      setExtraDueAmount("200");
+    } catch (err) {
+      console.error("Error adding extra due:", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to add charge",
+        description: "An error occurred while saving the service due.",
+      });
+    } finally {
+      setIsSubmittingExtraDue(false);
     }
   };
 
@@ -2238,10 +2366,121 @@ export default function DashboardPage() {
      const canApproveRecharge = !isNetworkServiceAgent && !/collection|collation/i.test(userRole || '');
 
      return (
-       <div className="space-y-6 animate-slide-in-fade-in">
+       <div className="space-y-3 sm:space-y-6 animate-slide-in-fade-in">
 
-         {/* Quick Action Cards */}
-         <div className="grid gap-4 md:grid-cols-3">
+         {/* 📊 STATS ROW (Rendered FIRST on Mobile) */}
+         <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
+           <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/30 p-2.5 sm:p-4 shadow-sm">
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+               <CardTitle className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400 truncate">Total Outstanding</CardTitle>
+               <CircleDollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 shrink-0" />
+             </CardHeader>
+             <CardContent className="p-0">
+               <div className="text-base sm:text-2xl font-bold text-red-700 dark:text-red-400 truncate">₹{totalPendingForStaff.toLocaleString()}</div>
+               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">మొత్తం బకాయి</p>
+             </CardContent>
+           </Card>
+
+           <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/30 p-2.5 sm:p-4 shadow-sm">
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+               <CardTitle className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 truncate">Today's Collection</CardTitle>
+               <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
+             </CardHeader>
+             <CardContent className="p-0">
+               <div className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-400 truncate">₹{todaysCollectionForStaff.toLocaleString()}</div>
+               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ రోజు వసూళ్ళు</p>
+             </CardContent>
+           </Card>
+
+           <Card className="border-l-4 border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 sm:p-4 shadow-sm">
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+               <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate">Collection Wallet</CardTitle>
+               <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 shrink-0" />
+             </CardHeader>
+             <CardContent className="p-0">
+               <div className="text-base sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 truncate">₹{walletAmount.toLocaleString()}</div>
+               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Last settlement నుండి</p>
+             </CardContent>
+           </Card>
+
+           <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2.5 sm:p-4 shadow-sm">
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+               <CardTitle className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 truncate">Commission Wallet</CardTitle>
+               <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 shrink-0" />
+             </CardHeader>
+             <CardContent className="p-0">
+               <div className="text-base sm:text-2xl font-bold text-amber-700 dark:text-amber-400 truncate">₹{commissionAmount.toLocaleString()}</div>
+               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ నెల కమీషన్</p>
+             </CardContent>
+           </Card>
+         </div>
+
+         {/* 📱 MOBILE QUICK ACTIONS ICON GRID (< sm) (Rendered SECOND on Mobile below Stats) */}
+         <div className="block sm:hidden">
+           <div className="bg-card border rounded-xl p-2.5 shadow-sm">
+             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center justify-between px-1">
+               <span>Quick Actions</span>
+               <span className="text-[9px] text-amber-600 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">4 Actions</span>
+             </div>
+             <div className="grid grid-cols-4 gap-1.5">
+               {/* 1. Recharge */}
+               <button
+                 type="button"
+                 onClick={() => setIsRechargeSearchDialogOpen(true)}
+                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+               >
+                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shadow-xs mb-1">
+                   <CreditCard className="h-5 w-5" />
+                 </div>
+                 <span className="text-[10px] font-bold text-foreground leading-tight">Recharge</span>
+               </button>
+
+               {/* 2. Payment */}
+               <button
+                 type="button"
+                 onClick={() => setIsCustomerSearchDialogOpen(true)}
+                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+               >
+                 <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 border border-orange-300 dark:border-orange-800 flex items-center justify-center shadow-xs mb-1">
+                   <IndianRupee className="h-5 w-5" />
+                 </div>
+                 <span className="text-[10px] font-bold text-foreground leading-tight">Collect</span>
+               </button>
+
+               {/* 3. Add Extra Due / Service Charge */}
+               <button
+                 type="button"
+                 onClick={() => {
+                   setExtraDueCustomer(null);
+                   setExtraDueSearchQuery("");
+                   setExtraDueAmount("200");
+                   setExtraDueReason("Wire Repair");
+                   setIsExtraDueModalOpen(true);
+                 }}
+                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+               >
+                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-300 dark:border-amber-800 flex items-center justify-center shadow-xs mb-1">
+                   <PlusCircle className="h-5 w-5" />
+                 </div>
+                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-tight">+ Extra Due</span>
+               </button>
+
+               {/* 4. Requests */}
+               <Link
+                 href="/dashboard/request-recharge"
+                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+               >
+                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-300 dark:border-purple-800 flex items-center justify-center shadow-xs mb-1">
+                   <Gift className="h-5 w-5" />
+                 </div>
+                 <span className="text-[10px] font-bold text-foreground leading-tight">Requests</span>
+               </Link>
+             </div>
+           </div>
+         </div>
+
+         {/* 💻 DESKTOP QUICK ACTION CARDS (>= sm) */}
+         <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
            {/* Recharge / Request Recharge */}
            {isNetworkServiceAgent ? (
              <Link href="/dashboard/request-recharge" className="block">
@@ -2293,6 +2532,29 @@ export default function DashboardPage() {
              </CardContent>
            </Card>
 
+           {/* Add Extra Due / Service Charge */}
+           <Card
+             className="bg-amber-600 text-white hover:bg-amber-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+             onClick={() => {
+               setExtraDueCustomer(null);
+               setExtraDueSearchQuery("");
+               setExtraDueAmount("200");
+               setExtraDueReason("Wire Repair");
+               setIsExtraDueModalOpen(true);
+             }}
+           >
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+               <CardTitle className="text-sm font-semibold">Add Service Charge</CardTitle>
+               <PlusCircle className="h-5 w-5" />
+             </CardHeader>
+             <CardContent>
+               <p className="text-xs text-amber-100">Add wire repair, STB shift & extra dues</p>
+               <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                 + Add Extra Due <ArrowRight className="h-3 w-3" />
+               </div>
+             </CardContent>
+           </Card>
+
            {/* Recharge Requests */}
            <Link href="/dashboard/request-recharge" className="block">
              <Card className="bg-purple-600 text-white hover:bg-purple-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
@@ -2308,53 +2570,6 @@ export default function DashboardPage() {
                </CardContent>
              </Card>
            </Link>
-         </div>
-
-         {/* Stats Row */}
-         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-           <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/30">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-medium text-red-700 dark:text-red-400">Total Outstanding</CardTitle>
-               <CircleDollarSign className="h-4 w-4 text-red-500" />
-             </CardHeader>
-             <CardContent>
-               <div className="text-2xl font-bold text-red-700 dark:text-red-400">₹{totalPendingForStaff.toLocaleString()}</div>
-               <p className="text-xs text-muted-foreground mt-1">మొత్తం బకాయి</p>
-             </CardContent>
-           </Card>
-
-           <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/30">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400">Today's Collection</CardTitle>
-               <IndianRupee className="h-4 w-4 text-blue-500" />
-             </CardHeader>
-             <CardContent>
-               <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">₹{todaysCollectionForStaff.toLocaleString()}</div>
-               <p className="text-xs text-muted-foreground mt-1">ఈ రోజు వసూళ్ళు</p>
-             </CardContent>
-           </Card>
-
-           <Card className="border-l-4 border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Collection Wallet</CardTitle>
-               <Wallet className="h-4 w-4 text-emerald-500" />
-             </CardHeader>
-             <CardContent>
-               <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">₹{walletAmount.toLocaleString()}</div>
-               <p className="text-xs text-muted-foreground mt-1">Last settlement నుండి మొత్తం</p>
-             </CardContent>
-           </Card>
-
-           <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-400">Commission Wallet</CardTitle>
-               <IndianRupee className="h-4 w-4 text-amber-500" />
-             </CardHeader>
-             <CardContent>
-               <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">₹{commissionAmount.toLocaleString()}</div>
-               <p className="text-xs text-muted-foreground mt-1">ఈ నెల మొత్తం కమీషన్</p>
-             </CardContent>
-           </Card>
          </div>
 
          {/* Bottom Row: Settle Collection + Recharge Requests Card */}
@@ -3153,30 +3368,38 @@ export default function DashboardPage() {
   return (
     <>
     <main className="min-h-screen w-full font-body text-foreground">
-      <div className="container mx-auto p-4 py-8 md:p-12">
-        <header className="mb-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-               <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-                  Dashboard
+      <div className="container mx-auto p-2.5 sm:p-4 py-3 sm:py-8 md:p-12">
+        <header className="mb-3 sm:mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+               <h1 className="text-xl sm:text-4xl font-extrabold tracking-tight flex items-center gap-2">
+                  <div className="flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-red-600 text-white shadow-sm shrink-0">
+                    <Tv className="h-4 w-4 sm:h-6 sm:w-6" />
+                  </div>
+                  <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 bg-clip-text text-transparent">
+                     Sony Cable Network
+                  </span>
                </h1>
                {userRole && !authLoading && !firestoreLoading && (
-                  <Badge variant={userRole === "Admin" ? "default" : "secondary"} className="text-lg">
-                     <ShieldCheck className="mr-2 h-5 w-5" />
+                  <Badge variant={userRole === "Admin" ? "default" : "secondary"} className="text-xs px-2 py-0.5 sm:text-sm font-semibold shadow-xs">
+                     <ShieldCheck className="mr-1 h-3.5 w-3.5 text-amber-500" />
                      {userRole}
                   </Badge>
               )}
             </div>
             
-            <Button
-              onClick={() => setIsServiceRequestOpen(true)}
-              className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-sm px-5 py-5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-105"
-            >
-              <Wrench className="h-5 w-5" />
-              <span>+ Service Request (సర్వీస్ రిక్వెస్ట్)</span>
-            </Button>
+            {/* 🚫 Hide Service Request button for Staff/Recharge Staff (Only show for Admin, Dealer, Retailer) */}
+            {(!userRole || userRole === "Admin" || /dealer|retailer/i.test(userRole)) && (
+              <Button
+                onClick={() => setIsServiceRequestOpen(true)}
+                className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 sm:px-5 sm:py-5 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              >
+                <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>+ Service Request (సర్వీస్ రిక్వెస్ట్)</span>
+              </Button>
+            )}
           </div>
-          <p className="mt-2 max-w-3xl text-lg text-muted-foreground md:text-xl">
+          <p className="mt-1 max-w-3xl text-xs text-muted-foreground md:text-xl">
              { !authLoading && !firestoreLoading && getWelcomeMessage() }
           </p>
 
@@ -4179,6 +4402,155 @@ export default function DashboardPage() {
                         <Send className="w-4 h-4 mr-2" /> Submit Recharge Request to Admin
                       </>
                     )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Extra Due / Service Charge Dialog */}
+        <Dialog open={isExtraDueModalOpen} onOpenChange={setIsExtraDueModalOpen}>
+          <DialogContent className="sm:max-w-md bg-slate-900 text-slate-100 border-slate-800">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg font-bold text-amber-400">
+                <PlusCircle className="h-5 w-5 text-amber-400" />
+                Add Extra Due / Service Charge
+              </DialogTitle>
+              <DialogDescription className="text-slate-400 text-xs">
+                Add service charge or extra due for wire repair, STB relocation, etc.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!extraDueCustomer ? (
+              /* Step 1: Search Customer */
+              <div className="space-y-4 py-2">
+                <form onSubmit={handleSearchExtraDueCustomer} className="space-y-3">
+                  <Label className="text-xs font-semibold text-slate-300">
+                    Search Customer (Name, Mobile, STB ID)
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter Name, Mobile, STB ID..."
+                      value={extraDueSearchQuery}
+                      onChange={(e) => setExtraDueSearchQuery(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-white text-sm"
+                      autoFocus
+                    />
+                    <Button
+                      type="submit"
+                      disabled={isSearchingExtraDue || !extraDueSearchQuery.trim()}
+                      className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shrink-0"
+                    >
+                      {isSearchingExtraDue ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </form>
+
+                {extraDueSearchError && (
+                  <p className="text-xs text-rose-400 font-medium bg-rose-950/40 p-2.5 rounded border border-rose-800">
+                    {extraDueSearchError}
+                  </p>
+                )}
+              </div>
+            ) : (
+              /* Step 2: Customer Selected & Charge Details */
+              <form onSubmit={handleAddExtraDue} className="space-y-4 py-2">
+                {/* Customer Info Card */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-white text-sm font-bold">{extraDueCustomer.name}</strong>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExtraDueCustomer(null)}
+                      className="h-6 text-[10px] text-amber-400 hover:text-amber-300 p-1"
+                    >
+                      Change Customer
+                    </Button>
+                  </div>
+                  <p className="text-slate-400">Mobile: <span className="text-white font-mono">{extraDueCustomer.mobile}</span> | STB: <span className="text-white font-mono">{extraDueCustomer.stbId || extraDueCustomer.customerId}</span></p>
+                  <div className="pt-1.5 border-t border-slate-800 flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Current Due:</span>
+                    <span className="font-bold text-amber-400">₹{(extraDueCustomer.balanceAmount || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Service / Reason Dropdown */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-300">Service / Reason *</Label>
+                  <Select value={extraDueReason} onValueChange={setExtraDueReason}>
+                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm h-10">
+                      <SelectValue placeholder="Select Service Reason" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                      <SelectItem value="STB Repair">STB Repair</SelectItem>
+                      <SelectItem value="STB Replace">STB Replace</SelectItem>
+                      <SelectItem value="FTTH Connector Repairs">FTTH Connector Repairs</SelectItem>
+                      <SelectItem value="Remote Control Repairs">Remote Control Repairs</SelectItem>
+                      <SelectItem value="Fiber Cable Replace">Fiber Cable Replace</SelectItem>
+                      <SelectItem value="Fiber Cable Joint">Fiber Cable Joint</SelectItem>
+                      <SelectItem value="Others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Custom Reason Field when "Others" is selected */}
+                {extraDueReason === "Others" && (
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Label className="text-xs font-semibold text-amber-400">Specify Reason / Service *</Label>
+                    <Input
+                      placeholder="Enter custom service reason..."
+                      value={extraDueCustomReason}
+                      onChange={(e) => setExtraDueCustomReason(e.target.value)}
+                      className="bg-slate-950 border-amber-500/50 text-slate-100 text-sm h-10 focus-visible:ring-amber-500"
+                      required={extraDueReason === "Others"}
+                    />
+                  </div>
+                )}
+
+                {/* Amount Entry */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-300">Amount to Add (₹) *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-bold">₹</span>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 200"
+                      value={extraDueAmount}
+                      onChange={(e) => setExtraDueAmount(e.target.value)}
+                      className="bg-slate-950 border-slate-700 text-emerald-400 font-bold text-lg pl-7 h-11"
+                      required
+                      min="1"
+                    />
+                  </div>
+                </div>
+
+                {/* Summary */}
+                {parseFloat(extraDueAmount) > 0 && (
+                  <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/50 text-xs text-amber-300 flex justify-between items-center">
+                    <span>New Due:</span>
+                    <strong className="text-sm text-white">₹{((extraDueCustomer.balanceAmount || 0) + (parseFloat(extraDueAmount) || 0)).toLocaleString()}</strong>
+                  </div>
+                )}
+
+                <DialogFooter className="pt-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsExtraDueModalOpen(false)}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmittingExtraDue}
+                    className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs"
+                  >
+                    {isSubmittingExtraDue ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-1.5" />}
+                    Confirm & Add to Due
                   </Button>
                 </DialogFooter>
               </form>

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, HandCoins, Loader2, IndianRupee, Calendar, CheckCircle2, History, Receipt, Phone, Store, Share2, MessageCircle, MessageSquare, Wrench, CreditCard, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, updateDoc, addDoc, getDocs, Timestamp, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { generateReceiptText, openWhatsAppReceipt, openSmsReceipt } from "@/components/PaymentSuccessReceiptModal";
 
@@ -362,55 +362,95 @@ export default function PaymentCollectionsPage() {
 
   // Handle Payment Collection Submission
   const handleConfirmCollection = async () => {
-    if (!selectedCustomer || !user) return;
+    if (!selectedCustomer || !user || isSubmitting) return;
+
+    const amt = parseFloat(customAmount) || 0;
+    if (amt <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid collection amount.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const amt = parseFloat(customAmount) || 0;
-      const currentBal = selectedCustomer.balanceAmount !== undefined ? selectedCustomer.balanceAmount : (selectedCustomer.monthlyAmount || 350);
-      const newBal = currentBal - amt;
+      // Backend Idempotency: Prevent identical payments for same customer within 5-second window
+      const fiveSecondsAgo = Timestamp.fromMillis(Date.now() - 5000);
+      const recentPaymentsQuery = query(
+        collection(db, "dishtv_payments"),
+        where("customerId", "==", selectedCustomer.id),
+        where("collectedByUid", "==", user.uid),
+        where("collectedAt", ">=", fiveSecondsAgo)
+      );
+      const recentSnap = await getDocs(recentPaymentsQuery);
+      const isDuplicate = recentSnap.docs.some(docSnap => Math.abs((docSnap.data().amount || 0) - amt) < 0.01);
+      if (isDuplicate) {
+        toast({
+          variant: "destructive",
+          title: "Duplicate Collection Prevented 🛑",
+          description: "A payment for this customer was already recorded in the last 5 seconds.",
+        });
+        return;
+      }
+
       const nowTs = Timestamp.now();
       const dlrName = dealerBusinessName || selectedCustomer.dealerName || "Navanidhi Digital System (DishTV Official Partner)";
+      let newReceipt: DishTvPaymentRecord | null = null;
 
-      // 1. Record in dishtv_payments collection
-      const docRef = await addDoc(collection(db, "dishtv_payments"), {
-        customerId: selectedCustomer.id,
-        customerName: selectedCustomer.name,
-        mobile: selectedCustomer.mobile,
-        vcNumber: selectedCustomer.vcNumber || "",
-        packagePlan: selectedCustomer.packagePlan || "",
-        amount: amt,
-        paymentMethod: paymentMethod,
-        collectedByUid: user.uid,
-        collectedByName: user.displayName || user.email || "Dealer",
-        dealerName: dlrName,
-        collectedAt: nowTs,
-        notes: collectionNotes.trim(),
+      // Database Transaction lock & atomic operation
+      await runTransaction(db, async (transaction) => {
+        const custRef = doc(db, "dishtv_customers", selectedCustomer.id);
+        const custSnap = await transaction.get(custRef);
+        if (!custSnap.exists()) {
+          throw new Error("Customer document not found");
+        }
+
+        const freshCust = custSnap.data();
+        const currentBal = freshCust.balanceAmount !== undefined ? freshCust.balanceAmount : (freshCust.monthlyAmount || 350);
+        const newBal = currentBal - amt;
+
+        const newPayRef = doc(collection(db, "dishtv_payments"));
+        transaction.set(newPayRef, {
+          customerId: selectedCustomer.id,
+          customerName: selectedCustomer.name,
+          mobile: selectedCustomer.mobile,
+          vcNumber: selectedCustomer.vcNumber || "",
+          packagePlan: selectedCustomer.packagePlan || "",
+          amount: amt,
+          paymentMethod: paymentMethod,
+          collectedByUid: user.uid,
+          collectedByName: user.displayName || user.email || "Dealer",
+          dealerName: dlrName,
+          collectedAt: nowTs,
+          notes: collectionNotes.trim(),
+        });
+
+        transaction.update(custRef, {
+          balanceAmount: newBal,
+          status: newBal <= 0 ? "Active" : selectedCustomer.status,
+          lastRechargeDate: nowTs,
+        });
+
+        newReceipt = {
+          id: newPayRef.id,
+          customerId: selectedCustomer.id,
+          customerName: selectedCustomer.name,
+          mobile: selectedCustomer.mobile,
+          vcNumber: selectedCustomer.vcNumber || "",
+          packagePlan: selectedCustomer.packagePlan || "",
+          amount: amt,
+          remainingBalance: newBal,
+          paymentMethod: paymentMethod,
+          collectedByUid: user.uid,
+          collectedByName: user.displayName || user.email || "Dealer",
+          dealerName: dlrName,
+          collectedAt: nowTs,
+          notes: collectionNotes.trim(),
+        };
       });
-
-      // 2. Update DishTV Customer balanceAmount & status
-      await updateDoc(doc(db, "dishtv_customers", selectedCustomer.id), {
-        balanceAmount: newBal,
-        status: newBal <= 0 ? "Active" : selectedCustomer.status,
-        lastRechargeDate: nowTs,
-      });
-
-      const newReceipt: DishTvPaymentRecord = {
-        id: docRef.id,
-        customerId: selectedCustomer.id,
-        customerName: selectedCustomer.name,
-        mobile: selectedCustomer.mobile,
-        vcNumber: selectedCustomer.vcNumber || "",
-        packagePlan: selectedCustomer.packagePlan || "",
-        amount: amt,
-        remainingBalance: newBal,
-        paymentMethod: paymentMethod,
-        collectedByUid: user.uid,
-        collectedByName: user.displayName || user.email || "Dealer",
-        dealerName: dlrName,
-        collectedAt: nowTs,
-        notes: collectionNotes.trim(),
-      };
 
       toast({
         title: "Payment Collected Successfully! 🎉",
@@ -420,14 +460,16 @@ export default function PaymentCollectionsPage() {
       setIsCollectDialogOpen(false);
       setSelectedCustomer(null);
 
-      // Auto-open Receipt modal immediately so dealer can share on WhatsApp or print!
-      setSelectedReceipt(newReceipt);
-    } catch (err) {
+      // Auto-open Receipt modal immediately
+      if (newReceipt) {
+        setSelectedReceipt(newReceipt);
+      }
+    } catch (err: any) {
       console.error("Error recording payment collection:", err);
       toast({
         variant: "destructive",
         title: "Collection Failed",
-        description: "An error occurred while saving the payment collection.",
+        description: err?.message || "An error occurred while saving the payment collection.",
       });
     } finally {
       setIsSubmitting(false);
@@ -742,7 +784,9 @@ export default function PaymentCollectionsPage() {
 
       {/* Collect Payment Modal */}
       {selectedCustomer && (
-        <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
+        <Dialog open={isCollectDialogOpen} onOpenChange={(open) => {
+          if (!isSubmitting) setIsCollectDialogOpen(open);
+        }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
@@ -774,6 +818,7 @@ export default function PaymentCollectionsPage() {
                   <Input
                     id="amountInput"
                     type="number"
+                    disabled={isSubmitting}
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
                     className="pl-8 text-lg font-bold text-emerald-600 bg-background"
@@ -787,18 +832,19 @@ export default function PaymentCollectionsPage() {
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={setPaymentMethod}
+                  disabled={isSubmitting}
                   className="flex items-center gap-6 p-3 bg-muted/20 rounded-lg border"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Cash" id="pm-cash" />
+                    <RadioGroupItem value="Cash" id="pm-cash" disabled={isSubmitting} />
                     <Label htmlFor="pm-cash" className="cursor-pointer font-medium">💵 Cash</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="UPI" id="pm-upi" />
+                    <RadioGroupItem value="UPI" id="pm-upi" disabled={isSubmitting} />
                     <Label htmlFor="pm-upi" className="cursor-pointer font-medium">📱 UPI / QR</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Bank" id="pm-bank" />
+                    <RadioGroupItem value="Bank" id="pm-bank" disabled={isSubmitting} />
                     <Label htmlFor="pm-bank" className="cursor-pointer font-medium">🏦 Bank</Label>
                   </div>
                 </RadioGroup>
@@ -809,6 +855,7 @@ export default function PaymentCollectionsPage() {
                 <Label htmlFor="notesInput" className="text-sm font-medium">Notes / Reference No</Label>
                 <Input
                   id="notesInput"
+                  disabled={isSubmitting}
                   placeholder="e.g. UPI Ref #12345 or internal note"
                   value={collectionNotes}
                   onChange={(e) => setCollectionNotes(e.target.value)}
@@ -826,8 +873,17 @@ export default function PaymentCollectionsPage() {
                 disabled={isSubmitting || !customAmount}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                Confirm Collection
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Confirm Collection
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
