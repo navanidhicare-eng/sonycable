@@ -106,7 +106,7 @@ export const generateReceiptText = (data: ReceiptData): string => {
   if (!ledgerLink && docId) {
     const baseUrl = getPublicBaseUrl();
     if (baseUrl) {
-      ledgerLink = `${baseUrl}/dashboard/customers/${docId}/history`;
+      ledgerLink = `${baseUrl}/passbook?id=${docId}`;
     }
   }
   const ledgerLine = ledgerLink ? `\n\nపాస్‌బుక్ లెడ్జర్ లింక్:\n${ledgerLink}` : "";
@@ -160,7 +160,7 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
   if (!ledgerLink && docId) {
     const baseUrl = getPublicBaseUrl();
     if (baseUrl) {
-      ledgerLink = `${baseUrl}/dashboard/customers/${docId}/history`;
+      ledgerLink = `${baseUrl}/passbook?id=${docId}`;
     }
   }
   const ledgerLine = ledgerLink ? `\n\nపాస్‌బుక్ లెడ్జర్ లింక్:\n${ledgerLink}` : "";

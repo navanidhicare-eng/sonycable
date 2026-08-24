@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -69,7 +69,8 @@ interface PassbookTransaction extends Transaction {
 
 export default function CustomerHistoryClient() {
   const params = useParams();
-  const customerId = params.id as string;
+  const searchParams = useSearchParams();
+  const customerId = (params?.id as string) || searchParams?.get('id') || '';
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
