@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Save, Loader2, CalendarIcon, ArrowLeft } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, updateDoc, collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

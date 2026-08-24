@@ -287,7 +287,7 @@ export default function StaffCustomersPage() {
                         filteredCustomers.map((customer) => (
                             <TableRow key={customer.id}>
                             <TableCell className="font-medium">
-                                <Link href={`/dashboard/customers/${customer.id}/history`} className="hover:underline text-primary">
+                                <Link href={`/dashboard/customers/history?id=${customer.id}`} className="hover:underline text-primary">
                                   {customer.name}
                                 </Link>
                             </TableCell>
@@ -298,13 +298,13 @@ export default function StaffCustomersPage() {
                             <TableCell className="flex gap-1">
                                 {!isNetworkServiceAgent && (
                                     <Button variant="ghost" size="icon" asChild>
-                                        <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                        <Link href={`/dashboard/customers/edit?id=${customer.id}`}>
                                             <Pencil className="h-4 w-4" />
                                         </Link>
                                     </Button>
                                 )}
                                  <Button variant="ghost" size="icon" asChild>
-                                    <Link href={`/dashboard/customers/${customer.id}/history`}>
+                                    <Link href={`/dashboard/customers/history?id=${customer.id}`}>
                                         <History className="h-4 w-4" />
                                     </Link>
                                 </Button>

@@ -148,8 +148,8 @@ function DashboardLayout({
   const isDealer = userRole === 'Dealer';
   const isRetailer = userRole === 'Retailer';
 
-  // 🚫 If viewing Customer Passbook Ledger (/dashboard/customers/[id]/history), hide Admin Sidebar
-  const isCustomerHistoryPage = pathname?.includes('/customers/') && pathname?.includes('/history');
+  // 🚫 If viewing Customer Passbook Ledger (/dashboard/customers/history), hide Admin Sidebar
+  const isCustomerHistoryPage = pathname?.includes('/customers') && pathname?.includes('/history');
 
   const isLinkActive = (href: string) => {
     if (href === "/dashboard") {

@@ -528,7 +528,7 @@ export default function PaymentsCollectionsPage() {
                                                 </a>
                                             </Button>
                                             <Button variant="outline" size="sm" asChild>
-                                                <Link href={`/dashboard/customers/${collection.id}/history`}>
+                                                <Link href={`/dashboard/customers/history?id=${collection.id}`}>
                                                     <History className="mr-2 h-4 w-4" />
                                                     Full History
                                                 </Link>

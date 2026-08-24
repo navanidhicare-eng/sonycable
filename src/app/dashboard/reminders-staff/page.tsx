@@ -250,7 +250,7 @@ export default function StaffRemindersPage() {
                               </Button>
                               {!isNetworkServiceAgent && (
                                 <Button variant="ghost" size="icon" asChild>
-                                    <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                    <Link href={`/dashboard/customers/edit?id=${customer.id}`}>
                                         <Pencil className="h-4 w-4" />
                                     </Link>
                                 </Button>
@@ -312,7 +312,7 @@ export default function StaffRemindersPage() {
                                         </Button>
                                         {!isNetworkServiceAgent && (
                                           <Button variant="secondary" size="icon" asChild>
-                                            <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                            <Link href={`/dashboard/customers/edit?id=${customer.id}`}>
                                                   <Pencil className="h-4 w-4" />
                                             </Link>
                                           </Button>
