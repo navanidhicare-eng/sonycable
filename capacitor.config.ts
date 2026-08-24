@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.sonycable.app',
   appName: 'Sony Cable',
-  webDir: 'public',
+  webDir: 'out',
   server: {
     androidScheme: 'https'
   }
