@@ -319,14 +319,16 @@ function RegisterComplaintContent() {
         description: `Complaint for ${foundCustomer.name} logged. Expected by ${formattedPromisedDateTime}.`,
       });
 
-      // WhatsApp fallback URL
-      const whatsappUrl = `https://wa.me/91${foundCustomer.mobile}?text=${encodeURIComponent(smsMessage)}`;
-
-      // Redirect or show WhatsApp share option
-      setTimeout(() => {
+      // Normal SMS fallback if automatic background SMS was not available
+      if (!isSmsSent && foundCustomer.mobile) {
+        const cleanPhone = foundCustomer.mobile.replace(/[^0-9]/g, "").slice(-10);
+        const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(smsMessage)}`;
         if (typeof window !== "undefined") {
-          window.open(whatsappUrl, "_blank");
+          window.location.href = smsUrl;
         }
+      }
+
+      setTimeout(() => {
         router.push("/dashboard/complaints-staff");
       }, 1500);
 

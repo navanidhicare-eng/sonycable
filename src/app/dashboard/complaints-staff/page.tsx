@@ -227,21 +227,24 @@ function StaffComplaintsListContent() {
 మీ ఫిర్యాదు (${currentComplaint.complaintCategory || 'సమస్య'}) విజయవంతంగా పరిష్కరించబడింది (RESOLVED).
 మీకు జరిగిన అసౌకర్యానికి చింతిస్తున్నాము.
 - Sony Cable Network`;
-        await sendAutoSms({
+        const isSent = await sendAutoSms({
           phoneNumber: currentComplaint.mobile,
           message: resSmsText,
         });
 
-        // WhatsApp fallback for web browser testing
-        const waUrl = `https://wa.me/91${currentComplaint.mobile}?text=${encodeURIComponent(resSmsText)}`;
-        if (typeof window !== "undefined" && !(window as any).AndroidSmsBridge) {
-          window.open(waUrl, "_blank");
+        // Normal SMS fallback if automatic background SMS was not available
+        if (!isSent) {
+          const cleanPhone = currentComplaint.mobile.replace(/[^0-9]/g, "").slice(-10);
+          const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(resSmsText)}`;
+          if (typeof window !== "undefined") {
+            window.location.href = smsUrl;
+          }
         }
       }
 
       toast({
         title: "Complaint Resolved ✅",
-        description: `Marked resolved for ${currentComplaint.customerName}. SMS & WhatsApp update sent.`,
+        description: `Marked resolved for ${currentComplaint.customerName}. SMS notification sent.`,
       });
 
       setIsResolveDialogOpen(false);
@@ -250,19 +253,16 @@ function StaffComplaintsListContent() {
       console.error("Error resolving complaint:", error);
       toast({
         variant: "destructive",
-        title: "Resolution Failed",
-        description: "Could not update the complaint status.",
+        title: "Failed to Resolve",
+        description: "An error occurred while resolving the complaint.",
       });
     } finally {
       setIsSubmittingResolve(false);
     }
   };
 
-  const resendSmsNotification = (complaint: Complaint) => {
-    if (!complaint.mobile) {
-      toast({ variant: "destructive", title: "No Mobile Number" });
-      return;
-    }
+  const handleResendSMS = async (complaint: Complaint) => {
+    if (!complaint.mobile) return;
     const smsMessage = `ప్రియమైన ${complaint.customerName} గారు,
 మీ ఫిర్యాదు నమోదు చేయబడింది (${complaint.complaint}).
 పరిష్కరించే సమయం: ${complaint.promisedFormatted || `${complaint.promisedDate} ${complaint.promisedTime}`}.
@@ -271,17 +271,26 @@ function StaffComplaintsListContent() {
 
 హెల్ప్‌లైన్: 9010737882
 - Sony Cable Network`;
-    sendAutoSms({
+    const isSent = await sendAutoSms({
       phoneNumber: complaint.mobile,
       message: smsMessage,
     });
+
+    if (!isSent) {
+      const cleanPhone = complaint.mobile.replace(/[^0-9]/g, "").slice(-10);
+      const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(smsMessage)}`;
+      if (typeof window !== "undefined") {
+        window.location.href = smsUrl;
+      }
+    }
+
     toast({
-      title: "SMS Triggered 📱",
+      title: "SMS Sent 📱",
       description: `Sent complaint update SMS to ${complaint.mobile}.`,
     });
   };
 
-  const shareWhatsApp = (complaint: Complaint) => {
+  const sendNormalSMS = (complaint: Complaint) => {
     const msg = `ప్రియమైన ${complaint.customerName} గారు,
 మీ ఫిర్యాదు నమోదు చేయబడింది (${complaint.complaint}).
 పరిష్కరించే సమయం: ${complaint.promisedFormatted || `${complaint.promisedDate} ${complaint.promisedTime}`}.
@@ -290,9 +299,10 @@ function StaffComplaintsListContent() {
 
 హెల్ప్‌లైన్: 9010737882
 - Sony Cable Network`;
-    const url = `https://wa.me/91${complaint.mobile}?text=${encodeURIComponent(msg)}`;
+    const cleanPhone = complaint.mobile.replace(/[^0-9]/g, "").slice(-10);
+    const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`;
     if (typeof window !== "undefined") {
-      window.open(url, "_blank");
+      window.location.href = smsUrl;
     }
   };
 
@@ -407,9 +417,9 @@ function StaffComplaintsListContent() {
                                     <Phone className="h-3.5 w-3.5 mr-1" /> Call
                                   </a>
                                 </Button>
-                                <Button variant="outline" size="sm" className="h-8 px-2 text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30" onClick={() => shareWhatsApp(complaint)}>
-                                  <MessageSquare className="h-3.5 w-3.5 mr-1" /> WhatsApp
-                                </Button>
+                                 <Button variant="outline" size="sm" className="h-8 px-2 text-xs bg-blue-500/10 text-blue-600 border-blue-500/30" onClick={() => sendNormalSMS(complaint)}>
+                                   <MessageSquare className="h-3.5 w-3.5 mr-1" /> Send SMS
+                                 </Button>
                                 {!isCollectionAgent && (
                                   <Button size="sm" className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => openResolveDialog(complaint)}>
                                     <CheckCircle className="h-3.5 w-3.5 mr-1" /> Resolve
@@ -471,9 +481,9 @@ function StaffComplaintsListContent() {
                                           <Phone className="h-3.5 w-3.5 mr-1" /> Call
                                         </a>
                                       </Button>
-                                      <Button variant="outline" size="sm" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30" onClick={() => shareWhatsApp(complaint)}>
-                                        <MessageSquare className="h-3.5 w-3.5 mr-1" /> WhatsApp
-                                      </Button>
+                                       <Button variant="outline" size="sm" className="bg-blue-500/10 text-blue-600 border-blue-500/30" onClick={() => sendNormalSMS(complaint)}>
+                                         <MessageSquare className="h-3.5 w-3.5 mr-1" /> Send SMS
+                                       </Button>
                                       {!isCollectionAgent && (
                                         <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => openResolveDialog(complaint)}>
                                           <CheckCircle className="h-3.5 w-3.5 mr-1" /> Resolve
