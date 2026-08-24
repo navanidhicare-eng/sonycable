@@ -69,11 +69,15 @@ export const getPublicBaseUrl = (): string => {
 
   let origin = window.location.origin;
 
-  // 2. If running on localhost, replace with local LAN IP (e.g. 192.168.1.4) so mobile devices can open the link
-  if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
-    const port = window.location.port ? `:${window.location.port}` : "";
-    const protocol = window.location.protocol;
-    origin = `${protocol}//192.168.1.4${port}`;
+  // 2. If origin is local LAN IP (e.g. 192.168.x.x), localhost, or Capacitor native view,
+  // use the public web domain so customer links work over mobile data anywhere!
+  if (
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    origin.includes("192.168.") ||
+    origin.includes("capacitor://")
+  ) {
+    return "https://sony-cable-network.web.app";
   }
 
   return origin;
