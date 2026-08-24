@@ -77,7 +77,7 @@ export const getPublicBaseUrl = (): string => {
     origin.includes("192.168.") ||
     origin.includes("capacitor://")
   ) {
-    return "https://sony-cable-network.web.app";
+    return "https://sony.navanidhi.org";
   }
 
   return origin;
