@@ -256,29 +256,18 @@ export default function CustomerHistoryClient() {
   const BackButton = () => {
     if (authLoading) return null;
 
-    if (userRole === 'Admin') {
-      return (
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard/customers" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Customers</span>
-          </Link>
-        </Button>
-      );
-    }
+    const targetBackPath = (userRole === "Admin" || userRole === "Network Service Agent")
+      ? "/dashboard/customers"
+      : (userRole === "Dealer" ? "/dashboard/dishtv-customers" : "/dashboard/customers-staff");
 
-    if (userRole && userRole !== 'Admin') {
-      return (
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard/payments-collections" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Collections</span>
-          </Link>
-        </Button>
-      );
-    }
-
-    return null;
+    return (
+      <Button asChild variant="outline" size="sm">
+        <Link href={targetBackPath} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Customer List</span>
+        </Link>
+      </Button>
+    );
   };
 
   if (loading || authLoading) {

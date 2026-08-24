@@ -165,7 +165,10 @@ export default function EditCustomerClient() {
         title: "Customer Updated",
         description: `${data.customerName}'s details have been successfully updated.`,
       });
-      router.push("/dashboard/customers");
+      const targetBackPath = (userRole === "Admin" || userRole === "Network Service Agent")
+        ? "/dashboard/customers"
+        : (userRole === "Dealer" ? "/dashboard/dishtv-customers" : "/dashboard/customers-staff");
+      router.push(targetBackPath);
 
     } catch (error: any) {
         console.error("Error updating customer: ", error);
@@ -181,13 +184,16 @@ export default function EditCustomerClient() {
 
   const isNetworkServiceAgent = userRole === "Network Service Agent";
   const isLoading = authLoading || isSubmitting || pageLoading;
+  const targetBackPath = (userRole === "Admin" || userRole === "Network Service Agent")
+    ? "/dashboard/customers"
+    : (userRole === "Dealer" ? "/dashboard/dishtv-customers" : "/dashboard/customers-staff");
 
   return (
     <main className="min-h-screen w-full font-body text-foreground">
       <div className="container mx-auto flex flex-col items-center p-4 py-8 md:p-12">
         <div className="w-full max-w-2xl mb-4">
              <Button asChild variant="outline" size="sm">
-                <Link href="/dashboard/customers" className="flex items-center gap-2">
+                <Link href={targetBackPath} className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" />
                     <span>Back to Customer List</span>
                 </Link>

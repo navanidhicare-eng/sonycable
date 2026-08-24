@@ -5,12 +5,16 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -40,7 +44,7 @@ import {
   Notebook,
   GitBranch,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -58,6 +62,35 @@ function DashboardLayout({
   const pathname = usePathname();
   const { toast } = useToast();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => {
+        setIsOnline(true);
+        toast({
+          title: "🌐 Online Mode Restored",
+          description: "Reconnected to internet. Syncing local offline updates to cloud...",
+        });
+      };
+      const handleOffline = () => {
+        setIsOnline(false);
+        toast({
+          variant: "destructive",
+          title: "⚡ Offline Mode Active",
+          description: "Working offline. Customer data & collections are stored in local offline cache.",
+        });
+      };
+
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!authLoading && userStatus === 'inactive' && pathname !== '/dashboard') {
@@ -118,389 +151,215 @@ function DashboardLayout({
   // 🚫 If viewing Customer Passbook Ledger (/dashboard/customers/[id]/history), hide Admin Sidebar
   const isCustomerHistoryPage = pathname?.includes('/customers/') && pathname?.includes('/history');
 
+  const isLinkActive = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    return pathname === href || pathname?.startsWith(href + "/");
+  };
+
+  const renderNavItem = (href: string, icon: React.ReactNode, label: string, badge?: string) => {
+    const active = isLinkActive(href);
+    return (
+      <SidebarMenuItem key={href}>
+        <SidebarMenuButton
+          asChild
+          isActive={active}
+          onClick={handleLinkClick}
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 ${
+            active
+              ? "bg-gradient-to-r from-orange-500/25 via-amber-500/15 to-orange-500/5 text-orange-400 font-extrabold border-l-4 border-orange-500 shadow-xs"
+              : "text-slate-300 hover:bg-slate-800/60 hover:text-white font-medium"
+          }`}
+        >
+          <Link href={href} className="flex items-center gap-2.5 w-full">
+            <div className={`p-1.5 rounded-lg transition-colors shrink-0 ${
+              active
+                ? "bg-orange-500/20 text-orange-400"
+                : "bg-slate-800/80 text-slate-400 group-hover:text-white"
+            }`}>
+              {icon}
+            </div>
+            <span className="text-xs sm:text-sm tracking-tight flex-1 truncate">{label}</span>
+            {badge && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-orange-500/20 text-orange-300 font-bold border border-orange-500/30">
+                {badge}
+              </span>
+            )}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
   if (isCustomerHistoryPage) {
     return <div className="min-h-screen w-full bg-background">{children}</div>;
   }
 
   return (
     <>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2.5 px-2 py-1">
-            <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-red-600 shadow-md text-white shrink-0">
-              <Tv className="h-4 w-4 text-white" />
+      <Sidebar className="border-r border-slate-800/80 bg-slate-950 text-slate-100">
+        <SidebarHeader className="p-3 border-b border-slate-800/80">
+          <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800/80 shadow-md">
+            <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-red-600 shadow-md text-white shrink-0">
+              <Tv className="h-5 w-5 text-white" />
+              <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse" />
             </div>
             <div className="flex flex-col leading-tight overflow-hidden">
               <span className="text-sm font-black tracking-tight text-slate-100 dark:text-white truncate" title={shopName || "Navanidhi Digital"}>
                 {shopName || "Navanidhi Digital"}
               </span>
-              <span className="text-[10px] font-bold text-orange-500 flex items-center gap-1">
+              <span className="text-[10px] font-extrabold text-orange-400 flex items-center gap-1">
                 {userRole === "Retailer" ? "DishTV Retailer Portal" : userRole === "Dealer" ? "DishTV Dealer Portal" : "Official dish/tv Partner"}
               </span>
             </div>
           </div>
         </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild onClick={handleLinkClick}>
-                <Link href="/dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-              {!authLoading && userRole && userRole !== 'Admin' && userStatus !== 'inactive' && (
-                <>
-                 {isRetailer ? (
-                   <>
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/recharge-offers">
-                           <Gift />
-                           <span>Recharge Offers</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
 
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/new-connection-offers">
-                           <Tv />
-                           <span>New Connection Offers</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
+        <SidebarContent className="px-2 py-3 space-y-4">
+          {/* GROUP 1: OVERVIEW */}
+          <SidebarGroup className="p-0">
+            <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+              Overview
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {renderNavItem("/dashboard", <LayoutDashboard className="h-4 w-4" />, "Dashboard")}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/retailer-commission">
-                           <IndianRupee />
-                           <span>Retailer Commission</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
+          {/* GROUP 2: STAFF / DEALER / RETAILER OPERATIONS */}
+          {!authLoading && userRole && userRole !== "Admin" && userStatus !== "inactive" && (
+            <SidebarGroup className="p-0">
+              <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                Operations & Services
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {isRetailer ? (
+                    <>
+                      {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
+                      {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
+                      {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
+                      {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
+                    </>
+                  ) : isDealer ? (
+                    <>
+                      {renderNavItem("/dashboard/dishtv-customers", <Tv className="h-4 w-4" />, "DishTV Customers")}
+                      {renderNavItem("/dashboard/payment-collections", <CreditCard className="h-4 w-4" />, "Payment Collection")}
+                      {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
+                    </>
+                  ) : (
+                    <>
+                      {!isCollectionAgent && (
+                        <>
+                          {renderNavItem("/dashboard/customers-staff", <Users className="h-4 w-4" />, "Customers")}
+                          {!isNetworkServiceAgent && renderNavItem("/dashboard/recharge", <CreditCard className="h-4 w-4" />, "Recharge")}
+                          {renderNavItem("/dashboard/request-recharge", <Send className="h-4 w-4" />, "Recharge Requests")}
+                        </>
+                      )}
+                      {renderNavItem("/dashboard/payments-collections", <IndianRupee className="h-4 w-4" />, "Payments Collections")}
+                      {renderNavItem("/dashboard/my-collection-history", <History className="h-4 w-4" />, "My Collection History")}
+                      {renderNavItem("/dashboard/reminders-staff", <BellRing className="h-4 w-4" />, "Reminders")}
+                      {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
+                      {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
+                      {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
+                      {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
+                    </>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
 
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/marketplace">
-                           <ShoppingBag />
-                           <span>Marketplace</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
-                   </>
-                 ) : isDealer ? (
-                   <>
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/dishtv-customers">
-                           <Tv />
-                           <span>DishTV Customers</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
+          {/* GROUP 3: ADMIN MANAGEMENT */}
+          {!authLoading && userRole === "Admin" && (
+            <>
+              <SidebarGroup className="p-0">
+                <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  Customer Operations
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {renderNavItem("/dashboard/customers", <Users className="h-4 w-4" />, "Customers")}
+                    {renderNavItem("/dashboard/dishtv-customers", <Tv className="h-4 w-4" />, "DishTV Customers")}
+                    {renderNavItem("/dashboard/recharge", <CreditCard className="h-4 w-4" />, "Recharge")}
+                    {renderNavItem("/dashboard/transactions", <History className="h-4 w-4" />, "Transactions")}
+                    {renderNavItem("/dashboard/collection", <IndianRupee className="h-4 w-4" />, "Collection")}
+                    {renderNavItem("/dashboard/reminders", <BellRing className="h-4 w-4" />, "Reminders")}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
 
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/payment-collections">
-                           <CreditCard />
-                           <span>Payment Collection</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
+              <SidebarGroup className="p-0">
+                <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  Network & Management
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {renderNavItem("/dashboard/dishtv-dealers", <Store className="h-4 w-4" />, "DishTV Dealers")}
+                    {renderNavItem("/dashboard/dishtv-retailers", <ShoppingBag className="h-4 w-4" />, "DishTV Retailers")}
+                    {renderNavItem("/dashboard/staff", <UserPlus className="h-4 w-4" />, "Staff")}
+                    {renderNavItem("/dashboard/roles", <Shield className="h-4 w-4" />, "Roles")}
+                    {renderNavItem("/dashboard/staff-wallets", <Wallet className="h-4 w-4" />, "Staff Wallets")}
+                    {renderNavItem("/dashboard/packages", <Package className="h-4 w-4" />, "Packages")}
+                    {renderNavItem("/dashboard/areas", <Map className="h-4 w-4" />, "Areas")}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
 
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/marketplace">
-                           <ShoppingBag />
-                           <span>Marketplace</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
-                   </>
-                 ) : (
-                   <>
-                     {!isCollectionAgent && (
-                       <>
-                          <SidebarMenuItem>
-                             <SidebarMenuButton asChild onClick={handleLinkClick}>
-                                 <Link href="/dashboard/customers-staff">
-                                 <Users />
-                                 <span>Customers</span>
-                                 </Link>
-                             </SidebarMenuButton>
-                         </SidebarMenuItem>
-                         {!isNetworkServiceAgent && (
-                             <SidebarMenuItem>
-                                 <SidebarMenuButton asChild onClick={handleLinkClick}>
-                                     <Link href="/dashboard/recharge">
-                                     <CreditCard />
-                                     <span>Recharge</span>
-                                     </Link>
-                                 </SidebarMenuButton>
-                             </SidebarMenuItem>
-                         )}
-                          <SidebarMenuItem>
-                             <SidebarMenuButton asChild onClick={handleLinkClick}>
-                                 <Link href="/dashboard/request-recharge">
-                                     <Send />
-                                     <span>Recharge Requests</span>
-                                 </Link>
-                             </SidebarMenuButton>
-                         </SidebarMenuItem>
-                       </>
-                     )}
-                     <SidebarMenuItem>
-                         <SidebarMenuButton asChild onClick={handleLinkClick}>
-                             <Link href="/dashboard/payments-collections">
-                             <IndianRupee />
-                             <span>Payments Collections</span>
-                             </Link>
-                         </SidebarMenuButton>
-                     </SidebarMenuItem>
-                     <SidebarMenuItem>
-                         <SidebarMenuButton asChild onClick={handleLinkClick}>
-                             <Link href="/dashboard/my-collection-history">
-                             <History />
-                             <span>My Collection History</span>
-                             </Link>
-                         </SidebarMenuButton>
-                     </SidebarMenuItem>
-                      <SidebarMenuItem>
-                         <SidebarMenuButton asChild onClick={handleLinkClick}>
-                             <Link href="/dashboard/reminders-staff">
-                             <BellRing />
-                             <span>Reminders</span>
-                             </Link>
-                         </SidebarMenuButton>
-                     </SidebarMenuItem>
-
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/recharge-offers">
-                           <Gift />
-                           <span>Recharge Offers</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
-
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/new-connection-offers">
-                           <Tv />
-                           <span>New Connection Offers</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
-
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/retailer-commission">
-                           <IndianRupee />
-                           <span>Retailer Commission</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
-
-                     <SidebarMenuItem>
-                       <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/marketplace">
-                           <ShoppingBag />
-                           <span>Marketplace</span>
-                         </Link>
-                       </SidebarMenuButton>
-                     </SidebarMenuItem>
-                   </>
-                 )}
-                </>
-             )}
-             {!authLoading && userRole === 'Admin' && (
-               <>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/customers">
-                       <Users />
-                       <span>Customers</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/dishtv-customers">
-                       <Tv />
-                       <span>DishTV Customers</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/dishtv-dealers">
-                       <Store />
-                       <span>DishTV Dealers</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/dishtv-retailers">
-                       <ShoppingBag />
-                       <span>DishTV Retailers</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/staff">
-                       <UserPlus />
-                       <span>Staff</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                  <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/roles">
-                       <Shield />
-                       <span>Roles</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                  <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/staff-wallets">
-                       <Wallet />
-                       <span>Staff Wallets</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/recharge">
-                       <CreditCard />
-                       <span>Recharge</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                  <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/transactions">
-                       <History />
-                       <span>Transactions</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                  <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/collection">
-                         <IndianRupee />
-                         <span>Collection</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-                  <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/packages">
-                       <Package />
-                       <span>Packages</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/areas">
-                       <Map />
-                       <span>Areas</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/reminders">
-                       <BellRing />
-                       <span>Reminders</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/recharge-offers">
-                         <Gift />
-                         <span>Recharge Offers</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/new-connection-offers">
-                         <Tv />
-                         <span>New Connection Offers</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/retailer-commission">
-                         <IndianRupee />
-                         <span>Retailer Commission</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/marketplace">
-                         <ShoppingBag />
-                         <span>Marketplace</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/offers">
-                         <Megaphone />
-                         <span>Offers</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-                  <SidebarMenuItem>
-                     <SidebarMenuButton asChild onClick={handleLinkClick}>
-                         <Link href="/dashboard/announcements">
-                         <Megaphone />
-                         <span>Announcements</span>
-                         </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild onClick={handleLinkClick}>
-                     <Link href="/dashboard/business-directory">
-                       <Store />
-                       <span>Local Business Directory</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-               </>
-             )}
-          </SidebarMenu>
+              <SidebarGroup className="p-0">
+                <SidebarGroupLabel className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  Offers & Directory
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
+                    {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
+                    {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
+                    {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
+                    {renderNavItem("/dashboard/offers", <Megaphone className="h-4 w-4" />, "Offers")}
+                    {renderNavItem("/dashboard/announcements", <Megaphone className="h-4 w-4" />, "Announcements")}
+                    {renderNavItem("/dashboard/business-directory", <Store className="h-4 w-4" />, "Local Business Directory")}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </>
+          )}
         </SidebarContent>
-        <SidebarFooter>
+
+        <SidebarFooter className="p-3 pb-20 sm:pb-12 border-t border-slate-800/80 mt-auto bg-slate-950">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={handleLogout}>
-                  <LogOut />
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-extrabold text-xs transition-all shadow-xs group cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <LogOut className="h-4 w-4 text-red-400 group-hover:scale-110 transition-transform" />
                   <span>Logout</span>
-              </SidebarMenuButton>
+                </div>
+                <span className="text-[10px] bg-red-500/20 px-2 py-0.5 rounded-md text-red-300 uppercase tracking-wider font-bold">
+                  Exit
+                </span>
+              </button>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
+        {!isOnline && (
+          <div className="bg-amber-500/20 border-b border-amber-500/40 text-amber-300 text-xs px-4 py-2 flex items-center justify-between font-bold backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+              <span>⚡ Working Offline • ఇంటర్నెట్ లేదు (డేటా లోకల్ గా సేవ్ అవుతుంది)</span>
+            </div>
+            <span className="text-[10px] bg-amber-500/30 px-2.5 py-0.5 rounded-md text-amber-200 border border-amber-500/40">
+              Offline Cache Active
+            </span>
+          </div>
+        )}
         <div className="flex h-14 items-center border-b p-2 md:hidden">
             <SidebarTrigger />
         </div>

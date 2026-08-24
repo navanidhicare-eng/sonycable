@@ -1,10 +1,14 @@
 
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  enableIndexedDbPersistence
+} from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,6 +24,33 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn("Firebase Auth setPersistence error:", err);
+  });
+}
+
+let db: ReturnType<typeof getFirestore>;
+
+if (typeof window !== "undefined") {
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch (err) {
+    console.warn("initializeFirestore persistentLocalCache fallback:", err);
+    db = getFirestore(app);
+    enableIndexedDbPersistence(db).catch((pErr) => {
+      console.warn("enableIndexedDbPersistence error:", pErr);
+    });
+  }
+} else {
+  db = getFirestore(app);
+}
 
 export { app, auth, db };
+
+

@@ -55,6 +55,7 @@ import {
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   email: z.string().min(1, { message: "Email or Mobile Number is required." }),
@@ -84,8 +85,16 @@ interface PublicCustomerResult {
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user: currentUser, loading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Auto-redirect already authenticated users directly to Dashboard so they are never logged out unexpectedly
+  useEffect(() => {
+    if (!authLoading && currentUser) {
+      router.push("/dashboard");
+    }
+  }, [currentUser, authLoading, router]);
 
   // Public Home Search State (Requires BOTH Mobile & VC Number for security)
   const [homeMobileTerm, setHomeMobileTerm] = useState("");
@@ -392,8 +401,8 @@ export default function LoginPage() {
       {/* Main Hero & Login Section */}
       <main className="max-w-7xl mx-auto px-4 lg:px-12 py-12 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* Left Column: Hero Content & Graphic Banner */}
-          <div className="lg:col-span-7 space-y-8">
+          {/* Left Column: Hero Content & Graphic Banner (Hidden on Mobile for clean Android login view) */}
+          <div className="hidden lg:block lg:col-span-7 space-y-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-orange-400" />
               <span>Navanidhi Digital System — Official DishTV Partner</span>
@@ -633,8 +642,8 @@ export default function LoginPage() {
 
           {/* Right Column: DishTV STB Showcase & Glassmorphic Login Portal Card */}
           <div className="lg:col-span-5 space-y-6">
-            {/* DishTV SMRT Hub STB & Satellite Dish Display Card */}
-            <div className="relative rounded-3xl overflow-hidden border border-orange-500/40 bg-gradient-to-br from-slate-900/95 via-slate-950 to-slate-900 p-5 shadow-2xl backdrop-blur-xl group">
+            {/* DishTV SMRT Hub STB & Satellite Dish Display Card (Hidden on Mobile) */}
+            <div className="hidden lg:block relative rounded-3xl overflow-hidden border border-orange-500/40 bg-gradient-to-br from-slate-900/95 via-slate-950 to-slate-900 p-5 shadow-2xl backdrop-blur-xl group">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-[10px] px-2.5 py-0.5 uppercase tracking-wider shadow-md shadow-orange-500/20">
@@ -771,8 +780,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Feature Showcase Grid Section */}
-        <section className="mt-20 pt-12 border-t border-slate-800/80">
+        {/* Feature Showcase Grid Section (Hidden on Mobile) */}
+        <section className="hidden lg:block mt-20 pt-12 border-t border-slate-800/80">
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Powerful DishTV Operator Capabilities
@@ -834,8 +843,8 @@ export default function LoginPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 px-4 lg:px-12 text-slate-400 text-xs mt-16">
+      {/* Footer (Hidden on Mobile) */}
+      <footer className="hidden lg:block border-t border-slate-800/80 bg-slate-950 py-8 px-4 lg:px-12 text-slate-400 text-xs mt-16">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">Navanidhi Digital System</span>

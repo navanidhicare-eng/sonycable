@@ -116,14 +116,13 @@ export function useAuth() {
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
-          setUserRole(null);
-          setShopName(null);
-          setUserStatus('active');
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("userRole");
-            localStorage.removeItem("shopName");
-            localStorage.removeItem("userStatus");
-          }
+          // Preserve cached user role so user is not logged out during temporary network drop
+          const fallbackRole = storedRole || 'Staff';
+          const fallbackShop = storedShopName || currentUser.displayName || currentUser.email?.split("@")[0] || 'User';
+          const fallbackStatus = storedStatus || 'active';
+          setUserRole(fallbackRole);
+          setShopName(fallbackShop);
+          setUserStatus(fallbackStatus);
         }
       } else {
         // User is logged out
