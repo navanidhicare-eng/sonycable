@@ -5,12 +5,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, MessageCircle, MessageSquare, Copy, Check, Sparkles } from "lucide-react";
+import { CheckCircle2, MessageCircle, MessageSquare, Copy, Check, Send, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -170,6 +169,7 @@ export default function PaymentSuccessReceiptModal({
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [liveCustomMsg, setLiveCustomMsg] = useState<string>("");
+  const [autoSmsSent, setAutoSmsSent] = useState<boolean>(false);
 
   useEffect(() => {
     try {
@@ -209,9 +209,19 @@ export default function PaymentSuccessReceiptModal({
 
   useEffect(() => {
     if (isOpen && mobile && receiptText) {
-      sendAutoSms({ phoneNumber: mobile, message: receiptText });
+      sendAutoSms({ phoneNumber: mobile, message: receiptText }).then((success) => {
+        if (success) {
+          setAutoSmsSent(true);
+          toast({
+            title: "SMS Sent Successfully",
+            description: `Direct SMS auto-sent to customer mobile: ${mobile}`,
+          });
+        }
+      });
+    } else {
+      setAutoSmsSent(false);
     }
-  }, [isOpen, mobile, receiptText]);
+  }, [isOpen, mobile, receiptText, toast]);
 
   if (!activeData) return null;
 
@@ -233,11 +243,17 @@ export default function PaymentSuccessReceiptModal({
     });
   };
 
-  const handleSMS = () => {
-    openSmsReceipt(mobile, receiptText);
-    toast({
-      title: "Opening SMS App",
-      description: `Redirecting to SMS for ${customerName}...`,
+  const handleManualSMS = () => {
+    sendAutoSms({ phoneNumber: mobile, message: receiptText }).then((success) => {
+      if (success) {
+        setAutoSmsSent(true);
+        toast({
+          title: "SMS Sent",
+          description: `Direct background SMS sent to ${mobile}`,
+        });
+      } else {
+        openSmsReceipt(mobile, receiptText);
+      }
     });
   };
 
@@ -264,8 +280,16 @@ export default function PaymentSuccessReceiptModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Auto SMS Status Banner */}
+        {autoSmsSent ? (
+          <div className="flex items-center gap-2 p-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+            <Send className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>మొబైల్‌కి SMS ఆటోమేటిక్‌గా పంపబడింది ({mobile})</span>
+          </div>
+        ) : null}
+
         {/* Receipt Text Preview Card */}
-        <div className="my-3 p-3.5 bg-slate-900 text-slate-100 rounded-lg font-mono text-xs leading-relaxed relative border border-slate-800">
+        <div className="my-2 p-3.5 bg-slate-900 text-slate-100 rounded-lg font-mono text-xs leading-relaxed relative border border-slate-800">
           <button
             onClick={handleCopyReceipt}
             className="absolute top-2.5 right-2.5 p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
@@ -289,11 +313,11 @@ export default function PaymentSuccessReceiptModal({
           </Button>
 
           <Button
-            onClick={handleSMS}
+            onClick={handleManualSMS}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 text-sm shadow-md flex items-center justify-center gap-2"
           >
             <MessageSquare className="w-5 h-5" />
-            Send SMS Receipt
+            Resend Direct SMS
           </Button>
 
           <Button
