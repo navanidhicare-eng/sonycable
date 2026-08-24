@@ -64,7 +64,7 @@ export default function RequestRechargeForCustomerClient() {
   const requestType: RequestType = (customer?.expiryDate && customer.expiryDate.toDate() > new Date()) ? 'Renewal' : 'Recharge';
 
   useEffect(() => {
-    if (authLoading || !user || !customerId) {
+    if (authLoading || !user || !customerId || customerId === 'placeholder') {
       if (!authLoading) setLoading(false);
       return;
     }

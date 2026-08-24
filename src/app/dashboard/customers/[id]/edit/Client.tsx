@@ -84,7 +84,7 @@ export default function EditCustomerClient() {
   });
 
   useEffect(() => {
-    if (!customerId || !user) return;
+    if (!customerId || customerId === "placeholder" || !user) return;
 
     const fetchCustomerData = async () => {
         setPageLoading(true);
@@ -105,7 +105,8 @@ export default function EditCustomerClient() {
                 });
             } else {
                 toast({ variant: "destructive", title: "Not Found", description: "Customer not found."});
-                router.push("/dashboard/customers");
+                const targetList = userRole === 'Admin' ? "/dashboard/customers" : "/dashboard/customers-staff";
+                router.push(targetList);
             }
         } catch (error) {
             console.error("Error fetching customer data: ", error);
@@ -116,28 +117,39 @@ export default function EditCustomerClient() {
     };
     
     fetchCustomerData();
-  }, [customerId, user, form, router, toast]);
+  }, [customerId, user, userRole, form, router, toast]);
 
   useEffect(() => {
     if (authLoading || !user) return;
 
-    const areasQuery = query(collection(db, "areas"), where("userId", "==", user.uid));
-    const unsubscribeAreas = onSnapshot(areasQuery, (snapshot) => {
-        const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
-        setAreas(areasData);
-    }, (error) => {
-        console.error("Error fetching areas: ", error);
-        toast({
-            variant: "destructive",
-            title: "Failed to fetch areas",
-            description: "Could not load areas for selection.",
-        });
-    });
+    const fetchAreas = async () => {
+      let targetUserId = user.uid;
+      if (userRole !== 'Admin') {
+        try {
+          const staffQuery = query(collection(db, "staff"), where("uid", "==", user.uid));
+          const staffSnap = await getDocs(staffQuery);
+          if (!staffSnap.empty && staffSnap.docs[0].data().adminId) {
+            targetUserId = staffSnap.docs[0].data().adminId;
+          }
+        } catch (e) {
+          console.warn("Could not fetch staff adminId for areas:", e);
+        }
+      }
 
-    return () => {
-      unsubscribeAreas();
+      const areasQuery = query(collection(db, "areas"), where("userId", "==", targetUserId));
+      const unsubscribeAreas = onSnapshot(areasQuery, (snapshot) => {
+          const areasData = snapshot.docs.map(doc => ({ value: doc.data().name, label: doc.data().name }));
+          setAreas(areasData);
+      }, (error) => {
+          console.error("Error fetching areas: ", error);
+      });
+      return unsubscribeAreas;
     };
-  }, [user, authLoading, toast]);
+
+    let unsub: (() => void) | undefined;
+    fetchAreas().then(u => { unsub = u; });
+    return () => { if (unsub) unsub(); };
+  }, [user, userRole, authLoading, toast]);
 
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);

@@ -152,8 +152,8 @@ export default function CustomerHistoryClient() {
   }, [rechargeHistory, paymentHistory, customer?.balanceAmount]);
 
   useEffect(() => {
-    if (authLoading || !customerId) {
-      if (!authLoading) setLoading(false);
+    if (authLoading || !customerId || customerId === 'placeholder') {
+      if (!authLoading && (!customerId || customerId === 'placeholder')) setLoading(false);
       return;
     }
 
