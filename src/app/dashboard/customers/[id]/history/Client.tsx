@@ -70,7 +70,8 @@ interface PassbookTransaction extends Transaction {
 export default function CustomerHistoryClient() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const customerId = (params?.id as string) || searchParams?.get('id') || '';
+  const rawParamId = params?.id as string;
+  const customerId = (rawParamId && rawParamId !== "placeholder" ? rawParamId : searchParams?.get('id')) || '';
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();

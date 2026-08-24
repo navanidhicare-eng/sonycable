@@ -422,7 +422,7 @@ export default function CustomersPage() {
                         <div className="flex items-start justify-between gap-2 border-b pb-2">
                           <div>
                             <Link
-                              href={`/dashboard/customers/${customer.id}/history`}
+                              href={`/dashboard/customers/history?id=${customer.id}`}
                               className="font-bold text-sm text-primary hover:underline flex items-center gap-1.5"
                             >
                               {customer.name}
@@ -433,7 +433,7 @@ export default function CustomersPage() {
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
-                              <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                              <Link href={`/dashboard/customers/edit?id=${customer.id}`}>
                                 <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                               </Link>
                             </Button>
@@ -485,7 +485,7 @@ export default function CustomersPage() {
                       filteredCustomers.map((customer) => (
                           <TableRow key={customer.id}>
                           <TableCell className="font-medium">
-                              <Link href={`/dashboard/customers/${customer.id}/history`} className="hover:underline text-primary">
+                              <Link href={`/dashboard/customers/history?id=${customer.id}`} className="hover:underline text-primary">
                               {customer.name}
                               </Link>
                           </TableCell>
@@ -496,7 +496,7 @@ export default function CustomersPage() {
                           <TableCell>{formatDate(customer.lastRechargeDate)}</TableCell>
                           <TableCell className="flex gap-1">
                               <Button variant="ghost" size="icon" asChild>
-                                  <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                  <Link href={`/dashboard/customers/edit?id=${customer.id}`}>
                                       <Pencil className="h-4 w-4" />
                                   </Link>
                               </Button>

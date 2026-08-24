@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Save, Loader2, CalendarIcon, ArrowLeft } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
@@ -64,7 +64,9 @@ export default function EditCustomerClient() {
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
-  const customerId = params.id as string;
+  const searchParams = useSearchParams();
+  const rawParamId = params?.id as string;
+  const customerId = (rawParamId && rawParamId !== "placeholder" ? rawParamId : searchParams?.get('id')) || '';
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);

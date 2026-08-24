@@ -221,7 +221,7 @@ export default function StaffCustomersPage() {
                         <div className="flex items-start justify-between gap-2 border-b pb-2">
                           <div>
                             <Link
-                              href={`/dashboard/customers/${customer.id}/history`}
+                              href={`/dashboard/customers/history?id=${customer.id}`}
                               className="font-bold text-sm text-primary hover:underline flex items-center gap-1.5"
                             >
                               {customer.name}
@@ -233,13 +233,13 @@ export default function StaffCustomersPage() {
                           <div className="flex items-center gap-1 shrink-0">
                             {!isNetworkServiceAgent && (
                               <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
-                                <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                                <Link href={`/dashboard/customers/edit?id=${customer.id}`}>
                                   <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                                 </Link>
                               </Button>
                             )}
                             <Button variant="default" size="sm" className="h-7 px-2 text-xs bg-amber-600 hover:bg-amber-700 text-white" asChild>
-                              <Link href={`/dashboard/customers/${customer.id}/history`}>
+                              <Link href={`/dashboard/customers/history?id=${customer.id}`}>
                                 <History className="h-3.5 w-3.5 mr-1" /> Passbook
                               </Link>
                             </Button>
