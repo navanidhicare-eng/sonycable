@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Loader2, Pencil, History } from "lucide-react";
+import { Search, Loader2, Pencil, History, MessageSquareWarning } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, Timestamp, getDocs } from "firebase/firestore";
@@ -303,7 +303,12 @@ export default function StaffCustomersPage() {
                                         </Link>
                                     </Button>
                                 )}
-                                 <Button variant="ghost" size="icon" asChild>
+                                 <Button variant="ghost" size="icon" asChild title="Register Complaint">
+                                    <Link href={`/dashboard/complaints-staff/add?id=${customer.id}`}>
+                                        <MessageSquareWarning className="h-4 w-4 text-amber-600" />
+                                    </Link>
+                                </Button>
+                                 <Button variant="ghost" size="icon" asChild title="View History">
                                     <Link href={`/dashboard/customers/history?id=${customer.id}`}>
                                         <History className="h-4 w-4" />
                                     </Link>

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle } from "lucide-react";
+import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -2298,6 +2298,21 @@ export default function DashboardPage() {
         <RechargeRequestsCard canApprove={true} />
         <SettlementRequestsCard />
         <AdminCollectionCard />
+        <Card className="bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800 animate-slide-in-fade-in cursor-pointer hover:shadow-md transition-all">
+          <Link href="/dashboard/complaints-staff">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                Pending Complaints
+              </CardTitle>
+              <Badge className="bg-amber-600 text-white font-black text-xs">{pendingComplaints.length}</Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-black text-amber-800 dark:text-amber-300">{pendingComplaints.length}</div>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-semibold">పెండింగ్ ఫిర్యాదులు →</p>
+            </CardContent>
+          </Link>
+        </Card>
         <Card className="bg-red-100 text-red-800 animate-slide-in-fade-in">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
@@ -2369,7 +2384,7 @@ export default function DashboardPage() {
        <div className="space-y-3 sm:space-y-6 animate-slide-in-fade-in">
 
          {/* 📊 STATS ROW (Rendered FIRST on Mobile) */}
-         <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
+         <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
            <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/30 p-2.5 sm:p-4 shadow-sm">
              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
                <CardTitle className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400 truncate">Total Outstanding</CardTitle>
@@ -2379,6 +2394,24 @@ export default function DashboardPage() {
                <div className="text-base sm:text-2xl font-bold text-red-700 dark:text-red-400 truncate">₹{totalPendingForStaff.toLocaleString()}</div>
                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">మొత్తం బకాయి</p>
              </CardContent>
+           </Card>
+
+           <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2.5 sm:p-4 shadow-sm hover:border-amber-600 transition-all cursor-pointer">
+             <Link href="/dashboard/complaints-staff" className="block">
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+                 <CardTitle className="text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-400 truncate">Pending Complaints</CardTitle>
+                 <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 shrink-0" />
+               </CardHeader>
+               <CardContent className="p-0">
+                 <div className="text-base sm:text-2xl font-black text-amber-700 dark:text-amber-400 truncate flex items-center justify-between">
+                   <span>{pendingComplaints.length}</span>
+                   {pendingComplaints.length > 0 && (
+                     <Badge className="bg-amber-600 text-white text-[10px] px-1.5 py-0 font-bold">🚨 Urgent</Badge>
+                   )}
+                 </div>
+                 <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">పెండింగ్ ఫిర్యాదులు</p>
+               </CardContent>
+             </Link>
            </Card>
 
            <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/30 p-2.5 sm:p-4 shadow-sm">
@@ -2403,13 +2436,13 @@ export default function DashboardPage() {
              </CardContent>
            </Card>
 
-           <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2.5 sm:p-4 shadow-sm">
+           <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-950/30 p-2.5 sm:p-4 shadow-sm">
              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-               <CardTitle className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 truncate">Commission Wallet</CardTitle>
-               <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 shrink-0" />
+               <CardTitle className="text-xs sm:text-sm font-medium text-purple-700 dark:text-purple-400 truncate">Commission Wallet</CardTitle>
+               <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
              </CardHeader>
              <CardContent className="p-0">
-               <div className="text-base sm:text-2xl font-bold text-amber-700 dark:text-amber-400 truncate">₹{commissionAmount.toLocaleString()}</div>
+               <div className="text-base sm:text-2xl font-bold text-purple-700 dark:text-purple-400 truncate">₹{commissionAmount.toLocaleString()}</div>
                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ నెల కమీషన్</p>
              </CardContent>
            </Card>

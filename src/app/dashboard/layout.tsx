@@ -262,6 +262,7 @@ function DashboardLayout({
                       {renderNavItem("/dashboard/payments-collections", <IndianRupee className="h-4 w-4" />, "Payments Collections")}
                       {renderNavItem("/dashboard/my-collection-history", <History className="h-4 w-4" />, "My Collection History")}
                       {renderNavItem("/dashboard/reminders-staff", <BellRing className="h-4 w-4" />, "Reminders")}
+                      {renderNavItem("/dashboard/complaints-staff", <MessageSquareWarning className="h-4 w-4" />, "Complaints Management")}
                       {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
                       {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
                       {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
@@ -288,6 +289,7 @@ function DashboardLayout({
                     {renderNavItem("/dashboard/transactions", <History className="h-4 w-4" />, "Transactions")}
                     {renderNavItem("/dashboard/collection", <IndianRupee className="h-4 w-4" />, "Collection")}
                     {renderNavItem("/dashboard/reminders", <BellRing className="h-4 w-4" />, "Reminders")}
+                    {renderNavItem("/dashboard/complaints-staff", <MessageSquareWarning className="h-4 w-4" />, "Complaints Management")}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>

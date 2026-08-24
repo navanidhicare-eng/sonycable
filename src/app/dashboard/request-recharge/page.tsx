@@ -127,13 +127,41 @@ export default function StaffRequestRechargePage() {
         const querySnapshot = await getDocs(customerQuery);
         const allCustomers = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Customer));
         
-        const customer = allCustomers.find(
-             (c) =>
-                c.name.toLowerCase().includes(searchTermLower) ||
-                c.mobile.includes(searchTerm) ||
-                c.stbId.toLowerCase().includes(searchTermLower) ||
-                c.customerId.toLowerCase().includes(searchTermLower)
+        const term = searchTerm.trim().toLowerCase();
+
+        // Priority 1: Exact match on Customer ID or Firestore Doc ID
+        let customer = allCustomers.find(c => 
+          (c.customerId && String(c.customerId).trim().toLowerCase() === term) ||
+          (c.id && c.id.toLowerCase() === term)
         );
+
+        // Priority 2: Exact match on STB ID
+        if (!customer) {
+          customer = allCustomers.find(c => c.stbId && String(c.stbId).trim().toLowerCase() === term);
+        }
+
+        // Priority 3: Exact match on Mobile number
+        if (!customer) {
+          customer = allCustomers.find(c => c.mobile && c.mobile.trim() === term);
+        }
+
+        // Priority 4: Partial match on Customer ID or STB ID
+        if (!customer) {
+          customer = allCustomers.find(c => 
+            (c.customerId && String(c.customerId).toLowerCase().includes(term)) ||
+            (c.stbId && String(c.stbId).toLowerCase().includes(term))
+          );
+        }
+
+        // Priority 5: Partial match on Customer Name
+        if (!customer) {
+          customer = allCustomers.find(c => c.name && c.name.toLowerCase().includes(term));
+        }
+
+        // Priority 6: Mobile number contains search term (last resort)
+        if (!customer) {
+          customer = allCustomers.find(c => c.mobile && c.mobile.includes(term));
+        }
 
         if (customer) {
             setFoundCustomer(customer);
