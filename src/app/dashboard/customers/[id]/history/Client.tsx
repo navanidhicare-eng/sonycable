@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, usePathname } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -33,6 +33,12 @@ import {
   Calendar,
   FileSpreadsheet,
   Wrench,
+  Shield,
+  Lock,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -70,6 +76,7 @@ interface PassbookTransaction extends Transaction {
 export default function CustomerHistoryClient() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const rawParamId = params?.id as string;
   const customerId = (rawParamId && rawParamId !== "placeholder" ? rawParamId : searchParams?.get('id')) || '';
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -78,6 +85,8 @@ export default function CustomerHistoryClient() {
   const { user, userRole, loading: authLoading } = useAuth();
   const [rechargeHistory, setRechargeHistory] = useState<Transaction[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
+
+  const isPublicView = !user || pathname === '/passbook';
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
@@ -151,6 +160,115 @@ export default function CustomerHistoryClient() {
       currentNetDue: targetBal,
     };
   }, [rechargeHistory, paymentHistory, customer?.balanceAmount]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rechargePage, setRechargePage] = useState(1);
+  const [paymentPage, setPaymentPage] = useState(1);
+
+  // 5 entries per page in public passbook view, 10 per page in authenticated dashboard view
+  const itemsPerPage = isPublicView ? 5 : 10;
+
+  // Paginated Passbook Transactions
+  const totalPassbookPages = Math.ceil(passbookTransactions.length / itemsPerPage) || 1;
+  const paginatedPassbookTransactions = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return passbookTransactions.slice(start, start + itemsPerPage);
+  }, [passbookTransactions, currentPage, itemsPerPage]);
+
+  // Sorted & Paginated Recharge History
+  const sortedRecharges = useMemo(() => {
+    return [...rechargeHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [rechargeHistory]);
+  const totalRechargePages = Math.ceil(sortedRecharges.length / itemsPerPage) || 1;
+  const paginatedRecharges = useMemo(() => {
+    const start = (rechargePage - 1) * itemsPerPage;
+    return sortedRecharges.slice(start, start + itemsPerPage);
+  }, [sortedRecharges, rechargePage, itemsPerPage]);
+
+  // Sorted & Paginated Payment History
+  const sortedPayments = useMemo(() => {
+    return [...paymentHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [paymentHistory]);
+  const totalPaymentPages = Math.ceil(sortedPayments.length / itemsPerPage) || 1;
+  const paginatedPayments = useMemo(() => {
+    const start = (paymentPage - 1) * itemsPerPage;
+    return sortedPayments.slice(start, start + itemsPerPage);
+  }, [sortedPayments, paymentPage, itemsPerPage]);
+
+  const PaginationControls = ({
+    page,
+    totalPages,
+    totalItems,
+    onPageChange,
+  }: {
+    page: number;
+    totalPages: number;
+    totalItems: number;
+    onPageChange: (newPage: number) => void;
+  }) => {
+    if (totalItems <= itemsPerPage) return null;
+
+    const startItem = (page - 1) * itemsPerPage + 1;
+    const endItem = Math.min(page * itemsPerPage, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20 print:hidden">
+        <div className="text-xs text-muted-foreground font-medium text-center sm:text-left">
+          Showing <span className="font-bold text-foreground">{startItem}</span> to{" "}
+          <span className="font-bold text-foreground">{endItem}</span> of{" "}
+          <span className="font-bold text-foreground">{totalItems}</span> entries ({itemsPerPage}/page)
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(1)}
+            disabled={page === 1}
+            title="First Page"
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-semibold gap-1"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            <span>Prev</span>
+          </Button>
+
+          <span className="text-xs font-semibold px-2 py-1 bg-background border rounded-md min-w-[70px] text-center">
+            {page} / {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-semibold gap-1"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page === totalPages}
+          >
+            <span>Next</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(totalPages)}
+            disabled={page === totalPages}
+            title="Last Page"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (authLoading || !customerId || customerId === 'placeholder') {
@@ -255,7 +373,7 @@ export default function CustomerHistoryClient() {
   }, [customerId, toast, user, authLoading]);
 
   const BackButton = () => {
-    if (authLoading) return null;
+    if (authLoading || isPublicView) return null;
 
     const targetBackPath = (userRole === "Admin" || userRole === "Network Service Agent")
       ? "/dashboard/customers"
@@ -298,7 +416,13 @@ export default function CustomerHistoryClient() {
       <div className="container mx-auto p-2 sm:p-4 py-4 md:p-12">
         <div className="mb-4 sm:mb-6 flex items-center justify-between gap-2">
           <BackButton />
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-2 print:hidden text-xs sm:text-sm">
+          {isPublicView && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-xs">
+              <Shield className="h-4 w-4" />
+              <span>Read-Only Customer Passbook</span>
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-2 print:hidden text-xs sm:text-sm ml-auto">
             <Printer className="h-4 w-4" />
             <span className="hidden sm:inline">Print Passbook Ledger</span>
             <span className="sm:hidden">Print</span>
@@ -407,8 +531,8 @@ export default function CustomerHistoryClient() {
               <CardContent className="p-0 sm:p-6">
                 {/* 📱 MOBILE CARD VIEW (No horizontal scrolling required!) */}
                 <div className="block sm:hidden space-y-3 p-3">
-                  {passbookTransactions.length > 0 ? (
-                    passbookTransactions.map((item) => (
+                  {paginatedPassbookTransactions.length > 0 ? (
+                    paginatedPassbookTransactions.map((item) => (
                       <div key={item.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5">
                         {/* Row 1: Date & Type Badge */}
                         <div className="flex items-center justify-between gap-2">
@@ -499,8 +623,8 @@ export default function CustomerHistoryClient() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {passbookTransactions.length > 0 ? (
-                        passbookTransactions.map((item) => (
+                      {paginatedPassbookTransactions.length > 0 ? (
+                        paginatedPassbookTransactions.map((item) => (
                           <TableRow key={item.id} className="hover:bg-muted/40 transition-colors">
                             {/* 1. Date */}
                             <TableCell className="p-4 text-sm font-medium whitespace-nowrap text-foreground">
@@ -585,6 +709,13 @@ export default function CustomerHistoryClient() {
                     </TableBody>
                   </Table>
                 </div>
+
+                <PaginationControls
+                  page={currentPage}
+                  totalPages={totalPassbookPages}
+                  totalItems={passbookTransactions.length}
+                  onPageChange={setCurrentPage}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -608,23 +739,21 @@ export default function CustomerHistoryClient() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rechargeHistory.length > 0 ? (
-                        [...rechargeHistory]
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                          .map((item) => (
-                            <TableRow key={item.id} className="hover:bg-muted/40">
-                              <TableCell className="font-medium whitespace-nowrap">{formatDate(item.date)}</TableCell>
-                              <TableCell className="font-semibold">{item.packageName || item.description}</TableCell>
-                              <TableCell className="text-right font-bold text-red-600 dark:text-red-400">
-                                +₹{(parseFloat(String(item.amount)) || 0).toLocaleString()}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant={item.status === 'Paid' ? 'default' : 'destructive'} className="text-xs">
-                                  {item.status || 'Active'}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                      {paginatedRecharges.length > 0 ? (
+                        paginatedRecharges.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-muted/40">
+                            <TableCell className="font-medium whitespace-nowrap">{formatDate(item.date)}</TableCell>
+                            <TableCell className="font-semibold">{item.packageName || item.description}</TableCell>
+                            <TableCell className="text-right font-bold text-red-600 dark:text-red-400">
+                              +₹{(parseFloat(String(item.amount)) || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={item.status === 'Paid' ? 'default' : 'destructive'} className="text-xs">
+                                {item.status || 'Active'}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
                       ) : (
                         <TableRow>
                           <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
@@ -635,6 +764,13 @@ export default function CustomerHistoryClient() {
                     </TableBody>
                   </Table>
                 </div>
+
+                <PaginationControls
+                  page={rechargePage}
+                  totalPages={totalRechargePages}
+                  totalItems={rechargeHistory.length}
+                  onPageChange={setRechargePage}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -658,26 +794,24 @@ export default function CustomerHistoryClient() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paymentHistory.length > 0 ? (
-                        [...paymentHistory]
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                          .map((item) => (
-                            <TableRow key={item.id} className="hover:bg-muted/40">
-                              <TableCell className="font-medium whitespace-nowrap">{formatDate(item.date)}</TableCell>
-                              <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
-                                <span className="inline-flex items-center gap-1">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  -₹{(parseFloat(String(item.amount)) || 0).toLocaleString()}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary" className="uppercase text-xs font-bold">
-                                  {item.method || 'Cash'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">{item.description}</TableCell>
-                            </TableRow>
-                          ))
+                      {paginatedPayments.length > 0 ? (
+                        paginatedPayments.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-muted/40">
+                            <TableCell className="font-medium whitespace-nowrap">{formatDate(item.date)}</TableCell>
+                            <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                              <span className="inline-flex items-center gap-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                -₹{(parseFloat(String(item.amount)) || 0).toLocaleString()}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="uppercase text-xs font-bold">
+                                {item.method || 'Cash'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{item.description}</TableCell>
+                          </TableRow>
+                        ))
                       ) : (
                         <TableRow>
                           <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
@@ -688,6 +822,13 @@ export default function CustomerHistoryClient() {
                     </TableBody>
                   </Table>
                 </div>
+
+                <PaginationControls
+                  page={paymentPage}
+                  totalPages={totalPaymentPages}
+                  totalItems={paymentHistory.length}
+                  onPageChange={setPaymentPage}
+                />
               </CardContent>
             </Card>
           </TabsContent>

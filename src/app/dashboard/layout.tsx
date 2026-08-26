@@ -43,6 +43,7 @@ import {
   Gift,
   Notebook,
   GitBranch,
+  Loader2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -57,7 +58,7 @@ function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userRole, shopName, userStatus, loading: authLoading } = useAuth();
+  const { user, userRole, shopName, userStatus, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -93,15 +94,58 @@ function DashboardLayout({
   }, [toast]);
 
   useEffect(() => {
-    if (!authLoading && userStatus === 'inactive' && pathname !== '/dashboard') {
+    if (authLoading) return;
+
+    // 1. Mandatory Authentication Guard: Redirect unauthenticated users
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please log in to access the dashboard.",
+      });
+      router.push('/login');
+      return;
+    }
+
+    // 2. Inactive Account Guard
+    if (userStatus === 'inactive' && pathname !== '/dashboard') {
       toast({
         variant: "destructive",
         title: "Account Inactive",
         description: "Your account is inactive. Please settle your balance with Admin.",
       });
       router.push('/dashboard');
+      return;
     }
-  }, [authLoading, userStatus, pathname, router, toast]);
+
+    // 3. Role-Based Authorization Guard for Admin-only routes
+    const adminOnlyRoutes = [
+      '/dashboard/staff',
+      '/dashboard/roles',
+      '/dashboard/dishtv-dealers',
+      '/dashboard/dishtv-retailers',
+      '/dashboard/staff-wallets',
+      '/dashboard/packages',
+      '/dashboard/areas',
+      '/dashboard/offers',
+      '/dashboard/announcements',
+      '/dashboard/business-directory',
+      '/dashboard/mso-payments',
+    ];
+
+    const isAdminRoute = adminOnlyRoutes.some((route) =>
+      pathname === route || pathname?.startsWith(route + '/')
+    );
+
+    if (isAdminRoute && userRole && userRole !== 'Admin') {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "You do not have administrative permission to view this page.",
+      });
+      router.push('/dashboard');
+    }
+  }, [user, userRole, userStatus, authLoading, pathname, router, toast]);
 
   // Prevent unhandled promise rejections with Event objects from throwing [object Event] error overlay
   useEffect(() => {
@@ -191,6 +235,28 @@ function DashboardLayout({
       </SidebarMenuItem>
     );
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-950 text-white font-body">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          <p className="text-sm font-semibold text-slate-300">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-slate-950 text-white font-body">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          <p className="text-sm font-semibold text-slate-300">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isCustomerHistoryPage) {
     return <div className="min-h-screen w-full bg-background">{children}</div>;
