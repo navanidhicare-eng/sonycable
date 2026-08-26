@@ -40,44 +40,44 @@ interface SettlementRequest {
 }
 
 interface RechargeRequest {
-    id: string;
-    customerName: string;
-    packageName: string;
-    packageAmount: number;
-    months?: number;
-    status: 'Pending' | 'Completed';
-    requestDate: Timestamp;
+  id: string;
+  customerName: string;
+  packageName: string;
+  packageAmount: number;
+  months?: number;
+  status: 'Pending' | 'Completed';
+  requestDate: Timestamp;
+  customerId: string;
+  adminId: string;
+  type: 'Auto' | 'Manual' | 'Staff';
+  requestSubtype?: 'Renewal' | 'Recharge';
+  customerDetails?: {
+    mobile: string;
     customerId: string;
-    adminId: string;
-    type: 'Auto' | 'Manual' | 'Staff';
-    requestSubtype?: 'Renewal' | 'Recharge';
-    customerDetails?: {
-        mobile: string;
-        customerId: string;
-        balanceAmount: number;
-    }
+    balanceAmount: number;
+  }
 }
 
 interface DashboardStats {
-    totalRevenue: number;
-    activeCustomers: number;
-    activePackages: number;
-    collectionAgents: number;
-    todaysCollection: number;
-    monthlyCollection: number;
-    totalPending: number;
+  totalRevenue: number;
+  activeCustomers: number;
+  activePackages: number;
+  collectionAgents: number;
+  todaysCollection: number;
+  monthlyCollection: number;
+  totalPending: number;
 }
 
 interface StaffData {
-    id: string;
-    name: string;
-    commission: string;
-    enrollmentCommission?: number;
-    collectionLimit?: number;
-    adminId: string;
-    area: string[];
-    role: string;
-    status?: 'active' | 'inactive';
+  id: string;
+  name: string;
+  commission: string;
+  enrollmentCommission?: number;
+  collectionLimit?: number;
+  adminId: string;
+  area: string[];
+  role: string;
+  status?: 'active' | 'inactive';
 }
 
 interface Customer {
@@ -109,10 +109,10 @@ interface RechargeOffer {
 }
 
 interface Recharge {
-    id: string;
-    customerId: string;
-    amount: number;
-    rechargeDate: Timestamp;
+  id: string;
+  customerId: string;
+  amount: number;
+  rechargeDate: Timestamp;
 }
 
 interface Complaint {
@@ -160,13 +160,13 @@ export default function DashboardPage() {
   const [rechargeRequests, setRechargeRequests] = useState<RechargeRequest[]>([]);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
-      totalRevenue: 0,
-      activeCustomers: 0,
-      activePackages: 0,
-      collectionAgents: 0,
-      todaysCollection: 0,
-      monthlyCollection: 0,
-      totalPending: 0,
+    totalRevenue: 0,
+    activeCustomers: 0,
+    activePackages: 0,
+    collectionAgents: 0,
+    todaysCollection: 0,
+    monthlyCollection: 0,
+    totalPending: 0,
   });
   const [staffWallet, setStaffWallet] = useState({ walletAmount: 0, commissionAmount: 0 });
   const [allPayments, setAllPayments] = useState<any[]>([]);
@@ -361,10 +361,10 @@ export default function DashboardPage() {
         const timeMs = nc.completedAt?.toMillis
           ? nc.completedAt.toMillis()
           : nc.updatedAt?.toMillis
-          ? nc.updatedAt.toMillis()
-          : nc.createdAt?.toMillis
-          ? nc.createdAt.toMillis()
-          : null;
+            ? nc.updatedAt.toMillis()
+            : nc.createdAt?.toMillis
+              ? nc.createdAt.toMillis()
+              : null;
         if (timeMs && (now - timeMs > TWENTY_FOUR_HOURS)) {
           return false;
         }
@@ -381,12 +381,12 @@ export default function DashboardPage() {
         const timeMs = req.completedAt?.toMillis
           ? req.completedAt.toMillis()
           : req.resolvedAt?.toMillis
-          ? req.resolvedAt.toMillis()
-          : req.updatedAt?.toMillis
-          ? req.updatedAt.toMillis()
-          : req.createdAt?.toMillis
-          ? req.createdAt.toMillis()
-          : null;
+            ? req.resolvedAt.toMillis()
+            : req.updatedAt?.toMillis
+              ? req.updatedAt.toMillis()
+              : req.createdAt?.toMillis
+                ? req.createdAt.toMillis()
+                : null;
         if (timeMs && (now - timeMs > TWENTY_FOUR_HOURS)) {
           return false;
         }
@@ -403,10 +403,10 @@ export default function DashboardPage() {
         const timeMs = req.completedAt?.toMillis
           ? req.completedAt.toMillis()
           : req.updatedAt?.toMillis
-          ? req.updatedAt.toMillis()
-          : req.createdAt?.toMillis
-          ? req.createdAt.toMillis()
-          : null;
+            ? req.updatedAt.toMillis()
+            : req.createdAt?.toMillis
+              ? req.createdAt.toMillis()
+              : null;
         if (timeMs && (now - timeMs > TWENTY_FOUR_HOURS)) {
           return false;
         }
@@ -568,236 +568,236 @@ export default function DashboardPage() {
       setFirestoreLoading(false);
       return;
     }
-    
+
     setFirestoreLoading(true);
     let allUnsubscribes: (() => void)[] = [];
 
     const fetchAdminData = async () => {
-        try {
-            const customersQuery = query(collection(db, "customers"), where("userId", "==", currentUser.uid));
-            const packagesQuery = query(collection(db, "packages"), where("userId", "==", currentUser.uid));
-            const staffQuery = query(collection(db, "staff"), where("adminId", "==", currentUser.uid));
-            const rechargeOffersQuery = query(collection(db, "rechargeOffers"), where("userId", "==", currentUser.uid));
+      try {
+        const customersQuery = query(collection(db, "customers"), where("userId", "==", currentUser.uid));
+        const packagesQuery = query(collection(db, "packages"), where("userId", "==", currentUser.uid));
+        const staffQuery = query(collection(db, "staff"), where("adminId", "==", currentUser.uid));
+        const rechargeOffersQuery = query(collection(db, "rechargeOffers"), where("userId", "==", currentUser.uid));
 
-            const [customersSnapshot, packagesSnapshot, staffSnapshot] = await Promise.all([
-                getDocs(customersQuery),
-                getDocs(packagesQuery),
-                getDocs(staffQuery),
-            ]);
-            
-            const customersData = customersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data() as Omit<Customer, 'id'>}));
-            const customerMap = new Map(customersData.map(c => [c.id, c]));
+        const [customersSnapshot, packagesSnapshot, staffSnapshot] = await Promise.all([
+          getDocs(customersQuery),
+          getDocs(packagesQuery),
+          getDocs(staffQuery),
+        ]);
 
-            const totalPending = customersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
+        const customersData = customersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Omit<Customer, 'id'> }));
+        const customerMap = new Map(customersData.map(c => [c.id, c]));
 
-            setStats(prevStats => ({
-                ...prevStats,
-                activeCustomers: customersSnapshot.size,
-                activePackages: packagesSnapshot.size,
-                collectionAgents: staffSnapshot.size,
-                totalPending: totalPending,
-            }));
+        const totalPending = customersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
 
-            const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
-            const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", currentUser.uid), where("status", "==", "Pending"));
-            const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", currentUser.uid));
-            
-            const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
-                const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
-                requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-                setSettlementRequests(requests);
-            });
-            const unsubscribeRechargeRequests = onSnapshot(rechargeRequestQuery, (snapshot) => {
-                const requests = snapshot.docs.map(doc => {
-                    const reqData = doc.data() as Omit<RechargeRequest, 'id' | 'customerDetails'>;
-                    const customer = customerMap.get(reqData.customerId);
-                    return {
-                        id: doc.id,
-                        ...reqData,
-                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId, balanceAmount: customer.balanceAmount } : undefined
-                    };
-                });
-                requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
-                setRechargeRequests(requests);
-            });
-             const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
-                 const now = new Date();
-                 const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                 const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
- 
-                 let todaysCollection = 0;
-                 let monthlyCollection = 0;
- 
-                 const paymentsList = snapshot.docs.map(doc => doc.data());
-                 setAllPayments(paymentsList);
- 
-                 paymentsList.forEach(payment => {
-                     const paymentDate = payment.collectionDate.toDate();
- 
-                     if (paymentDate >= monthStart) {
-                         monthlyCollection += payment.amount;
-                     }
-                     if (paymentDate >= todayStart) {
-                         todaysCollection += payment.amount;
-                     }
-                 });
-                 
-                 setStats(prevStats => ({
-                     ...prevStats,
-                     todaysCollection,
-                     monthlyCollection,
-                 }));
-             });
+        setStats(prevStats => ({
+          ...prevStats,
+          activeCustomers: customersSnapshot.size,
+          activePackages: packagesSnapshot.size,
+          collectionAgents: staffSnapshot.size,
+          totalPending: totalPending,
+        }));
 
-            const unsubscribeRechargeOffers = onSnapshot(rechargeOffersQuery, (snapshot) => {
-                const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeOffer));
-                setRechargeOffers(offers);
-            });
-            
-            allUnsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments, unsubscribeRechargeOffers);
+        const settlementsQuery = query(collection(db, "settlements"), where("adminId", "==", currentUser.uid));
+        const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", currentUser.uid), where("status", "==", "Pending"));
+        const paymentsQuery = query(collection(db, "payments"), where("adminId", "==", currentUser.uid));
 
-        } catch (error) {
-            console.error("Error fetching admin stats:", error);
-            toast({ variant: "destructive", title: "Error fetching stats" });
-        } finally {
-            setFirestoreLoading(false);
-        }
+        const unsubscribeSettlements = onSnapshot(settlementsQuery, (snapshot) => {
+          const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
+          requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+          setSettlementRequests(requests);
+        });
+        const unsubscribeRechargeRequests = onSnapshot(rechargeRequestQuery, (snapshot) => {
+          const requests = snapshot.docs.map(doc => {
+            const reqData = doc.data() as Omit<RechargeRequest, 'id' | 'customerDetails'>;
+            const customer = customerMap.get(reqData.customerId);
+            return {
+              id: doc.id,
+              ...reqData,
+              customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId, balanceAmount: customer.balanceAmount } : undefined
+            };
+          });
+          requests.sort((a, b) => b.requestDate.toMillis() - a.requestDate.toMillis());
+          setRechargeRequests(requests);
+        });
+        const unsubscribePayments = onSnapshot(paymentsQuery, (snapshot) => {
+          const now = new Date();
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+          let todaysCollection = 0;
+          let monthlyCollection = 0;
+
+          const paymentsList = snapshot.docs.map(doc => doc.data());
+          setAllPayments(paymentsList);
+
+          paymentsList.forEach(payment => {
+            const paymentDate = payment.collectionDate.toDate();
+
+            if (paymentDate >= monthStart) {
+              monthlyCollection += payment.amount;
+            }
+            if (paymentDate >= todayStart) {
+              todaysCollection += payment.amount;
+            }
+          });
+
+          setStats(prevStats => ({
+            ...prevStats,
+            todaysCollection,
+            monthlyCollection,
+          }));
+        });
+
+        const unsubscribeRechargeOffers = onSnapshot(rechargeOffersQuery, (snapshot) => {
+          const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeOffer));
+          setRechargeOffers(offers);
+        });
+
+        allUnsubscribes.push(unsubscribeSettlements, unsubscribeRechargeRequests, unsubscribePayments, unsubscribeRechargeOffers);
+
+      } catch (error) {
+        console.error("Error fetching admin stats:", error);
+        toast({ variant: "destructive", title: "Error fetching stats" });
+      } finally {
+        setFirestoreLoading(false);
+      }
     };
 
     const fetchStaffData = async () => {
-        try {
-            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-            const staffSnapshot = await getDocs(staffQuery);
-            if (staffSnapshot.empty) {
-                setFirestoreLoading(false);
-                return;
-            }
-            
-            const staffDocData = {id: staffSnapshot.docs[0].id, ...staffSnapshot.docs[0].data()} as StaffData;
-            setStaffData(staffDocData);
-            const commissionRate = parseFloat(staffDocData.commission.replace('%', '')) || 0;
-            const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
-
-            const allCustomersQuery = query(collection(db, "customers"), where("userId", "==", staffDocData.adminId));
-            const allCustomersSnapshot = await getDocs(allCustomersQuery);
-            const allAdminCustomers = allCustomersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data() as Omit<Customer, 'id'>}));
-            const customerMap = new Map(allAdminCustomers.map(c => [c.id, c]));
-            
-            const allRechargesQuery = query(collection(db, "recharges"), where("adminId", "==", staffDocData.adminId));
-            const allRechargesSnapshot = await getDocs(allRechargesQuery);
-            const allAdminRecharges = allRechargesSnapshot.docs.map(doc => doc.data() as Recharge);
-
-            
-            allUnsubscribes.push(onSnapshot(allCustomersQuery, (snapshot) => {
-                const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
-                setTotalPendingForStaff(totalPending);
-            }));
-
-            const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", staffDocData.adminId), where("status", "==", "Pending"));
-            allUnsubscribes.push(onSnapshot(rechargeRequestQuery, (snapshot) => {
-                 const requests = snapshot.docs.map(doc => {
-                    const reqData = doc.data() as Omit<RechargeRequest, 'id' | 'customerDetails'>;
-                    const customer = customerMap.get(reqData.customerId);
-                    return {
-                        id: doc.id,
-                        ...reqData,
-                        customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId, balanceAmount: customer.balanceAmount } : undefined
-                    };
-                });
-                requests.sort((a,b) => b.requestDate.toMillis() - a.requestDate.toMillis());
-                setRechargeRequests(requests);
-            }));
-            
-            const complaintsQuery = query(collection(db, "complaints"), where("userId", "==", staffDocData.adminId), where("status", "==", "Pending"));
-            allUnsubscribes.push(onSnapshot(complaintsQuery, (snapshot) => {
-                 const complaintsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
-                 setPendingComplaints(complaintsData);
-            }));
-
-            if (!isCollectionAgent) {
-                const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
-                allUnsubscribes.push(onSnapshot(packagesQuery, (snapshot) => {
-                    const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
-                    setPackages(packagesData);
-                }));
-            }
-            
-
-            // Fetch approved settlements to find the last settlement date
-            const approvedSettlementsQuery = query(
-                collection(db, "settlements"),
-                where("staffId", "==", currentUser.uid),
-                where("status", "==", "approved")
-            );
-            
-            const paymentsQuery = query(
-              collection(db, "payments"),
-              where("collectedBy", "==", currentUser.uid)
-            );
-
-            allUnsubscribes.push(onSnapshot(approvedSettlementsQuery, (approvedSettlementsSnapshot) => {
-                const approvedSettlements = approvedSettlementsSnapshot.docs.map(doc => doc.data());
-                const totalSettledEver = approvedSettlements.reduce((sum, doc) => sum + (doc.amount || 0), 0);
-                const totalSettledCommissionEver = approvedSettlements.reduce((sum, doc) => sum + (doc.commission || 0), 0);
-
-                allUnsubscribes.push(onSnapshot(paymentsQuery, (paymentsSnapshot) => {
-                    const now = new Date();
-                    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    let todaysCollection = 0;
-
-                    const allPayments = paymentsSnapshot.docs.map(doc => {
-                        const data = doc.data();
-                        const paymentDate = data.collectionDate.toDate();
-                        if (paymentDate >= todayStart) {
-                            todaysCollection += data.amount;
-                        }
-                        return data;
-                    });
-                    
-                    setTodaysCollectionForStaff(todaysCollection);
-                    const totalCollectionEver = allPayments.reduce((acc, p) => acc + p.amount, 0);
-                    const walletAmount = totalCollectionEver - totalSettledEver;
-                    const collectionCommissionEver = (totalCollectionEver * commissionRate) / 100;
-                    
-                    // Enrollment Commission
-                    const enrollmentCommissionPerCustomer = staffDocData.enrollmentCommission || 0;
-                    const customersByStaff = allAdminCustomers.filter(c => {
-                        return c.userId === staffDocData.adminId && c.connectionReference === staffDocData.id;
-                    });
-                    const totalEnrollmentCommission = customersByStaff.length * enrollmentCommissionPerCustomer;
-                    
-                    // Monthly Recharge Commission
-                    const referredCustomers = allAdminCustomers.filter(c => c.connectionReference === staffDocData.id);
-                    let monthlyRechargeCommissionEver = 0;
-                    referredCustomers.forEach(cust => {
-                        const monthlyCommRate = parseFloat(cust.monthlyCommission || '0');
-                        if (monthlyCommRate > 0) {
-                            const customerRecharges = allAdminRecharges.filter(r => r.customerId === cust.id);
-                            const totalRechargeAmount = customerRecharges.reduce((sum, r) => sum + r.amount, 0);
-                            monthlyRechargeCommissionEver += (totalRechargeAmount * monthlyCommRate) / 100;
-                        }
-                    });
-
-                    const totalCommissionEver = collectionCommissionEver + totalEnrollmentCommission + monthlyRechargeCommissionEver;
-                    const commissionAmount = Math.max(0, totalCommissionEver - totalSettledCommissionEver);
-                    setStaffWallet({ walletAmount: walletAmount, commissionAmount: commissionAmount });
-                }));
-            }));
-
-
-            const allSettlementsQuery = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
-            allUnsubscribes.push(onSnapshot(allSettlementsQuery, (snapshot) => {
-                 const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
-                requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-                setSettlementRequests(requests);
-            }));
-
-        } catch(error) {
-            console.error("Error fetching staff data:", error);
-            toast({ variant: "destructive", title: "Error fetching staff data" });
-        } finally {
-             setFirestoreLoading(false);
+      try {
+        const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+        const staffSnapshot = await getDocs(staffQuery);
+        if (staffSnapshot.empty) {
+          setFirestoreLoading(false);
+          return;
         }
+
+        const staffDocData = { id: staffSnapshot.docs[0].id, ...staffSnapshot.docs[0].data() } as StaffData;
+        setStaffData(staffDocData);
+        const commissionRate = parseFloat(staffDocData.commission.replace('%', '')) || 0;
+        const isCollectionAgent = userRole ? /collection|collation/i.test(userRole) : false;
+
+        const allCustomersQuery = query(collection(db, "customers"), where("userId", "==", staffDocData.adminId));
+        const allCustomersSnapshot = await getDocs(allCustomersQuery);
+        const allAdminCustomers = allCustomersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Omit<Customer, 'id'> }));
+        const customerMap = new Map(allAdminCustomers.map(c => [c.id, c]));
+
+        const allRechargesQuery = query(collection(db, "recharges"), where("adminId", "==", staffDocData.adminId));
+        const allRechargesSnapshot = await getDocs(allRechargesQuery);
+        const allAdminRecharges = allRechargesSnapshot.docs.map(doc => doc.data() as Recharge);
+
+
+        allUnsubscribes.push(onSnapshot(allCustomersQuery, (snapshot) => {
+          const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
+          setTotalPendingForStaff(totalPending);
+        }));
+
+        const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", staffDocData.adminId), where("status", "==", "Pending"));
+        allUnsubscribes.push(onSnapshot(rechargeRequestQuery, (snapshot) => {
+          const requests = snapshot.docs.map(doc => {
+            const reqData = doc.data() as Omit<RechargeRequest, 'id' | 'customerDetails'>;
+            const customer = customerMap.get(reqData.customerId);
+            return {
+              id: doc.id,
+              ...reqData,
+              customerDetails: customer ? { mobile: customer.mobile, customerId: customer.customerId, balanceAmount: customer.balanceAmount } : undefined
+            };
+          });
+          requests.sort((a, b) => b.requestDate.toMillis() - a.requestDate.toMillis());
+          setRechargeRequests(requests);
+        }));
+
+        const complaintsQuery = query(collection(db, "complaints"), where("userId", "==", staffDocData.adminId), where("status", "==", "Pending"));
+        allUnsubscribes.push(onSnapshot(complaintsQuery, (snapshot) => {
+          const complaintsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
+          setPendingComplaints(complaintsData);
+        }));
+
+        if (!isCollectionAgent) {
+          const packagesQuery = query(collection(db, "packages"), where("userId", "==", staffDocData.adminId));
+          allUnsubscribes.push(onSnapshot(packagesQuery, (snapshot) => {
+            const packagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargePackage));
+            setPackages(packagesData);
+          }));
+        }
+
+
+        // Fetch approved settlements to find the last settlement date
+        const approvedSettlementsQuery = query(
+          collection(db, "settlements"),
+          where("staffId", "==", currentUser.uid),
+          where("status", "==", "approved")
+        );
+
+        const paymentsQuery = query(
+          collection(db, "payments"),
+          where("collectedBy", "==", currentUser.uid)
+        );
+
+        allUnsubscribes.push(onSnapshot(approvedSettlementsQuery, (approvedSettlementsSnapshot) => {
+          const approvedSettlements = approvedSettlementsSnapshot.docs.map(doc => doc.data());
+          const totalSettledEver = approvedSettlements.reduce((sum, doc) => sum + (doc.amount || 0), 0);
+          const totalSettledCommissionEver = approvedSettlements.reduce((sum, doc) => sum + (doc.commission || 0), 0);
+
+          allUnsubscribes.push(onSnapshot(paymentsQuery, (paymentsSnapshot) => {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let todaysCollection = 0;
+
+            const allPayments = paymentsSnapshot.docs.map(doc => {
+              const data = doc.data();
+              const paymentDate = data.collectionDate.toDate();
+              if (paymentDate >= todayStart) {
+                todaysCollection += data.amount;
+              }
+              return data;
+            });
+
+            setTodaysCollectionForStaff(todaysCollection);
+            const totalCollectionEver = allPayments.reduce((acc, p) => acc + p.amount, 0);
+            const walletAmount = totalCollectionEver - totalSettledEver;
+            const collectionCommissionEver = (totalCollectionEver * commissionRate) / 100;
+
+            // Enrollment Commission
+            const enrollmentCommissionPerCustomer = staffDocData.enrollmentCommission || 0;
+            const customersByStaff = allAdminCustomers.filter(c => {
+              return c.userId === staffDocData.adminId && c.connectionReference === staffDocData.id;
+            });
+            const totalEnrollmentCommission = customersByStaff.length * enrollmentCommissionPerCustomer;
+
+            // Monthly Recharge Commission
+            const referredCustomers = allAdminCustomers.filter(c => c.connectionReference === staffDocData.id);
+            let monthlyRechargeCommissionEver = 0;
+            referredCustomers.forEach(cust => {
+              const monthlyCommRate = parseFloat(cust.monthlyCommission || '0');
+              if (monthlyCommRate > 0) {
+                const customerRecharges = allAdminRecharges.filter(r => r.customerId === cust.id);
+                const totalRechargeAmount = customerRecharges.reduce((sum, r) => sum + r.amount, 0);
+                monthlyRechargeCommissionEver += (totalRechargeAmount * monthlyCommRate) / 100;
+              }
+            });
+
+            const totalCommissionEver = collectionCommissionEver + totalEnrollmentCommission + monthlyRechargeCommissionEver;
+            const commissionAmount = Math.max(0, totalCommissionEver - totalSettledCommissionEver);
+            setStaffWallet({ walletAmount: walletAmount, commissionAmount: commissionAmount });
+          }));
+        }));
+
+
+        const allSettlementsQuery = query(collection(db, "settlements"), where("staffId", "==", currentUser.uid));
+        allUnsubscribes.push(onSnapshot(allSettlementsQuery, (snapshot) => {
+          const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SettlementRequest));
+          requests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+          setSettlementRequests(requests);
+        }));
+
+      } catch (error) {
+        console.error("Error fetching staff data:", error);
+        toast({ variant: "destructive", title: "Error fetching staff data" });
+      } finally {
+        setFirestoreLoading(false);
+      }
     };
 
     const fetchDealerData = async () => {
@@ -830,7 +830,7 @@ export default function DashboardPage() {
         const qCust = query(collection(db, "dishtv_customers"), where("userId", "==", currentUser.uid));
         const custSnapshot = await getDocs(qCust);
         const custs = custSnapshot.docs.map(doc => doc.data());
-        
+
         const total = custs.length;
         const active = custs.filter((c: any) => c.status === "Active").length;
         const expired = custs.filter((c: any) => c.status === "Expired").length;
@@ -877,49 +877,49 @@ export default function DashboardPage() {
     } else {
       setFirestoreLoading(false);
     }
-    
+
     return () => {
       allUnsubscribes.forEach(unsub => unsub());
     };
   }, [currentUser, userRole, authLoading, toast]);
 
-    useEffect(() => {
-        const primeAudio = () => {
-            if (audioRef.current && !hasInteracted.current) {
-                audioRef.current.volume = 0;
-                audioRef.current.play().catch(() => {});
-                hasInteracted.current = true;
-                window.removeEventListener('click', primeAudio);
-                window.removeEventListener('touchstart', primeAudio);
-            }
-        };
-        window.addEventListener('click', primeAudio);
-        window.addEventListener('touchstart', primeAudio);
-        return () => {
-            window.removeEventListener('click', primeAudio);
-            window.removeEventListener('touchstart', primeAudio);
-        };
-    }, []);
+  useEffect(() => {
+    const primeAudio = () => {
+      if (audioRef.current && !hasInteracted.current) {
+        audioRef.current.volume = 0;
+        audioRef.current.play().catch(() => { });
+        hasInteracted.current = true;
+        window.removeEventListener('click', primeAudio);
+        window.removeEventListener('touchstart', primeAudio);
+      }
+    };
+    window.addEventListener('click', primeAudio);
+    window.addEventListener('touchstart', primeAudio);
+    return () => {
+      window.removeEventListener('click', primeAudio);
+      window.removeEventListener('touchstart', primeAudio);
+    };
+  }, []);
 
-    useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            prevRequestCount.current = rechargeRequests.length;
-            return;
-        }
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevRequestCount.current = rechargeRequests.length;
+      return;
+    }
 
-        if (userRole && userRole !== 'Admin') {
-            if (rechargeRequests.length > prevRequestCount.current) {
-                setHighlightNewRequest(true);
-                if (audioRef.current) {
-                    audioRef.current.volume = 1;
-                    audioRef.current.play().catch(e => console.error("Audio play failed:", e));
-                }
-                setTimeout(() => setHighlightNewRequest(false), 2000); 
-            }
+    if (userRole && userRole !== 'Admin') {
+      if (rechargeRequests.length > prevRequestCount.current) {
+        setHighlightNewRequest(true);
+        if (audioRef.current) {
+          audioRef.current.volume = 1;
+          audioRef.current.play().catch(e => console.error("Audio play failed:", e));
         }
-        prevRequestCount.current = rechargeRequests.length;
-    }, [rechargeRequests.length, userRole]);
+        setTimeout(() => setHighlightNewRequest(false), 2000);
+      }
+    }
+    prevRequestCount.current = rechargeRequests.length;
+  }, [rechargeRequests.length, userRole]);
 
   // Subscribe to DishTV Customers for Top Universal Search
   useEffect(() => {
@@ -1086,7 +1086,7 @@ export default function DashboardPage() {
 
   const handleSettleCollection = async () => {
     if (!currentUser || !staffData) return;
-    
+
     const requestedAmount = parseFloat(settlementAmount);
     if (isNaN(requestedAmount) || requestedAmount <= 0 || requestedAmount > staffWallet.walletAmount) {
       toast({
@@ -1114,10 +1114,10 @@ export default function DashboardPage() {
       });
 
       toast({
-          title: "Request Sent",
-          description: `Your settlement request for ₹${amountToSend.toLocaleString()} has been sent to the admin for approval.`,
+        title: "Request Sent",
+        description: `Your settlement request for ₹${amountToSend.toLocaleString()} has been sent to the admin for approval.`,
       });
-      
+
       setIsSettleDialogOpen(false);
       setCommissionReceived(false);
       setSettlementAmount("");
@@ -1138,16 +1138,16 @@ export default function DashboardPage() {
         status: 'approved'
       });
       toast({
-          title: "Settlement Approved",
-          description: "The staff member's wallet has been marked as cleared.",
+        title: "Settlement Approved",
+        description: "The staff member's wallet has been marked as cleared.",
       })
     } catch (error) {
-        console.error("Error approving settlement: ", error);
-        toast({
-            variant: "destructive",
-            title: "Approval Failed",
-            description: "Could not approve the settlement. Please try again.",
-        });
+      console.error("Error approving settlement: ", error);
+      toast({
+        variant: "destructive",
+        title: "Approval Failed",
+        description: "Could not approve the settlement. Please try again.",
+      });
     }
   };
 
@@ -1158,16 +1158,16 @@ export default function DashboardPage() {
         status: 'rejected'
       });
       toast({
-          title: "Settlement Rejected",
-          description: "The settlement request has been rejected.",
+        title: "Settlement Rejected",
+        description: "The settlement request has been rejected.",
       });
     } catch (error) {
-        console.error("Error rejecting settlement: ", error);
-        toast({
-            variant: "destructive",
-            title: "Rejection Failed",
-            description: "Could not reject the settlement request.",
-        });
+      console.error("Error rejecting settlement: ", error);
+      toast({
+        variant: "destructive",
+        title: "Rejection Failed",
+        description: "Could not reject the settlement request.",
+      });
     }
   };
 
@@ -1176,23 +1176,23 @@ export default function DashboardPage() {
     try {
       const pendingRequest = settlementRequests.find(req => req.status === 'pending' && req.staffId === currentUser.uid);
       if (!pendingRequest) return;
-      
+
       const requestDocRef = doc(db, "settlements", pendingRequest.id);
       await updateDoc(requestDocRef, {
         status: 'cancelled'
       });
-      
+
       toast({
-          title: "Settlement Cancelled",
-          description: "Your settlement request has been cancelled.",
+        title: "Settlement Cancelled",
+        description: "Your settlement request has been cancelled.",
       });
     } catch (error) {
-        console.error("Error cancelling settlement: ", error);
-        toast({
-            variant: "destructive",
-            title: "Cancellation Failed",
-            description: "Could not cancel the settlement request.",
-        });
+      console.error("Error cancelling settlement: ", error);
+      toast({
+        variant: "destructive",
+        title: "Cancellation Failed",
+        description: "Could not cancel the settlement request.",
+      });
     }
   };
 
@@ -1208,43 +1208,43 @@ export default function DashboardPage() {
         }
 
         const customerData = customerDoc.data() as Customer;
-        
+
         let newRechargeDate = new Date();
         const months = request.months || 1;
 
         if (request.requestSubtype === 'Renewal' && customerData.lastRechargeDate) {
-            const lastRecharge = customerData.lastRechargeDate.toDate();
-            newRechargeDate = new Date(lastRecharge.setMonth(lastRecharge.getMonth() + months));
+          const lastRecharge = customerData.lastRechargeDate.toDate();
+          newRechargeDate = new Date(lastRecharge.setMonth(lastRecharge.getMonth() + months));
         } else if (request.requestSubtype === 'Renewal' && !customerData.lastRechargeDate) {
-             newRechargeDate = (customerData.expiryDate && customerData.expiryDate.toDate() > new Date()) 
-            ? customerData.expiryDate.toDate() 
+          newRechargeDate = (customerData.expiryDate && customerData.expiryDate.toDate() > new Date())
+            ? customerData.expiryDate.toDate()
             : new Date();
         }
 
         const newExpiryDate = new Date(newRechargeDate);
         newExpiryDate.setDate(newExpiryDate.getDate() + 30 * months);
-        
+
         const currentBalance = customerData.balanceAmount || 0;
         const newBalance = currentBalance + request.packageAmount;
 
-        transaction.update(customerDocRef, { 
-            lastRechargeDate: Timestamp.fromDate(newRechargeDate),
-            expiryDate: Timestamp.fromDate(newExpiryDate),
-            balanceAmount: newBalance,
+        transaction.update(customerDocRef, {
+          lastRechargeDate: Timestamp.fromDate(newRechargeDate),
+          expiryDate: Timestamp.fromDate(newExpiryDate),
+          balanceAmount: newBalance,
         });
-        
+
         const rechargesColRef = collection(db, "recharges");
         const newRechargeRef = doc(rechargesColRef);
         transaction.set(newRechargeRef, {
-            customerId: request.customerId,
-            customerName: request.customerName,
-            packageName: request.packageName,
-            amount: request.packageAmount,
-            months: months,
-            paymentReceived: false,
-            rechargeDate: Timestamp.fromDate(newRechargeDate),
-            rechargedBy: 'SYSTEM_AUTO', 
-            adminId: currentUser.uid,
+          customerId: request.customerId,
+          customerName: request.customerName,
+          packageName: request.packageName,
+          amount: request.packageAmount,
+          months: months,
+          paymentReceived: false,
+          rechargeDate: Timestamp.fromDate(newRechargeDate),
+          rechargedBy: 'SYSTEM_AUTO',
+          adminId: currentUser.uid,
         });
 
         const requestDocRef = doc(db, "rechargeRequests", request.id);
@@ -1257,96 +1257,96 @@ export default function DashboardPage() {
       });
 
     } catch (error) {
-        console.error("Error approving recharge request:", error);
-        toast({
-            variant: "destructive",
-            title: "Approval Failed",
-            description: "Could not approve the recharge request.",
-        });
+      console.error("Error approving recharge request:", error);
+      toast({
+        variant: "destructive",
+        title: "Approval Failed",
+        description: "Could not approve the recharge request.",
+      });
     }
   };
-  
+
   const handleRejectRechargeRequest = async (requestId: string) => {
     try {
-        const requestDocRef = doc(db, "rechargeRequests", requestId);
-        await deleteDoc(requestDocRef);
-        toast({
-            title: "Request Rejected",
-            description: "The recharge request has been rejected and removed.",
-        });
+      const requestDocRef = doc(db, "rechargeRequests", requestId);
+      await deleteDoc(requestDocRef);
+      toast({
+        title: "Request Rejected",
+        description: "The recharge request has been rejected and removed.",
+      });
     } catch (error) {
-         console.error("Error rejecting recharge request:", error);
-        toast({
-            variant: "destructive",
-            title: "Rejection Failed",
-            description: "Could not reject the recharge request.",
-        });
+      console.error("Error rejecting recharge request:", error);
+      toast({
+        variant: "destructive",
+        title: "Rejection Failed",
+        description: "Could not reject the recharge request.",
+      });
     }
   };
 
 
   const handleCustomerSearch = async (type: 'collection' | 'recharge') => {
     if (!searchQuery.trim()) return;
-    
+
     setIsSearching(true);
     setSearchError("");
     setSearchedCustomer(null);
 
     try {
-        let currentStaffData = staffData;
-        if (!currentStaffData && currentUser) {
-            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-            const staffSnapshot = await getDocs(staffQuery);
-            if (!staffSnapshot.empty) {
-                currentStaffData = staffSnapshot.docs[0].data() as StaffData;
-                setStaffData(currentStaffData);
-            } else {
-                 setSearchError("Could not find your staff profile.");
-                 setIsSearching(false);
-                 return;
-            }
-        }
-
-        if (!currentStaffData) {
-            setSearchError("Could not verify your staff details.");
-            setIsSearching(false);
-            return;
-        }
-
-        const customersRef = collection(db, "customers");
-        const q = query(customersRef, where("userId", "==", currentStaffData.adminId));
-        const querySnapshot = await getDocs(q);
-        
-        const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-
-        const trimmedSearchQuery = searchQuery.trim().toLowerCase();
-        
-        const foundCustomer = allAdminCustomers.find(c => {
-            const matchesSearchTerm = 
-                (c.customerId && c.customerId.trim().toLowerCase() === trimmedSearchQuery) || 
-                (c.mobile && c.mobile.trim() === searchQuery.trim()) ||
-                (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery) ||
-                (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery));
-            
-            const isInAssignedArea = currentStaffData!.area.includes(c.area);
-
-            return matchesSearchTerm && isInAssignedArea;
-        });
-
-
-        if (foundCustomer) {
-            setSearchedCustomer(foundCustomer);
-            if (type === 'recharge') {
-                openRechargeDialog(foundCustomer);
-            }
+      let currentStaffData = staffData;
+      if (!currentStaffData && currentUser) {
+        const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+        const staffSnapshot = await getDocs(staffQuery);
+        if (!staffSnapshot.empty) {
+          currentStaffData = staffSnapshot.docs[0].data() as StaffData;
+          setStaffData(currentStaffData);
         } else {
-            setSearchError("Customer not found in your assigned areas or invalid ID/Mobile/Name.");
+          setSearchError("Could not find your staff profile.");
+          setIsSearching(false);
+          return;
         }
-    } catch (error) {
-        console.error("Error searching customer:", error);
-        setSearchError("An error occurred while searching.");
-    } finally {
+      }
+
+      if (!currentStaffData) {
+        setSearchError("Could not verify your staff details.");
         setIsSearching(false);
+        return;
+      }
+
+      const customersRef = collection(db, "customers");
+      const q = query(customersRef, where("userId", "==", currentStaffData.adminId));
+      const querySnapshot = await getDocs(q);
+
+      const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+
+      const trimmedSearchQuery = searchQuery.trim().toLowerCase();
+
+      const foundCustomer = allAdminCustomers.find(c => {
+        const matchesSearchTerm =
+          (c.customerId && c.customerId.trim().toLowerCase() === trimmedSearchQuery) ||
+          (c.mobile && c.mobile.trim() === searchQuery.trim()) ||
+          (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery) ||
+          (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery));
+
+        const isInAssignedArea = currentStaffData!.area.includes(c.area);
+
+        return matchesSearchTerm && isInAssignedArea;
+      });
+
+
+      if (foundCustomer) {
+        setSearchedCustomer(foundCustomer);
+        if (type === 'recharge') {
+          openRechargeDialog(foundCustomer);
+        }
+      } else {
+        setSearchError("Customer not found in your assigned areas or invalid ID/Mobile/Name.");
+      }
+    } catch (error) {
+      console.error("Error searching customer:", error);
+      setSearchError("An error occurred while searching.");
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -1355,7 +1355,7 @@ export default function DashboardPage() {
     setPaymentMethod("cash");
     setIsCollectDialogOpen(true);
   };
-  
+
   const openRechargeDialog = (customer: Customer) => {
     setSearchedCustomer(customer);
     setSelectedPackage(null);
@@ -1368,7 +1368,7 @@ export default function DashboardPage() {
 
   const handleConfirmCollection = async () => {
     if (!amountCollected || !searchedCustomer || !currentUser || !staffData) return;
-    
+
     if (userStatus === 'inactive' || staffData.status === 'inactive') {
       toast({
         variant: "destructive",
@@ -1383,81 +1383,81 @@ export default function DashboardPage() {
     const newBalance = currentBalance - collectedAmount;
 
     try {
-        const customerDocRef = doc(db, "customers", searchedCustomer.id);
-        await updateDoc(customerDocRef, {
-            balanceAmount: newBalance
-        });
+      const customerDocRef = doc(db, "customers", searchedCustomer.id);
+      await updateDoc(customerDocRef, {
+        balanceAmount: newBalance
+      });
 
-        await addDoc(collection(db, "payments"), {
-            customerId: searchedCustomer.id,
-            customerName: searchedCustomer.name,
-            amount: collectedAmount,
-            method: paymentMethod,
-            collectedBy: currentUser.uid,
-            collectionDate: new Date(),
-            adminId: staffData.adminId,
-        });
+      await addDoc(collection(db, "payments"), {
+        customerId: searchedCustomer.id,
+        customerName: searchedCustomer.name,
+        amount: collectedAmount,
+        method: paymentMethod,
+        collectedBy: currentUser.uid,
+        collectionDate: new Date(),
+        adminId: staffData.adminId,
+      });
 
-        // Compute new wallet balance after this collection
-        const newWalletAmount = (staffWallet?.walletAmount || 0) + collectedAmount;
-        const limit = staffData.collectionLimit ?? 10000;
+      // Compute new wallet balance after this collection
+      const newWalletAmount = (staffWallet?.walletAmount || 0) + collectedAmount;
+      const limit = staffData.collectionLimit ?? 10000;
 
-        // Auto-Deactivation check: Lock account if limit is reached or exceeded
-        let isAutoLocked = false;
-        if (limit > 0 && newWalletAmount >= limit) {
-          isAutoLocked = true;
-          await updateDoc(doc(db, "staff", staffData.id), { status: "inactive" });
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('userStatus', 'inactive');
-          }
-          setStaffData(prev => prev ? { ...prev, status: 'inactive' } : null);
+      // Auto-Deactivation check: Lock account if limit is reached or exceeded
+      let isAutoLocked = false;
+      if (limit > 0 && newWalletAmount >= limit) {
+        isAutoLocked = true;
+        await updateDoc(doc(db, "staff", staffData.id), { status: "inactive" });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('userStatus', 'inactive');
         }
+        setStaffData(prev => prev ? { ...prev, status: 'inactive' } : null);
+      }
 
-        if (isAutoLocked) {
-          toast({
-            variant: "destructive",
-            title: "Collection Limit Reached! 🔒",
-            description: `Limit reached (Limit: ₹${limit.toLocaleString()}). Account auto-locked! Please deposit collected cash with Admin to reactivate.`,
-          });
-        } else {
-          toast({
-            title: "Collection Recorded",
-            description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
-          });
-        }
-
-        // Trigger Instant WhatsApp & SMS Payment Receipt Modal
-        setReceiptModalData({
-          businessName: "Sony Cable",
-          customerName: searchedCustomer.name,
-          customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
-          customerDocId: searchedCustomer.id,
-          mobile: searchedCustomer.mobile || '',
-          paidAmount: collectedAmount,
-          remainingBalance: newBalance,
-          date: new Date(),
-          collectedByName: staffData?.name || currentUser.displayName || 'Staff',
+      if (isAutoLocked) {
+        toast({
+          variant: "destructive",
+          title: "Collection Limit Reached! 🔒",
+          description: `Limit reached (Limit: ₹${limit.toLocaleString()}). Account auto-locked! Please deposit collected cash with Admin to reactivate.`,
         });
-        setIsReceiptModalOpen(true);
+      } else {
+        toast({
+          title: "Collection Recorded",
+          description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
+        });
+      }
 
-        setIsCollectDialogOpen(false);
-        setIsCustomerSearchDialogOpen(false);
-        setSearchedCustomer(null);
-        setSearchQuery("");
+      // Trigger Instant WhatsApp & SMS Payment Receipt Modal
+      setReceiptModalData({
+        businessName: "Sony Cable",
+        customerName: searchedCustomer.name,
+        customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
+        customerDocId: searchedCustomer.id,
+        mobile: searchedCustomer.mobile || '',
+        paidAmount: collectedAmount,
+        remainingBalance: newBalance,
+        date: new Date(),
+        collectedByName: staffData?.name || currentUser.displayName || 'Staff',
+      });
+      setIsReceiptModalOpen(true);
+
+      setIsCollectDialogOpen(false);
+      setIsCustomerSearchDialogOpen(false);
+      setSearchedCustomer(null);
+      setSearchQuery("");
 
     } catch (error) {
-        console.error("Error recording collection:", error);
-        toast({
-            variant: "destructive",
-            title: "Collection Failed",
-            description: "An error occurred while recording the payment.",
-        });
+      console.error("Error recording collection:", error);
+      toast({
+        variant: "destructive",
+        title: "Collection Failed",
+        description: "An error occurred while recording the payment.",
+      });
     }
   };
-  
-    const handleRecharge = async () => {
+
+  const handleRecharge = async () => {
     if (!selectedPackage || !searchedCustomer || !currentUser || !staffData) return;
-    
+
     const pkg = packages.find(p => p.id === selectedPackage);
     if (!pkg) {
       toast({ variant: "destructive", title: "Package not found" });
@@ -1473,81 +1473,81 @@ export default function DashboardPage() {
     const customerDocRef = doc(db, "customers", searchedCustomer.id);
 
     try {
-        const newRechargeDate = new Date();
-        const newExpiryDate = new Date(newRechargeDate);
-        newExpiryDate.setDate(newExpiryDate.getDate() + 30 * rechargeMonths);
+      const newRechargeDate = new Date();
+      const newExpiryDate = new Date(newRechargeDate);
+      newExpiryDate.setDate(newExpiryDate.getDate() + 30 * rechargeMonths);
 
-        let updateData: any = {
-            expiryDate: Timestamp.fromDate(newExpiryDate),
-            lastRechargeDate: Timestamp.fromDate(newRechargeDate),
-        };
+      let updateData: any = {
+        expiryDate: Timestamp.fromDate(newExpiryDate),
+        lastRechargeDate: Timestamp.fromDate(newRechargeDate),
+      };
 
-        if (paymentReceivedForRecharge) {
-            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
-        } else {
-            const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
-            const newBalance = currentBalance + totalRechargeAmount;
-            updateData.balanceAmount = newBalance;
-            description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
-        }
-        
-        if (discount > 0) {
-            description += ` (Discount of ₹${discount} applied).`;
-        }
+      if (paymentReceivedForRecharge) {
+        description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
+      } else {
+        const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
+        const newBalance = currentBalance + totalRechargeAmount;
+        updateData.balanceAmount = newBalance;
+        description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
+      }
 
-        await updateDoc(customerDocRef, updateData);
+      if (discount > 0) {
+        description += ` (Discount of ₹${discount} applied).`;
+      }
 
-        await addDoc(collection(db, "recharges"), {
-            customerId: searchedCustomer.id,
-            customerName: searchedCustomer.name,
-            packageId: pkg.id,
-            packageName: pkg.packageName,
-            amount: totalRechargeAmount,
-            months: rechargeMonths,
-            paymentReceived: paymentReceivedForRecharge,
-            rechargeDate: newRechargeDate,
-            rechargedBy: currentUser.uid, // staff uid
-            adminId: staffData.adminId, // admin uid
-        });
-      
-        const oldDue = parseFloat(String(searchedCustomer.balanceAmount || 0));
-        const newDue = paymentReceivedForRecharge ? oldDue : oldDue + totalRechargeAmount;
+      await updateDoc(customerDocRef, updateData);
 
-        toast({
-            title: "Recharge Successful",
-            description: description,
-        });
+      await addDoc(collection(db, "recharges"), {
+        customerId: searchedCustomer.id,
+        customerName: searchedCustomer.name,
+        packageId: pkg.id,
+        packageName: pkg.packageName,
+        amount: totalRechargeAmount,
+        months: rechargeMonths,
+        paymentReceived: paymentReceivedForRecharge,
+        rechargeDate: newRechargeDate,
+        rechargedBy: currentUser.uid, // staff uid
+        adminId: staffData.adminId, // admin uid
+      });
 
-        setIsRechargeDialogOpen(false);
+      const oldDue = parseFloat(String(searchedCustomer.balanceAmount || 0));
+      const newDue = paymentReceivedForRecharge ? oldDue : oldDue + totalRechargeAmount;
 
-        // Open Instant WhatsApp & SMS Recharge Receipt Modal
-        setRechargeReceiptModalData({
-          businessName: "Sony Cable",
-          customerName: searchedCustomer.name,
-          customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
-          customerDocId: searchedCustomer.id,
-          mobile: searchedCustomer.mobile || '',
-          oldDue: oldDue,
-          rechargeAmount: totalRechargeAmount,
-          newDue: newDue,
-          date: newRechargeDate,
-          packageName: pkg.packageName,
-          months: rechargeMonths,
-          collectedByName: staffData?.name || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Staff'),
-        });
-        setIsRechargeReceiptModalOpen(true);
+      toast({
+        title: "Recharge Successful",
+        description: description,
+      });
 
-        setSelectedPackage(null);
-        setPaymentReceivedForRecharge(false);
-        setSearchedCustomer(null);
+      setIsRechargeDialogOpen(false);
+
+      // Open Instant WhatsApp & SMS Recharge Receipt Modal
+      setRechargeReceiptModalData({
+        businessName: "Sony Cable",
+        customerName: searchedCustomer.name,
+        customerId: searchedCustomer.customerId || searchedCustomer.stbId || searchedCustomer.id,
+        customerDocId: searchedCustomer.id,
+        mobile: searchedCustomer.mobile || '',
+        oldDue: oldDue,
+        rechargeAmount: totalRechargeAmount,
+        newDue: newDue,
+        date: newRechargeDate,
+        packageName: pkg.packageName,
+        months: rechargeMonths,
+        collectedByName: staffData?.name || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Staff'),
+      });
+      setIsRechargeReceiptModalOpen(true);
+
+      setSelectedPackage(null);
+      setPaymentReceivedForRecharge(false);
+      setSearchedCustomer(null);
 
     } catch (error) {
-        console.error("Recharge failed:", error);
-         toast({
-            variant: "destructive",
-            title: "Recharge Failed",
-            description: "An error occurred while processing the recharge.",
-        });
+      console.error("Recharge failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Recharge Failed",
+        description: "An error occurred while processing the recharge.",
+      });
     }
   };
 
@@ -1565,7 +1565,7 @@ export default function DashboardPage() {
       const querySnapshot = await getDocs(customersRef);
       const allCusts = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Customer));
 
-      const found = allCusts.find(c => 
+      const found = allCusts.find(c =>
         (c.customerId && c.customerId.toLowerCase() === qTerm) ||
         (c.mobile && c.mobile.trim() === extraDueSearchQuery.trim()) ||
         (c.stbId && c.stbId.toLowerCase() === qTerm) ||
@@ -1597,8 +1597,8 @@ export default function DashboardPage() {
       return;
     }
 
-    const finalReason = extraDueReason === "Others" 
-      ? (extraDueCustomReason.trim() || "Service Charge") 
+    const finalReason = extraDueReason === "Others"
+      ? (extraDueCustomReason.trim() || "Service Charge")
       : extraDueReason;
 
     setIsSubmittingExtraDue(true);
@@ -1646,8 +1646,10 @@ export default function DashboardPage() {
         newDue: newDue,
         date: now,
         packageName: pkgName,
+        serviceReason: finalReason,
         months: 1,
         collectedByName: staffData?.name || currentUser?.displayName || 'Staff',
+        isExtraDue: true,
       });
       setIsRechargeReceiptModalOpen(true);
 
@@ -1669,217 +1671,217 @@ export default function DashboardPage() {
 
   const AdminCollectionCard = () => (
     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors animate-slide-in-fade-in">
-        <Link href="/dashboard/collection" className="block h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                    Payment Collection
-                </CardTitle>
-                <IndianRupee className="h-4 w-4 text-primary-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between">
-                    <p className="text-xs">
-                        Go to collection page
-                    </p>
-                    <ArrowRight className="h-5 w-5" />
-                </div>
-            </CardContent>
-        </Link>
+      <Link href="/dashboard/collection" className="block h-full">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Payment Collection
+          </CardTitle>
+          <IndianRupee className="h-4 w-4 text-primary-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <p className="text-xs">
+              Go to collection page
+            </p>
+            <ArrowRight className="h-5 w-5" />
+          </div>
+        </CardContent>
+      </Link>
     </Card>
   );
 
   const StaffCollectionCard = () => (
-     <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => setIsCustomerSearchDialogOpen(true)}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-                My Collections
-            </CardTitle>
-            <IndianRupee className="h-4 w-4 text-primary-foreground" />
-        </CardHeader>
-        <CardContent>
-            <p className="text-xs">
-                View customers with outstanding balance
-            </p>
-        </CardContent>
+    <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer" onClick={() => setIsCustomerSearchDialogOpen(true)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">
+          My Collections
+        </CardTitle>
+        <IndianRupee className="h-4 w-4 text-primary-foreground" />
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs">
+          View customers with outstanding balance
+        </p>
+      </CardContent>
     </Card>
   );
-  
+
   const StaffRechargeCard = () => {
     const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
-    
-    if(isNetworkServiceAgent) {
-       return (
+
+    if (isNetworkServiceAgent) {
+      return (
         <Card className="bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-            <Link href="/dashboard/request-recharge" className="block h-full">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                        Request Recharge
-                    </CardTitle>
-                    <Send className="h-4 w-4 text-white" />
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs">
-                            Request a customer recharge from admin
-                        </p>
-                        <ArrowRight className="h-5 w-5" />
-                    </div>
-                </CardContent>
-            </Link>
+          <Link href="/dashboard/request-recharge" className="block h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Request Recharge
+              </CardTitle>
+              <Send className="h-4 w-4 text-white" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <p className="text-xs">
+                  Request a customer recharge from admin
+                </p>
+                <ArrowRight className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Link>
         </Card>
-       );
+      );
     }
 
     return (
-        <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer" onClick={() => setIsRechargeSearchDialogOpen(true)}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                    Recharge
-                </CardTitle>
-                <CreditCard className="h-4 w-4 text-white" />
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between">
-                    <p className="text-xs">
-                        Recharge a customer account
-                    </p>
-                    <ArrowRight className="h-5 w-5" />
-                </div>
-            </CardContent>
-        </Card>
+      <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer" onClick={() => setIsRechargeSearchDialogOpen(true)}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Recharge
+          </CardTitle>
+          <CreditCard className="h-4 w-4 text-white" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <p className="text-xs">
+              Recharge a customer account
+            </p>
+            <ArrowRight className="h-5 w-5" />
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
 
-   const RechargeRequestsCard = ({ canApprove }: { canApprove: boolean }) => {
+  const RechargeRequestsCard = ({ canApprove }: { canApprove: boolean }) => {
     if (rechargeRequests.length === 0) return null;
 
     return (
-        <Card className={cn(
-            "md:col-span-2 lg:col-span-3",
-            highlightNewRequest && "animate-pulse"
-        )}>
-            <CardHeader>
-                <CardTitle>Recharge Requests</CardTitle>
-                 <CardDescription>The following requests were generated by customers or staff.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {rechargeRequests.map(req => (
-                    <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-3 gap-2">
-                        <div>
-                            <p className="font-semibold">{req.customerName}</p>
-                            <p className="text-sm text-muted-foreground">
-                                ID: {req.customerDetails?.customerId} | Mobile: {req.customerDetails?.mobile}
-                            </p>
-                            {req.customerDetails?.balanceAmount && req.customerDetails.balanceAmount > 0 && (
-                                <p className="text-sm text-destructive font-semibold">
-                                    Current Balance: ₹{req.customerDetails.balanceAmount}
-                                </p>
-                            )}
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span> {req.months && ` for ${req.months} month(s)`}
-                            </p>
-                            <Badge variant="outline" className="mt-1">{req.type} Request</Badge>
-                        </div>
-                         {canApprove ? (
-                            <div className="flex gap-2 self-end sm:self-center">
-                                <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
-                                    Approve
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
-                                    Reject
-                                </Button>
-                            </div>
-                        ) : (
-                             <Badge>Pending</Badge>
-                        )}
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
+      <Card className={cn(
+        "md:col-span-2 lg:col-span-3",
+        highlightNewRequest && "animate-pulse"
+      )}>
+        <CardHeader>
+          <CardTitle>Recharge Requests</CardTitle>
+          <CardDescription>The following requests were generated by customers or staff.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {rechargeRequests.map(req => (
+            <div key={req.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-3 gap-2">
+              <div>
+                <p className="font-semibold">{req.customerName}</p>
+                <p className="text-sm text-muted-foreground">
+                  ID: {req.customerDetails?.customerId} | Mobile: {req.customerDetails?.mobile}
+                </p>
+                {req.customerDetails?.balanceAmount && req.customerDetails.balanceAmount > 0 && (
+                  <p className="text-sm text-destructive font-semibold">
+                    Current Balance: ₹{req.customerDetails.balanceAmount}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mt-1">
+                  Requested <span className="font-bold text-foreground">{req.packageName} (₹{req.packageAmount})</span> {req.months && ` for ${req.months} month(s)`}
+                </p>
+                <Badge variant="outline" className="mt-1">{req.type} Request</Badge>
+              </div>
+              {canApprove ? (
+                <div className="flex gap-2 self-end sm:self-center">
+                  <Button size="sm" onClick={() => handleApproveRechargeRequest(req)}>
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleRejectRechargeRequest(req.id)}>
+                    Reject
+                  </Button>
+                </div>
+              ) : (
+                <Badge>Pending</Badge>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     );
-   };
-   
-    const getStaffWalletAmount = (staffId: string) => {
-      const staffPayments = allPayments.filter(p => p.collectedBy === staffId);
-      const totalCollection = staffPayments.reduce((sum, p) => sum + p.amount, 0);
+  };
 
-      const approvedSettlements = settlementRequests.filter(s => s.staffId === staffId && s.status === 'approved');
-      const totalSettled = approvedSettlements.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const getStaffWalletAmount = (staffId: string) => {
+    const staffPayments = allPayments.filter(p => p.collectedBy === staffId);
+    const totalCollection = staffPayments.reduce((sum, p) => sum + p.amount, 0);
 
-      return totalCollection - totalSettled;
-    };
+    const approvedSettlements = settlementRequests.filter(s => s.staffId === staffId && s.status === 'approved');
+    const totalSettled = approvedSettlements.reduce((sum, s) => sum + (s.amount || 0), 0);
 
-    const SettlementRequestsCard = () => {
-     const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
-     if(pendingRequests.length === 0) return null;
- 
-     return (
-          <Card className="md:col-span-2 lg:col-span-3 animate-slide-in-fade-in">
-             <CardHeader>
-                 <CardTitle>Settlement Requests</CardTitle>
-             </CardHeader>
-             <CardContent className="space-y-4">
-                 {pendingRequests.map(req => {
-                     const currentWallet = getStaffWalletAmount(req.staffId);
-                     const remainingWalletIfApproved = Math.max(0, currentWallet - req.amount);
-                     return (
-                         <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border p-3 gap-3">
-                             <div>
-                                 <p className="font-semibold">{req.staffName}</p>
-                                 <p className="text-sm text-muted-foreground">
-                                     Requesting to settle <span className="font-bold text-foreground">₹{req.amountToSend.toLocaleString()}</span> (Gross: ₹{req.amount.toLocaleString()})
-                                 </p>
-                                 <p className="text-xs text-muted-foreground mt-1">
-                                     Current Wallet: ₹{currentWallet.toLocaleString()} | Remaining if approved: <span className="font-semibold text-primary">₹{remainingWalletIfApproved.toLocaleString()}</span>
-                                 </p>
-                             </div>
-                             <div className="flex gap-2">
-                                 <Button onClick={() => handleApproveSettlement(req.id)} size="sm">
-                                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                                     Approve
-                                 </Button>
-                                 <Button onClick={() => handleRejectSettlement(req.id)} variant="destructive" size="sm">
-                                     <XCircle className="mr-2 h-4 w-4" />
-                                     Reject
-                                 </Button>
-                             </div>
-                         </div>
-                     );
-                 })}
-             </CardContent>
-         </Card>
-     );
-    };
-   
-    const ComplaintsCard = () => {
-        if (pendingComplaints.length === 0) return null;
-        return (
-            <Card className="md:col-span-2 lg:col-span-3">
-                <CardHeader>
-                    <CardTitle>Pending Complaints</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {pendingComplaints.slice(0, 3).map(complaint => (
-                         <div key={complaint.id} className="flex items-start justify-between rounded-lg border p-3">
-                             <div>
-                                 <p className="font-semibold">{complaint.customerName}</p>
-                                 <p className="text-sm text-muted-foreground">{complaint.complaint}</p>
-                             </div>
-                             <Button asChild variant="secondary" size="sm">
-                                <Link href="/dashboard/complaints-staff">View</Link>
-                             </Button>
-                         </div>
-                    ))}
-                    {pendingComplaints.length > 3 && (
-                        <Button asChild variant="outline" className="w-full">
-                            <Link href="/dashboard/complaints-staff">View all {pendingComplaints.length} complaints</Link>
-                        </Button>
-                    )}
-                </CardContent>
-            </Card>
-        );
-    };
+    return totalCollection - totalSettled;
+  };
+
+  const SettlementRequestsCard = () => {
+    const pendingRequests = settlementRequests.filter(r => r.status === 'pending');
+    if (pendingRequests.length === 0) return null;
+
+    return (
+      <Card className="md:col-span-2 lg:col-span-3 animate-slide-in-fade-in">
+        <CardHeader>
+          <CardTitle>Settlement Requests</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {pendingRequests.map(req => {
+            const currentWallet = getStaffWalletAmount(req.staffId);
+            const remainingWalletIfApproved = Math.max(0, currentWallet - req.amount);
+            return (
+              <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border p-3 gap-3">
+                <div>
+                  <p className="font-semibold">{req.staffName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Requesting to settle <span className="font-bold text-foreground">₹{req.amountToSend.toLocaleString()}</span> (Gross: ₹{req.amount.toLocaleString()})
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Current Wallet: ₹{currentWallet.toLocaleString()} | Remaining if approved: <span className="font-semibold text-primary">₹{remainingWalletIfApproved.toLocaleString()}</span>
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => handleApproveSettlement(req.id)} size="sm">
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Approve
+                  </Button>
+                  <Button onClick={() => handleRejectSettlement(req.id)} variant="destructive" size="sm">
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const ComplaintsCard = () => {
+    if (pendingComplaints.length === 0) return null;
+    return (
+      <Card className="md:col-span-2 lg:col-span-3">
+        <CardHeader>
+          <CardTitle>Pending Complaints</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {pendingComplaints.slice(0, 3).map(complaint => (
+            <div key={complaint.id} className="flex items-start justify-between rounded-lg border p-3">
+              <div>
+                <p className="font-semibold">{complaint.customerName}</p>
+                <p className="text-sm text-muted-foreground">{complaint.complaint}</p>
+              </div>
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/dashboard/complaints-staff">View</Link>
+              </Button>
+            </div>
+          ))}
+          {pendingComplaints.length > 3 && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard/complaints-staff">View all {pendingComplaints.length} complaints</Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
 
   const handleCreateServiceRequest = async (e: React.FormEvent) => {
@@ -1980,8 +1982,8 @@ export default function DashboardPage() {
   };
 
   const AdminNewConnectionsCard = () => {
-    const visibleNewConnections = liveNewConnections.filter(item => 
-        item.status === 'Pending' || (item.completedAt && (Date.now() - item.completedAt.toMillis() < 86400000))
+    const visibleNewConnections = liveNewConnections.filter(item =>
+      item.status === 'Pending' || (item.completedAt && (Date.now() - item.completedAt.toMillis() < 86400000))
     );
     if (visibleNewConnections.length === 0) return null;
 
@@ -2095,18 +2097,18 @@ export default function DashboardPage() {
   };
 
   const AdminServiceRequestsCard = () => {
-    const visibleServiceRequests = liveServiceRequests.filter(item => 
-        item.status === 'Pending' || item.status === 'In Progress' || (item.resolvedAt && (Date.now() - item.resolvedAt.toMillis() < 86400000))
+    const visibleServiceRequests = liveServiceRequests.filter(item =>
+      item.status === 'Pending' || item.status === 'In Progress' || (item.resolvedAt && (Date.now() - item.resolvedAt.toMillis() < 86400000))
     );
     if (visibleServiceRequests.length === 0) return null;
 
     const handleUpdateSRStatus = async (reqItem: any, newStatus: string) => {
       try {
         const oldStatus = reqItem.status;
-        await updateDoc(doc(db, "serviceRequests", reqItem.id), { 
-            status: newStatus,
-            completedAt: Timestamp.now(),
-            resolvedAt: Timestamp.now()
+        await updateDoc(doc(db, "serviceRequests", reqItem.id), {
+          status: newStatus,
+          completedAt: Timestamp.now(),
+          resolvedAt: Timestamp.now()
         });
 
         // Credit commission to Retailer's wallet if marking as Resolved for the first time
@@ -2213,8 +2215,8 @@ export default function DashboardPage() {
                       req.status === "Resolved"
                         ? "bg-emerald-950 text-emerald-300 border-emerald-800"
                         : req.status === "In Progress"
-                        ? "bg-blue-950 text-blue-300 border-blue-800"
-                        : "bg-amber-950 text-amber-300 border-amber-800"
+                          ? "bg-blue-950 text-blue-300 border-blue-800"
+                          : "bg-amber-950 text-amber-300 border-amber-800"
                     }
                   >
                     {req.status || "Pending"}
@@ -2293,389 +2295,389 @@ export default function DashboardPage() {
 
   const AdminDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <AdminNewConnectionsCard />
-        <AdminServiceRequestsCard />
-        <RechargeRequestsCard canApprove={true} />
-        <SettlementRequestsCard />
-        <AdminCollectionCard />
-        <Card className="bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800 animate-slide-in-fade-in cursor-pointer hover:shadow-md transition-all">
-          <Link href="/dashboard/complaints-staff">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                Pending Complaints
-              </CardTitle>
-              <Badge className="bg-amber-600 text-white font-black text-xs">{pendingComplaints.length}</Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-black text-amber-800 dark:text-amber-300">{pendingComplaints.length}</div>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-semibold">పెండింగ్ ఫిర్యాదులు →</p>
-            </CardContent>
-          </Link>
-        </Card>
-        <Card className="bg-red-100 text-red-800 animate-slide-in-fade-in">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">₹{stats.totalPending.toLocaleString()}</div>
-            </CardContent>
-        </Card>
-        <Card className="bg-green-100 text-green-800 animate-slide-in-fade-in">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-                Active Customers
+      <AdminNewConnectionsCard />
+      <AdminServiceRequestsCard />
+      <RechargeRequestsCard canApprove={true} />
+      <SettlementRequestsCard />
+      <AdminCollectionCard />
+      <Card className="bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800 animate-slide-in-fade-in cursor-pointer hover:shadow-md transition-all">
+        <Link href="/dashboard/complaints-staff">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              Pending Complaints
             </CardTitle>
-            <Users className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">{stats.activeCustomers}</div>
-            </CardContent>
-        </Card>
-        <Card className="bg-blue-100 text-blue-800 animate-slide-in-fade-in">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
-            <Package className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">{stats.activePackages}</div>
-            </CardContent>
-        </Card>
-        <Card className="bg-yellow-100 text-yellow-800 animate-slide-in-fade-in">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-                All Collection Agents
-            </CardTitle>
-            <UserCheck className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">{stats.collectionAgents}</div>
-            </CardContent>
-        </Card>
-        <Card className="bg-indigo-100 text-indigo-800 animate-slide-in-fade-in">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-indigo-500" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">₹{stats.todaysCollection.toLocaleString()}</div>
-            </CardContent>
-        </Card>
-        <Card className="bg-purple-100 text-purple-800 animate-slide-in-fade-in">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month's Collection</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">₹{stats.monthlyCollection.toLocaleString()}</div>
-            </CardContent>
-        </Card>
+            <Badge className="bg-amber-600 text-white font-black text-xs">{pendingComplaints.length}</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-black text-amber-800 dark:text-amber-300">{pendingComplaints.length}</div>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-semibold">పెండింగ్ ఫిర్యాదులు →</p>
+          </CardContent>
+        </Link>
+      </Card>
+      <Card className="bg-red-100 text-red-800 animate-slide-in-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
+          <CircleDollarSign className="h-4 w-4 text-red-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">₹{stats.totalPending.toLocaleString()}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-green-100 text-green-800 animate-slide-in-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Active Customers
+          </CardTitle>
+          <Users className="h-4 w-4 text-green-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.activeCustomers}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-blue-100 text-blue-800 animate-slide-in-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
+          <Package className="h-4 w-4 text-blue-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.activePackages}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-yellow-100 text-yellow-800 animate-slide-in-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            All Collection Agents
+          </CardTitle>
+          <UserCheck className="h-4 w-4 text-yellow-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.collectionAgents}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-indigo-100 text-indigo-800 animate-slide-in-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
+          <CircleDollarSign className="h-4 w-4 text-indigo-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">₹{stats.todaysCollection.toLocaleString()}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-purple-100 text-purple-800 animate-slide-in-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">This Month's Collection</CardTitle>
+          <CircleDollarSign className="h-4 w-4 text-purple-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">₹{stats.monthlyCollection.toLocaleString()}</div>
+        </CardContent>
+      </Card>
     </div>
   );
 
   const StaffDashboard = () => {
-     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
-     const { walletAmount, commissionAmount } = staffWallet;
-     const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
-     const canApproveRecharge = !isNetworkServiceAgent && !/collection|collation/i.test(userRole || '');
+    const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
+    const { walletAmount, commissionAmount } = staffWallet;
+    const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
+    const canApproveRecharge = !isNetworkServiceAgent && !/collection|collation/i.test(userRole || '');
 
-     return (
-       <div className="space-y-3 sm:space-y-6 animate-slide-in-fade-in">
+    return (
+      <div className="space-y-3 sm:space-y-6 animate-slide-in-fade-in">
 
-         {/* 📊 STATS ROW (Rendered FIRST on Mobile) */}
-         <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
-           <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/30 p-2.5 sm:p-4 shadow-sm">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-               <CardTitle className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400 truncate">Total Outstanding</CardTitle>
-               <CircleDollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 shrink-0" />
-             </CardHeader>
-             <CardContent className="p-0">
-               <div className="text-base sm:text-2xl font-bold text-red-700 dark:text-red-400 truncate">₹{totalPendingForStaff.toLocaleString()}</div>
-               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">మొత్తం బకాయి</p>
-             </CardContent>
-           </Card>
+        {/* 📊 STATS ROW (Rendered FIRST on Mobile) */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
+          <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/30 p-2.5 sm:p-4 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400 truncate">Total Outstanding</CardTitle>
+              <CircleDollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 shrink-0" />
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-base sm:text-2xl font-bold text-red-700 dark:text-red-400 truncate">₹{totalPendingForStaff.toLocaleString()}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">మొత్తం బకాయి</p>
+            </CardContent>
+          </Card>
 
-           <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2.5 sm:p-4 shadow-sm hover:border-amber-600 transition-all cursor-pointer">
-             <Link href="/dashboard/complaints-staff" className="block">
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-                 <CardTitle className="text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-400 truncate">Pending Complaints</CardTitle>
-                 <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 shrink-0" />
-               </CardHeader>
-               <CardContent className="p-0">
-                 <div className="text-base sm:text-2xl font-black text-amber-700 dark:text-amber-400 truncate flex items-center justify-between">
-                   <span>{pendingComplaints.length}</span>
-                   {pendingComplaints.length > 0 && (
-                     <Badge className="bg-amber-600 text-white text-[10px] px-1.5 py-0 font-bold">🚨 Urgent</Badge>
-                   )}
-                 </div>
-                 <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">పెండింగ్ ఫిర్యాదులు</p>
-               </CardContent>
-             </Link>
-           </Card>
+          <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2.5 sm:p-4 shadow-sm hover:border-amber-600 transition-all cursor-pointer">
+            <Link href="/dashboard/complaints-staff" className="block">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-400 truncate">Pending Complaints</CardTitle>
+                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 shrink-0" />
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="text-base sm:text-2xl font-black text-amber-700 dark:text-amber-400 truncate flex items-center justify-between">
+                  <span>{pendingComplaints.length}</span>
+                  {pendingComplaints.length > 0 && (
+                    <Badge className="bg-amber-600 text-white text-[10px] px-1.5 py-0 font-bold">🚨 Urgent</Badge>
+                  )}
+                </div>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">పెండింగ్ ఫిర్యాదులు</p>
+              </CardContent>
+            </Link>
+          </Card>
 
-           <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/30 p-2.5 sm:p-4 shadow-sm">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-               <CardTitle className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 truncate">Today's Collection</CardTitle>
-               <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
-             </CardHeader>
-             <CardContent className="p-0">
-               <div className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-400 truncate">₹{todaysCollectionForStaff.toLocaleString()}</div>
-               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ రోజు వసూళ్ళు</p>
-             </CardContent>
-           </Card>
+          <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/30 p-2.5 sm:p-4 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400 truncate">Today's Collection</CardTitle>
+              <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-400 truncate">₹{todaysCollectionForStaff.toLocaleString()}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ రోజు వసూళ్ళు</p>
+            </CardContent>
+          </Card>
 
-           <Card className="border-l-4 border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 sm:p-4 shadow-sm">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-               <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate">Collection Wallet</CardTitle>
-               <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 shrink-0" />
-             </CardHeader>
-             <CardContent className="p-0">
-               <div className="text-base sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 truncate">₹{walletAmount.toLocaleString()}</div>
-               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Last settlement నుండి</p>
-             </CardContent>
-           </Card>
+          <Card className="border-l-4 border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 sm:p-4 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate">Collection Wallet</CardTitle>
+              <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 shrink-0" />
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-base sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 truncate">₹{walletAmount.toLocaleString()}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Last settlement నుండి</p>
+            </CardContent>
+          </Card>
 
-           <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-950/30 p-2.5 sm:p-4 shadow-sm">
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-               <CardTitle className="text-xs sm:text-sm font-medium text-purple-700 dark:text-purple-400 truncate">Commission Wallet</CardTitle>
-               <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
-             </CardHeader>
-             <CardContent className="p-0">
-               <div className="text-base sm:text-2xl font-bold text-purple-700 dark:text-purple-400 truncate">₹{commissionAmount.toLocaleString()}</div>
-               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ నెల కమీషన్</p>
-             </CardContent>
-           </Card>
-         </div>
+          <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-950/30 p-2.5 sm:p-4 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-purple-700 dark:text-purple-400 truncate">Commission Wallet</CardTitle>
+              <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="text-base sm:text-2xl font-bold text-purple-700 dark:text-purple-400 truncate">₹{commissionAmount.toLocaleString()}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ నెల కమీషన్</p>
+            </CardContent>
+          </Card>
+        </div>
 
-         {/* 📱 MOBILE QUICK ACTIONS ICON GRID (< sm) (Rendered SECOND on Mobile below Stats) */}
-         <div className="block sm:hidden">
-           <div className="bg-card border rounded-xl p-2.5 shadow-sm">
-             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center justify-between px-1">
-               <span>Quick Actions</span>
-               <span className="text-[9px] text-amber-600 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">4 Actions</span>
-             </div>
-             <div className="grid grid-cols-4 gap-1.5">
-               {/* 1. Recharge */}
-               <button
-                 type="button"
-                 onClick={() => setIsRechargeSearchDialogOpen(true)}
-                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
-               >
-                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shadow-xs mb-1">
-                   <CreditCard className="h-5 w-5" />
-                 </div>
-                 <span className="text-[10px] font-bold text-foreground leading-tight">Recharge</span>
-               </button>
+        {/* 📱 MOBILE QUICK ACTIONS ICON GRID (< sm) (Rendered SECOND on Mobile below Stats) */}
+        <div className="block sm:hidden">
+          <div className="bg-card border rounded-xl p-2.5 shadow-sm">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center justify-between px-1">
+              <span>Quick Actions</span>
+              <span className="text-[9px] text-amber-600 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">4 Actions</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {/* 1. Recharge */}
+              <button
+                type="button"
+                onClick={() => setIsRechargeSearchDialogOpen(true)}
+                className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shadow-xs mb-1">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-bold text-foreground leading-tight">Recharge</span>
+              </button>
 
-               {/* 2. Payment */}
-               <button
-                 type="button"
-                 onClick={() => setIsCustomerSearchDialogOpen(true)}
-                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
-               >
-                 <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 border border-orange-300 dark:border-orange-800 flex items-center justify-center shadow-xs mb-1">
-                   <IndianRupee className="h-5 w-5" />
-                 </div>
-                 <span className="text-[10px] font-bold text-foreground leading-tight">Collect</span>
-               </button>
+              {/* 2. Payment */}
+              <button
+                type="button"
+                onClick={() => setIsCustomerSearchDialogOpen(true)}
+                className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+              >
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 border border-orange-300 dark:border-orange-800 flex items-center justify-center shadow-xs mb-1">
+                  <IndianRupee className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-bold text-foreground leading-tight">Collect</span>
+              </button>
 
-               {/* 3. Add Extra Due / Service Charge */}
-               <button
-                 type="button"
-                 onClick={() => {
-                   setExtraDueCustomer(null);
-                   setExtraDueSearchQuery("");
-                   setExtraDueAmount("200");
-                   setExtraDueReason("Wire Repair");
-                   setIsExtraDueModalOpen(true);
-                 }}
-                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
-               >
-                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-300 dark:border-amber-800 flex items-center justify-center shadow-xs mb-1">
-                   <PlusCircle className="h-5 w-5" />
-                 </div>
-                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-tight">+ Extra Due</span>
-               </button>
+              {/* 3. Add Extra Due / Service Charge */}
+              <button
+                type="button"
+                onClick={() => {
+                  setExtraDueCustomer(null);
+                  setExtraDueSearchQuery("");
+                  setExtraDueAmount("200");
+                  setExtraDueReason("Wire Repair");
+                  setIsExtraDueModalOpen(true);
+                }}
+                className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-300 dark:border-amber-800 flex items-center justify-center shadow-xs mb-1">
+                  <PlusCircle className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-tight">+ Extra Due</span>
+              </button>
 
-               {/* 4. Requests */}
-               <Link
-                 href="/dashboard/request-recharge"
-                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
-               >
-                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-300 dark:border-purple-800 flex items-center justify-center shadow-xs mb-1">
-                   <Gift className="h-5 w-5" />
-                 </div>
-                 <span className="text-[10px] font-bold text-foreground leading-tight">Requests</span>
-               </Link>
-             </div>
-           </div>
-         </div>
+              {/* 4. Requests */}
+              <Link
+                href="/dashboard/request-recharge"
+                className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
+              >
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-300 dark:border-purple-800 flex items-center justify-center shadow-xs mb-1">
+                  <Gift className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-bold text-foreground leading-tight">Requests</span>
+              </Link>
+            </div>
+          </div>
+        </div>
 
-         {/* 💻 DESKTOP QUICK ACTION CARDS (>= sm) */}
-         <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-           {/* Recharge / Request Recharge */}
-           {isNetworkServiceAgent ? (
-             <Link href="/dashboard/request-recharge" className="block">
-               <Card className="bg-blue-600 text-white hover:bg-blue-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
-                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                   <CardTitle className="text-sm font-semibold">Request Recharge</CardTitle>
-                   <Send className="h-5 w-5" />
-                 </CardHeader>
-                 <CardContent>
-                   <p className="text-xs text-blue-100">Request a customer recharge from admin</p>
-                   <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                     Go to Requests <ArrowRight className="h-3 w-3" />
-                   </div>
-                 </CardContent>
-               </Card>
-             </Link>
-           ) : (
-             <Card
-               className="bg-emerald-600 text-white hover:bg-emerald-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-               onClick={() => setIsRechargeSearchDialogOpen(true)}
-             >
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                 <CardTitle className="text-sm font-semibold">Recharge Customer</CardTitle>
-                 <CreditCard className="h-5 w-5" />
-               </CardHeader>
-               <CardContent>
-                 <p className="text-xs text-emerald-100">Recharge a customer account quickly</p>
-                 <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                   Click to Search <ArrowRight className="h-3 w-3" />
-                 </div>
-               </CardContent>
-             </Card>
-           )}
+        {/* 💻 DESKTOP QUICK ACTION CARDS (>= sm) */}
+        <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Recharge / Request Recharge */}
+          {isNetworkServiceAgent ? (
+            <Link href="/dashboard/request-recharge" className="block">
+              <Card className="bg-blue-600 text-white hover:bg-blue-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-semibold">Request Recharge</CardTitle>
+                  <Send className="h-5 w-5" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-blue-100">Request a customer recharge from admin</p>
+                  <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                    Go to Requests <ArrowRight className="h-3 w-3" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card
+              className="bg-emerald-600 text-white hover:bg-emerald-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+              onClick={() => setIsRechargeSearchDialogOpen(true)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold">Recharge Customer</CardTitle>
+                <CreditCard className="h-5 w-5" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-emerald-100">Recharge a customer account quickly</p>
+                <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                  Click to Search <ArrowRight className="h-3 w-3" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-           {/* Collect Payment */}
-           <Card
-             className="bg-orange-500 text-white hover:bg-orange-400 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-             onClick={() => setIsCustomerSearchDialogOpen(true)}
-           >
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-semibold">Collect Payment</CardTitle>
-               <IndianRupee className="h-5 w-5" />
-             </CardHeader>
-             <CardContent>
-               <p className="text-xs text-orange-100">Collect payment from a customer</p>
-               <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                 Click to Search <ArrowRight className="h-3 w-3" />
-               </div>
-             </CardContent>
-           </Card>
+          {/* Collect Payment */}
+          <Card
+            className="bg-orange-500 text-white hover:bg-orange-400 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+            onClick={() => setIsCustomerSearchDialogOpen(true)}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold">Collect Payment</CardTitle>
+              <IndianRupee className="h-5 w-5" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-orange-100">Collect payment from a customer</p>
+              <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                Click to Search <ArrowRight className="h-3 w-3" />
+              </div>
+            </CardContent>
+          </Card>
 
-           {/* Add Extra Due / Service Charge */}
-           <Card
-             className="bg-amber-600 text-white hover:bg-amber-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-             onClick={() => {
-               setExtraDueCustomer(null);
-               setExtraDueSearchQuery("");
-               setExtraDueAmount("200");
-               setExtraDueReason("Wire Repair");
-               setIsExtraDueModalOpen(true);
-             }}
-           >
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-sm font-semibold">Add Service Charge</CardTitle>
-               <PlusCircle className="h-5 w-5" />
-             </CardHeader>
-             <CardContent>
-               <p className="text-xs text-amber-100">Add wire repair, STB shift & extra dues</p>
-               <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                 + Add Extra Due <ArrowRight className="h-3 w-3" />
-               </div>
-             </CardContent>
-           </Card>
+          {/* Add Extra Due / Service Charge */}
+          <Card
+            className="bg-amber-600 text-white hover:bg-amber-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+            onClick={() => {
+              setExtraDueCustomer(null);
+              setExtraDueSearchQuery("");
+              setExtraDueAmount("200");
+              setExtraDueReason("Wire Repair");
+              setIsExtraDueModalOpen(true);
+            }}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold">Add Service Charge</CardTitle>
+              <PlusCircle className="h-5 w-5" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-amber-100">Add wire repair, STB shift & extra dues</p>
+              <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                + Add Extra Due <ArrowRight className="h-3 w-3" />
+              </div>
+            </CardContent>
+          </Card>
 
-           {/* Recharge Requests */}
-           <Link href="/dashboard/request-recharge" className="block">
-             <Card className="bg-purple-600 text-white hover:bg-purple-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                 <CardTitle className="text-sm font-semibold">Recharge Requests</CardTitle>
-                 <Gift className="h-5 w-5" />
-               </CardHeader>
-               <CardContent>
-                 <p className="text-xs text-purple-100">View pending recharge requests</p>
-                 <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                   View All <ArrowRight className="h-3 w-3" />
-                 </div>
-               </CardContent>
-             </Card>
-           </Link>
-         </div>
+          {/* Recharge Requests */}
+          <Link href="/dashboard/request-recharge" className="block">
+            <Card className="bg-purple-600 text-white hover:bg-purple-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold">Recharge Requests</CardTitle>
+                <Gift className="h-5 w-5" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-purple-100">View pending recharge requests</p>
+                <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                  View All <ArrowRight className="h-3 w-3" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
 
-         {/* Bottom Row: Settle Collection + Recharge Requests Card */}
-         <div className="grid gap-4 md:grid-cols-2">
-           {/* Settle Collection */}
-           <Card>
-             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                 <ArrowLeftRight className="h-5 w-5 text-primary" />
-                 Settle Collection (అడ్మిన్‌కు పంపించండి)
-               </CardTitle>
-             </CardHeader>
-             <CardContent className="space-y-3">
-               <div className="flex items-center justify-between rounded-lg bg-muted p-3">
-                 <span className="text-sm text-muted-foreground">Amount to Settle</span>
-                 <span className="text-xl font-bold">₹{walletAmount.toLocaleString()}</span>
-               </div>
-               {hasPendingRequest ? (
-                 <div className="space-y-2">
-                   <Button className="w-full" disabled variant="outline">
-                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approval Pending...
-                   </Button>
-                   <Button className="w-full" variant="ghost" onClick={handleCancelSettlement}>
-                     Cancel Request
-                   </Button>
-                   <p className="text-xs text-muted-foreground text-center">మీ అభ్యర్థన అడ్మిన్ అప్రూవల్ కోసం వేచి ఉంది.</p>
-                 </div>
-               ) : (
-                 <div className="space-y-2">
-                   <Button
-                     className="w-full bg-primary hover:bg-primary/90"
-                     onClick={() => { setSettlementAmount(String(walletAmount)); setIsSettleDialogOpen(true); }}
-                     disabled={walletAmount === 0}
-                   >
-                     <Send className="mr-2 h-4 w-4" /> Send to Admin
-                   </Button>
-                   <p className="text-xs text-muted-foreground text-center">వసూల్ చేసిన మొత్తాన్ని అడ్మిన్‌కు పంపండి.</p>
-                 </div>
-               )}
-             </CardContent>
-           </Card>
+        {/* Bottom Row: Settle Collection + Recharge Requests Card */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Settle Collection */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <ArrowLeftRight className="h-5 w-5 text-primary" />
+                Settle Collection (అడ్మిన్‌కు పంపించండి)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg bg-muted p-3">
+                <span className="text-sm text-muted-foreground">Amount to Settle</span>
+                <span className="text-xl font-bold">₹{walletAmount.toLocaleString()}</span>
+              </div>
+              {hasPendingRequest ? (
+                <div className="space-y-2">
+                  <Button className="w-full" disabled variant="outline">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approval Pending...
+                  </Button>
+                  <Button className="w-full" variant="ghost" onClick={handleCancelSettlement}>
+                    Cancel Request
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">మీ అభ్యర్థన అడ్మిన్ అప్రూవల్ కోసం వేచి ఉంది.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90"
+                    onClick={() => { setSettlementAmount(String(walletAmount)); setIsSettleDialogOpen(true); }}
+                    disabled={walletAmount === 0}
+                  >
+                    <Send className="mr-2 h-4 w-4" /> Send to Admin
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">వసూల్ చేసిన మొత్తాన్ని అడ్మిన్‌కు పంపండి.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-           {/* Commission Info */}
-           <Card>
-             <CardHeader className="pb-2">
-               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                 <Gift className="h-5 w-5 text-amber-500" />
-                 మీ కమీషన్ వివరాలు
-               </CardTitle>
-             </CardHeader>
-             <CardContent className="space-y-3 text-sm">
-               <div className="flex items-center justify-between rounded-lg bg-muted p-2.5">
-                 <div>
-                   <p className="font-semibold">కలెక్షన్ కమీషన్</p>
-                   <p className="text-xs text-muted-foreground">వసూలు చేసే మొత్తంపై కమీషన్</p>
-                 </div>
-                 <span className="text-base font-bold text-primary">{staffData?.commission || 'N/A'}</span>
-               </div>
-               <div className="flex items-center justify-between rounded-lg bg-muted p-2.5">
-                 <div>
-                   <p className="font-semibold">కొత్త కస్టమర్ కమీషన్</p>
-                   <p className="text-xs text-muted-foreground">ప్రతి నూతన కస్టమర్‌కు</p>
-                 </div>
-                 <span className="text-base font-bold text-primary">₹{staffData?.enrollmentCommission?.toLocaleString() || 'N/A'}</span>
-               </div>
-             </CardContent>
-           </Card>
-         </div>
+          {/* Commission Info */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Gift className="h-5 w-5 text-amber-500" />
+                మీ కమీషన్ వివరాలు
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-lg bg-muted p-2.5">
+                <div>
+                  <p className="font-semibold">కలెక్షన్ కమీషన్</p>
+                  <p className="text-xs text-muted-foreground">వసూలు చేసే మొత్తంపై కమీషన్</p>
+                </div>
+                <span className="text-base font-bold text-primary">{staffData?.commission || 'N/A'}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted p-2.5">
+                <div>
+                  <p className="font-semibold">కొత్త కస్టమర్ కమీషన్</p>
+                  <p className="text-xs text-muted-foreground">ప్రతి నూతన కస్టమర్‌కు</p>
+                </div>
+                <span className="text-base font-bold text-primary">₹{staffData?.enrollmentCommission?.toLocaleString() || 'N/A'}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-         {/* Recharge Requests section */}
-         <RechargeRequestsCard canApprove={canApproveRecharge} />
-       </div>
-     );
+        {/* Recharge Requests section */}
+        <RechargeRequestsCard canApprove={canApproveRecharge} />
+      </div>
+    );
   };
 
   const DealerDashboard = () => (
@@ -2841,8 +2843,8 @@ export default function DashboardPage() {
                         isCompleted
                           ? "bg-emerald-950/30 border-emerald-700/40"
                           : isRejected
-                          ? "bg-rose-950/30 border-rose-700/40"
-                          : "bg-slate-950 border-slate-800"
+                            ? "bg-rose-950/30 border-rose-700/40"
+                            : "bg-slate-950 border-slate-800"
                       )}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-800/80 pb-2">
@@ -2858,8 +2860,8 @@ export default function DashboardPage() {
                             isCompleted
                               ? "bg-emerald-500 text-white"
                               : isRejected
-                              ? "bg-rose-600 text-white"
-                              : "bg-amber-500 text-white animate-pulse"
+                                ? "bg-rose-600 text-white"
+                                : "bg-amber-500 text-white animate-pulse"
                           )}
                         >
                           {isCompleted ? "✅ Completed (రిచార్జ్ అయింది)" : isRejected ? "❌ Rejected" : "⏳ Pending Approval"}
@@ -3014,8 +3016,8 @@ export default function DashboardPage() {
                             status === "Pending"
                               ? "bg-amber-500/20 text-amber-400 border border-amber-500 animate-pulse"
                               : status === "In Progress"
-                              ? "bg-blue-500/20 text-blue-300 border border-blue-500 animate-pulse"
-                              : "bg-emerald-500/20 text-emerald-400 border border-emerald-500"
+                                ? "bg-blue-500/20 text-blue-300 border border-blue-500 animate-pulse"
+                                : "bg-emerald-500/20 text-emerald-400 border border-emerald-500"
                           )}
                         >
                           {status === "Pending" ? "⏳ Pending" : status === "In Progress" ? "🔄 In Progress" : "✅ Resolved"}
@@ -3155,7 +3157,7 @@ export default function DashboardPage() {
         </div>
       );
     }
-    
+
     if (userRole === 'Admin') return (
       <div className="space-y-6">
         <AdminRechargeRequestsCard />
@@ -3167,95 +3169,95 @@ export default function DashboardPage() {
     if (userRole) return <StaffDashboard />;
 
     return (
-        <div className="text-center">
-            <p>Welcome! Your role is not fully configured.</p>
-        </div>
+      <div className="text-center">
+        <p>Welcome! Your role is not fully configured.</p>
+      </div>
     );
   };
-  
-    const cleanupSearchDialog = (setDialogOpen: (val: boolean) => void) => {
-        setDialogOpen(false);
-        setSearchedCustomer(null);
-        setSearchQuery("");
-        setSearchError("");
-    };
 
-    const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
-    
-    const baseAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) : 0;
-    const offer = rechargeOffers.find(o => o.months === rechargeMonths);
-    const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
-    const totalRechargeAmount = baseAmount * rechargeMonths - discount;
+  const cleanupSearchDialog = (setDialogOpen: (val: boolean) => void) => {
+    setDialogOpen(false);
+    setSearchedCustomer(null);
+    setSearchQuery("");
+    setSearchError("");
+  };
 
-    const newBalance = searchedCustomer && selectedPackageDetails && !paymentReceivedForRecharge
-        ? parseFloat(String(searchedCustomer.balanceAmount)) + totalRechargeAmount
-        : searchedCustomer?.balanceAmount;
-    const handleOpenService = (cust: DishTvCustomer) => {
-      setServiceCustomer(cust);
-      setServiceType("Cable Shift / Relocation");
-      setServiceAmount("250");
-      setServiceNotes("");
-      setIsServiceDialogOpen(true);
-    };
+  const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
 
-    const handleConfirmService = async () => {
-      if (!serviceCustomer || !currentUser) return;
-      setIsSavingService(true);
+  const baseAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) : 0;
+  const offer = rechargeOffers.find(o => o.months === rechargeMonths);
+  const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
+  const totalRechargeAmount = baseAmount * rechargeMonths - discount;
 
-      try {
-        const addedAmt = parseFloat(serviceAmount) || 0;
-        const currentBal = serviceCustomer.balanceAmount !== undefined
-          ? serviceCustomer.balanceAmount
-          : (serviceCustomer.monthlyAmount || 350);
-        const newBal = currentBal + addedAmt;
+  const newBalance = searchedCustomer && selectedPackageDetails && !paymentReceivedForRecharge
+    ? parseFloat(String(searchedCustomer.balanceAmount)) + totalRechargeAmount
+    : searchedCustomer?.balanceAmount;
+  const handleOpenService = (cust: DishTvCustomer) => {
+    setServiceCustomer(cust);
+    setServiceType("Cable Shift / Relocation");
+    setServiceAmount("250");
+    setServiceNotes("");
+    setIsServiceDialogOpen(true);
+  };
 
-        // 1. Log service record in dishtv_services
-        await addDoc(collection(db, "dishtv_services"), {
-          customerId: serviceCustomer.id,
-          customerName: serviceCustomer.name,
-          mobile: serviceCustomer.mobile,
-          serviceType: serviceType,
-          amount: addedAmt,
-          notes: serviceNotes.trim(),
-          addedByUid: currentUser.uid,
-          addedByName: currentUser.displayName || currentUser.email || "Dealer",
-          createdAt: Timestamp.now(),
-        });
+  const handleConfirmService = async () => {
+    if (!serviceCustomer || !currentUser) return;
+    setIsSavingService(true);
 
-        // 2. Update customer balanceAmount in dishtv_customers
-        await updateDoc(doc(db, "dishtv_customers", serviceCustomer.id), {
-          balanceAmount: newBal,
-        });
+    try {
+      const addedAmt = parseFloat(serviceAmount) || 0;
+      const currentBal = serviceCustomer.balanceAmount !== undefined
+        ? serviceCustomer.balanceAmount
+        : (serviceCustomer.monthlyAmount || 350);
+      const newBal = currentBal + addedAmt;
 
-        // 3. Update state in topSearchResults if present
-        setAllDishTvCustomers((prev) =>
-          prev.map((c) => (c.id === serviceCustomer.id ? { ...c, balanceAmount: newBal } : c))
-        );
+      // 1. Log service record in dishtv_services
+      await addDoc(collection(db, "dishtv_services"), {
+        customerId: serviceCustomer.id,
+        customerName: serviceCustomer.name,
+        mobile: serviceCustomer.mobile,
+        serviceType: serviceType,
+        amount: addedAmt,
+        notes: serviceNotes.trim(),
+        addedByUid: currentUser.uid,
+        addedByName: currentUser.displayName || currentUser.email || "Dealer",
+        createdAt: Timestamp.now(),
+      });
 
-        toast({
-          title: "Service Charge Added! 🛠️",
-          description: `Added ₹${addedAmt} for ${serviceType} to ${serviceCustomer.name}'s balance. New Balance: ₹${newBal}.`,
-        });
+      // 2. Update customer balanceAmount in dishtv_customers
+      await updateDoc(doc(db, "dishtv_customers", serviceCustomer.id), {
+        balanceAmount: newBal,
+      });
 
-        setIsServiceDialogOpen(false);
-      } catch (err) {
-        console.error("Service charge error:", err);
-        toast({
-          variant: "destructive",
-          title: "Service Charge Failed",
-          description: "Failed to add service charge.",
-        });
-      } finally {
-        setIsSavingService(false);
-      }
-    };
+      // 3. Update state in topSearchResults if present
+      setAllDishTvCustomers((prev) =>
+        prev.map((c) => (c.id === serviceCustomer.id ? { ...c, balanceAmount: newBal } : c))
+      );
+
+      toast({
+        title: "Service Charge Added! 🛠️",
+        description: `Added ₹${addedAmt} for ${serviceType} to ${serviceCustomer.name}'s balance. New Balance: ₹${newBal}.`,
+      });
+
+      setIsServiceDialogOpen(false);
+    } catch (err) {
+      console.error("Service charge error:", err);
+      toast({
+        variant: "destructive",
+        title: "Service Charge Failed",
+        description: "Failed to add service charge.",
+      });
+    } finally {
+      setIsSavingService(false);
+    }
+  };
 
   const isLimitBreached = (staffData?.collectionLimit ?? 10000) > 0 && (staffWallet?.walletAmount || 0) >= (staffData?.collectionLimit ?? 10000);
   const isInactiveStaff = !authLoading && userRole && userRole !== 'Admin' && userRole !== 'Dealer' && userRole !== 'Retailer' && (userStatus === 'inactive' || staffData?.status === 'inactive' || isLimitBreached);
 
   if (isInactiveStaff) {
     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
-    
+
     return (
       <>
         <main className="min-h-screen w-full font-body text-foreground">
@@ -3400,1215 +3402,1215 @@ export default function DashboardPage() {
 
   return (
     <>
-    <main className="min-h-screen w-full font-body text-foreground">
-      <div className="container mx-auto p-2.5 sm:p-4 py-3 sm:py-8 md:p-12">
-        <header className="mb-3 sm:mb-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-               <h1 className="text-xl sm:text-4xl font-extrabold tracking-tight flex items-center gap-2">
+      <main className="min-h-screen w-full font-body text-foreground">
+        <div className="container mx-auto p-2.5 sm:p-4 py-3 sm:py-8 md:p-12">
+          <header className="mb-3 sm:mb-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <h1 className="text-xl sm:text-4xl font-extrabold tracking-tight flex items-center gap-2">
                   <div className="flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-red-600 text-white shadow-sm shrink-0">
                     <Tv className="h-4 w-4 sm:h-6 sm:w-6" />
                   </div>
                   <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 bg-clip-text text-transparent">
-                     Sony Cable Network
+                    Sony Cable Network
                   </span>
-               </h1>
-               {userRole && !authLoading && !firestoreLoading && (
+                </h1>
+                {userRole && !authLoading && !firestoreLoading && (
                   <Badge variant={userRole === "Admin" ? "default" : "secondary"} className="text-xs px-2 py-0.5 sm:text-sm font-semibold shadow-xs">
-                     <ShieldCheck className="mr-1 h-3.5 w-3.5 text-amber-500" />
-                     {userRole}
+                    <ShieldCheck className="mr-1 h-3.5 w-3.5 text-amber-500" />
+                    {userRole}
                   </Badge>
-              )}
-            </div>
-            
-            {/* 🚫 Hide Service Request button for Staff/Recharge Staff (Only show for Admin, Dealer, Retailer) */}
-            {(!userRole || userRole === "Admin" || /dealer|retailer/i.test(userRole)) && (
-              <Button
-                onClick={() => setIsServiceRequestOpen(true)}
-                className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 sm:px-5 sm:py-5 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
-              >
-                <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span>+ Service Request (సర్వీస్ రిక్వెస్ట్)</span>
-              </Button>
-            )}
-          </div>
-          <p className="mt-1 max-w-3xl text-xs text-muted-foreground md:text-xl">
-             { !authLoading && !firestoreLoading && getWelcomeMessage() }
-          </p>
-
-          {/* Top Universal Customer Quick Search Bar (Admin, Dealer & Retailer) */}
-          {!authLoading && !firestoreLoading && (userRole === "Admin" || /dealer|retailer/i.test(userRole || "")) && (
-            <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl border border-indigo-700/40">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
-                    <Search className="h-5 w-5 text-amber-400" />
-                    DishTV Customer VC Search (డిష్‌టీవీ VC నంబర్ వెతుకులాట)
-                  </h2>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Enter Customer VC Number or Mobile Number and click Search button to view details & 1, 3, 6, 12 Month package prices.
-                  </p>
-                </div>
+                )}
               </div>
 
-              <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 items-stretch w-full max-w-3xl">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder="Enter VC Number or Mobile (e.g. 015... or 98480...)..."
-                    className="pl-12 pr-10 py-6 text-base bg-slate-900/90 border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus-visible:ring-2 focus-visible:ring-amber-400"
-                    value={topSearchTerm}
-                    onChange={(e) => setTopSearchTerm(e.target.value)}
-                  />
-                  {topSearchTerm && (
-                    <button
-                      type="button"
-                      onClick={() => { setTopSearchTerm(""); setActiveSearchQuery(""); }}
-                      className="absolute right-3 top-3.5 text-slate-400 hover:text-white"
-                    >
-                      <XCircle className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
+              {/* 🚫 Hide Service Request button for Staff/Recharge Staff (Only show for Admin, Dealer, Retailer) */}
+              {(!userRole || userRole === "Admin" || /dealer|retailer/i.test(userRole)) && (
                 <Button
-                  type="submit"
-                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold px-6 py-6 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all shrink-0"
+                  onClick={() => setIsServiceRequestOpen(true)}
+                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 sm:px-5 sm:py-5 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
                 >
-                  <Search className="h-5 w-5" />
-                  <span>Search Customer (వెతకండి)</span>
+                  <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>+ Service Request (సర్వీస్ రిక్వెస్ట్)</span>
                 </Button>
-              </form>
-
-              {/* Search Results Container - Displayed ONLY after clicking Search button */}
-              {activeSearchQuery.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  {topSearchResults.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-red-950/90 border border-red-700/60 text-red-100 text-sm flex items-center justify-between shadow-xl">
-                      <div className="flex items-center gap-3">
-                        <XCircle className="h-6 w-6 text-red-400 shrink-0" />
-                        <div>
-                          <p className="font-bold text-base text-red-200">
-                            Wrong VC Number or Mobile Number! (తప్పు VC నంబర్ లేదా మొబైల్ నంబర్)
-                          </p>
-                          <p className="text-xs text-red-300 mt-0.5">
-                            "{activeSearchQuery}" కి సంబంధించిన కస్టమర్ వివరాలు లభించలేదు. దయచేసి పూర్తి VC నంబర్ లేదా 10 అంకెల మొబైల్ నంబర్‌ను సరిగా ఎంటర్ చేయండి.
-                          </p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="ghost" className="text-red-300 hover:text-white hover:bg-red-900/60 shrink-0" onClick={() => setActiveSearchQuery("")}>Clear</Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
-                          Found {topSearchResults.length} Matching Customer(s) for "{activeSearchQuery}":
-                        </p>
-                        <Button size="sm" variant="ghost" className="text-xs text-slate-400 hover:text-white" onClick={() => { setTopSearchTerm(""); setActiveSearchQuery(""); }}>Clear Results</Button>
-                      </div>
-                      {topSearchResults.map((cust) => (
-                        <Card key={cust.id} className="bg-slate-900/95 border-amber-500/50 text-white shadow-xl overflow-hidden">
-                          <CardContent className="p-5">
-                            {/* Header Section: Customer Name, Status, Full Address, Balance */}
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-4">
-                              <div>
-                                <div className="flex items-center gap-3">
-                                  <h3 className="text-2xl font-bold text-white">{cust.name}</h3>
-                                  <Badge className={cust.status === "Active" ? "bg-emerald-500 text-white font-bold" : "bg-amber-500 text-white font-bold"}>
-                                    {cust.status}
-                                  </Badge>
-                                </div>
-                                {/* Full Customer Address */}
-                                <p className="text-xs text-slate-300 mt-1 flex items-start gap-1 font-medium">
-                                  <MapPin className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                                  <span><strong className="text-slate-200">Full Address (చిరునామా):</strong> {getFullCustomerAddress(cust)}</span>
-                                </p>
-                              </div>
-
-                              <div className="text-left md:text-right bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
-                                <span className="text-xs text-slate-400 block font-medium">Balance Due / నిల్వ బాకీ</span>
-                                <span className="text-2xl font-black text-amber-400">
-                                  ₹{(cust.balanceAmount !== undefined ? cust.balanceAmount : (cust.monthlyAmount || 350)).toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Customer Basic Info Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-slate-800/60 p-4 rounded-xl border border-slate-800 mb-4">
-                              {/* VC Number */}
-                              <div>
-                                <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                  💳 VC Number (VC No)
-                                </span>
-                                <span className="font-mono font-bold text-purple-300 text-base">
-                                  {cust.vcNumber || "Not Set"}
-                                </span>
-                              </div>
-
-                              {/* Contact Person Mobile Number */}
-                              <div>
-                                <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                  📱 Contact Mobile
-                                </span>
-                                <span className="font-bold text-emerald-400 text-base">
-                                  {cust.mobile}
-                                </span>
-                              </div>
-
-                              {/* Current Package */}
-                              <div>
-                                <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                  📺 Current Package Plan
-                                </span>
-                                <span className="font-bold text-blue-300 text-base">
-                                  {cust.packagePlan || "Standard Plan"}
-                                </span>
-                              </div>
-
-                              {/* Assigned Dealer Name */}
-                              <div>
-                                <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                  🏬 Dealer Name (డీలర్ పేరు)
-                                </span>
-                                <span className="font-bold text-amber-300 text-base">
-                                  {cust.dealerName || dealerName || "Navanidhi Digital System"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Multi-Month Package Price Breakdown List (1, 3, 6, 12 Months) */}
-                            {(() => {
-                              const prices = getPackagePriceList(cust);
-                              return (
-                                <div className="bg-slate-950/80 p-4 rounded-xl border border-indigo-900/60 mb-4">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                                      <Package className="h-4 w-4 text-amber-400" />
-                                      Package Price List (ప్యాక్ ధరల పట్టిక - 1, 3, 6, 12 నెలలు):
-                                    </h4>
-                                    <span className="text-[11px] text-cyan-300 font-semibold bg-cyan-950/80 border border-cyan-800/80 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                                      ⚡ ఆఫర్ కార్డ్‌పై క్లిక్ చేసి అడ్మిన్‌కు రిచార్జ్ రిక్వెస్ట్ పంపండి
-                                    </span>
-                                  </div>
-
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenOfferRecharge(cust, 1, prices.m1)}
-                                      className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-emerald-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[11px] text-slate-300 font-bold">1 Month</span>
-                                        <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] px-1.5 py-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">Select</Badge>
-                                      </div>
-                                      <span className="text-lg font-black text-emerald-400 block mt-1">₹{prices.m1.toLocaleString()}</span>
-                                      <span className="text-[10px] text-emerald-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                        <Send className="w-3 h-3" /> Click to Request
-                                      </span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenOfferRecharge(cust, 3, prices.m3)}
-                                      className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-blue-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[11px] text-slate-300 font-bold">3 Months</span>
-                                        <Badge className="bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] px-1.5 py-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">Select</Badge>
-                                      </div>
-                                      <span className="text-lg font-black text-blue-400 block mt-1">₹{prices.m3.toLocaleString()}</span>
-                                      <span className="text-[10px] text-blue-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                        <Send className="w-3 h-3" /> Click to Request
-                                      </span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenOfferRecharge(cust, 6, prices.m6)}
-                                      className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-purple-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[11px] text-slate-300 font-bold">6 Months</span>
-                                        <Badge className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] px-1.5 py-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">Select</Badge>
-                                      </div>
-                                      <span className="text-lg font-black text-purple-400 block mt-1">₹{prices.m6.toLocaleString()}</span>
-                                      <span className="text-[10px] text-purple-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                        <Send className="w-3 h-3" /> Click to Request
-                                      </span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenOfferRecharge(cust, 12, prices.m12)}
-                                      className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-amber-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[11px] text-slate-300 font-bold">12 Months (1 Yr)</span>
-                                        <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">Select</Badge>
-                                      </div>
-                                      <span className="text-lg font-black text-amber-400 block mt-1">₹{prices.m12.toLocaleString()}</span>
-                                      <span className="text-[10px] text-amber-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                        <Send className="w-3 h-3" /> Click to Request
-                                      </span>
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Action Buttons (Admin & Dealer Only - Hidden for Retailers) */}
-                            {userRole !== "Retailer" && (
-                              <div className="flex flex-wrap items-center gap-3 pt-1">
-                                <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
-                                  <Link href={`/dashboard/payment-collections?search=${encodeURIComponent(cust.mobile)}`}>
-                                    <HandCoins className="h-4 w-4 mr-1.5" /> Collect Payment
-                                  </Link>
-                                </Button>
-                                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
-                                  <Link href={`/dashboard/dishtv-customers?search=${encodeURIComponent(cust.mobile)}`}>
-                                    <CreditCard className="h-4 w-4 mr-1.5" /> Recharge
-                                  </Link>
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleOpenService(cust)}
-                                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5"
-                                >
-                                  <Wrench className="h-4 w-4" /> Service Charge
-                                </Button>
-                                <Button asChild size="sm" variant="outline" className="border-purple-500/60 text-purple-300 hover:bg-purple-950 hover:text-white font-semibold">
-                                  <Link href={`/dashboard/payment-collections?search=${encodeURIComponent(cust.mobile)}`}>
-                                    <History className="h-4 w-4 mr-1.5" /> View Ledger & History
-                                  </Link>
-                                </Button>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </div>
               )}
             </div>
-          )}
-        </header>
-        <audio ref={audioRef} src={notificationSound} />
+            <p className="mt-1 max-w-3xl text-xs text-muted-foreground md:text-xl">
+              {!authLoading && !firestoreLoading && getWelcomeMessage()}
+            </p>
 
-        {renderDashboard()}
-
-        {/* Dialog for Settle Collection */}
-
-        <Dialog open={isSettleDialogOpen} onOpenChange={(open) => { if (!open) { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); } }}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Request Settlement</DialogTitle>
-                    <DialogDescription>
-                        Enter the amount you want to settle with the admin. Your total wallet balance is ₹{staffWallet.walletAmount.toLocaleString()}.
-                    </DialogDescription>
-                </DialogHeader>
-                 <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="settlement-amount">Settlement Amount (₹)</Label>
-                        <Input
-                            id="settlement-amount"
-                            type="number"
-                            placeholder="Enter amount to settle"
-                            value={settlementAmount}
-                            onChange={(e) => setSettlementAmount(e.target.value)}
-                            max={staffWallet.walletAmount}
-                            min={1}
-                        />
-                        <p className="text-xs text-muted-foreground">Max: ₹{staffWallet.walletAmount.toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-md bg-muted p-4 text-sm space-y-2">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Settlement Amount:</span>
-                            <span className="font-bold">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
-                        </div>
-                        {commissionReceived && (
-                            <>
-                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Commission Deduction:</span>
-                                <span className="font-bold text-green-600">- ₹{Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0).toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between border-t mt-2 pt-2">
-                                <span className="text-muted-foreground">Net Amount to Send:</span>
-                                <span className="font-bold text-lg">₹{((parseFloat(settlementAmount) || 0) - Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
-                            </div>
-                            </>
-                        )}
-                         {!commissionReceived && (
-                            <div className="flex justify-between border-t mt-2 pt-2">
-                                 <span className="text-muted-foreground">Amount to Send to Admin:</span>
-                                <span className="font-bold text-lg">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between border-t border-dashed mt-2 pt-2 text-muted-foreground">
-                            <span>Remaining Wallet Balance:</span>
-                            <span className="font-semibold text-foreground">₹{Math.max(0, staffWallet.walletAmount - (parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
-                        <Label htmlFor="commission-received">I have received my commission from the admin.</Label>
-                    </div>
-                 </div>
-                 <DialogFooter>
-                    <Button variant="outline" onClick={() => { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); }}>Cancel</Button>
-                    <Button onClick={handleSettleCollection} disabled={!settlementAmount || parseFloat(settlementAmount) <= 0 || parseFloat(settlementAmount) > staffWallet.walletAmount}>Send Request</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        
-        {/* Dialog for Customer Search (Collections) */}
-        <Dialog open={isCustomerSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsCustomerSearchDialogOpen)}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Find Customer for Collection</DialogTitle>
-                    <DialogDescription>Search for a customer by their Name, Mobile, STB ID, or Customer ID.</DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                    <div className="flex gap-2">
-                        <Input 
-                            placeholder="Enter search term..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <Button onClick={() => handleCustomerSearch('collection')} disabled={isSearching}>
-                            {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4" />}
-                            Search
-                        </Button>
-                    </div>
-                    {searchError && <p className="text-sm text-destructive">{searchError}</p>}
-                    {searchedCustomer && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>{searchedCustomer.name}</CardTitle>
-                                <CardDescription>STB: {searchedCustomer.stbId} | Balance: ₹{searchedCustomer.balanceAmount}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Button className="w-full" onClick={() => openCollectDialog(searchedCustomer)}>
-                                    <HandCoins className="mr-2 h-4 w-4" />
-                                    Proceed to Collect
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
-        
-         {/* Dialog for Customer Search (Recharge) */}
-        <Dialog open={isRechargeSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsRechargeSearchDialogOpen)}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Find Customer to Recharge</DialogTitle>
-                    <DialogDescription>Search for a customer to recharge their account.</DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                    <div className="flex gap-2">
-                        <Input 
-                            placeholder="Enter search term..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <Button onClick={() => handleCustomerSearch('recharge')} disabled={isSearching}>
-                             {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4" />}
-                            Search
-                        </Button>
-                    </div>
-                    {searchError && <p className="text-sm text-destructive">{searchError}</p>}
-                </div>
-            </DialogContent>
-        </Dialog>
-
-        {/* Dialog for Collection */}
-        {searchedCustomer && (
-            <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
-                <DialogContent>
-                     <DialogHeader>
-                        <DialogTitle>Collect from {searchedCustomer.name}</DialogTitle>
-                        <DialogDescription>Amount due: ₹{searchedCustomer.balanceAmount}</DialogDescription>
-                    </DialogHeader>
-                     <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="amount" className="text-right">Amount (₹)</Label>
-                            <Input id="amount" type="number" value={amountCollected} onChange={(e) => setAmountCollected(e.target.value)} className="col-span-3"/>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label className="text-right">Method</Label>
-                            <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="col-span-3 flex items-center gap-4">
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="cash" id="r-cash" />
-                                    <Label htmlFor="r-cash">Cash</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="upi" id="r-upi" />
-                                    <Label htmlFor="r-upi">UPI</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button onClick={handleConfirmCollection}>Confirm Collection</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        )}
-
-        {/* Dialog for Recharge */}
-        {searchedCustomer && (
-            <Dialog open={isRechargeDialogOpen} onOpenChange={setIsRechargeDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
-                    <DialogDescription>Select a package to continue with the recharge.</DialogDescription>
-                    <div className="text-sm">
-                        Current Balance: <span className="font-bold text-lg">₹{searchedCustomer.balanceAmount}</span>
-                    </div>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="package" className="text-right">
-                        Package
-                      </Label>
-                      <Select onValueChange={setSelectedPackage}>
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Select a package" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {packages.map((pkg) => (
-                            <SelectItem key={pkg.id} value={pkg.id}>
-                              {pkg.packageName} - ₹{pkg.packageAmount}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="months" className="text-right">
-                        Months
-                      </Label>
-                       <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Select number of months" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[...Array(12)].map((_, i) => (
-                            <SelectItem key={i + 1} value={String(i + 1)}>
-                              {i + 1} Month(s)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {selectedPackageDetails && (
-                        <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
-                            {offer && (
-                                <>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>Original Amount:</span>
-                                    <span>₹{(baseAmount * rechargeMonths).toLocaleString()}</span>
-                                </div>
-                                 <div className="flex justify-between font-semibold text-destructive">
-                                    <span>Discount ({offer.discountPercentage}%):</span>
-                                    <span>- ₹{discount.toLocaleString()}</span>
-                                </div>
-                                </>
-                            )}
-                            <div className="flex justify-between">
-                                <span>Recharge Amount:</span>
-                                <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>New Balance After Recharge:</span>
-                                <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
-                            </div>
-                                {paymentReceivedForRecharge && (
-                                <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="flex items-center space-x-2 justify-center pt-2">
-                        <Checkbox 
-                          id="payment-received-recharge" 
-                          checked={paymentReceivedForRecharge} 
-                          onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
-                        />
-                        <Label htmlFor="payment-received-recharge" className="text-xs">Payment Received (amount will not be added to balance)</Label>
-                    </div>
+            {/* Top Universal Customer Quick Search Bar (Admin, Dealer & Retailer) */}
+            {!authLoading && !firestoreLoading && (userRole === "Admin" || /dealer|retailer/i.test(userRole || "")) && (
+              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl border border-indigo-700/40">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
+                      <Search className="h-5 w-5 text-amber-400" />
+                      DishTV Customer VC Search (డిష్‌టీవీ VC నంబర్ వెతుకులాట)
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Enter Customer VC Number or Mobile Number and click Search button to view details & 1, 3, 6, 12 Month package prices.
+                    </p>
                   </div>
-                  <DialogFooter>
-                    <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
-                  </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        )}
+                </div>
 
-        {/* Add Extra Service Charge Dialog */}
-        <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
-          <DialogContent className="sm:max-w-md bg-slate-900 text-white border-slate-800">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-amber-400">
-                <Wrench className="h-5 w-5 text-amber-400" />
-                Add Extra Service Charge (సర్వీస్ ఛార్జీలు)
-              </DialogTitle>
-              <DialogDescription className="text-slate-300">
-                Add service charges for <strong className="text-amber-300">{serviceCustomer?.name}</strong> (Mobile: {serviceCustomer?.mobile}).
-              </DialogDescription>
-            </DialogHeader>
+                <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 items-stretch w-full max-w-3xl">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                    <Input
+                      type="text"
+                      placeholder="Enter VC Number or Mobile (e.g. 015... or 98480...)..."
+                      className="pl-12 pr-10 py-6 text-base bg-slate-900/90 border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus-visible:ring-2 focus-visible:ring-amber-400"
+                      value={topSearchTerm}
+                      onChange={(e) => setTopSearchTerm(e.target.value)}
+                    />
+                    {topSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => { setTopSearchTerm(""); setActiveSearchQuery(""); }}
+                        className="absolute right-3 top-3.5 text-slate-400 hover:text-white"
+                      >
+                        <XCircle className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold px-6 py-6 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all shrink-0"
+                  >
+                    <Search className="h-5 w-5" />
+                    <span>Search Customer (వెతకండి)</span>
+                  </Button>
+                </form>
 
-            <div className="space-y-4 py-3">
-              <div className="space-y-2">
-                <Label htmlFor="serviceTypeSelect" className="text-sm font-medium text-slate-200">Select Service Type *</Label>
-                <Select
-                  value={serviceType}
-                  onValueChange={(val) => {
-                    setServiceType(val);
-                    if (val === "Cable Shift / Relocation") setServiceAmount("250");
-                    else if (val === "Wire / Cable Replacement") setServiceAmount("200");
-                    else if (val === "New Connection Charge") setServiceAmount("500");
-                    else if (val === "STB Repair / Replacement") setServiceAmount("300");
-                    else if (val === "Remote Replacement") setServiceAmount("150");
-                    else if (val === "Dish Tuning & Alignment") setServiceAmount("150");
-                    else setServiceAmount("200");
-                  }}
-                >
-                  <SelectTrigger id="serviceTypeSelect" className="bg-slate-950 border-slate-800 text-white">
-                    <SelectValue placeholder="Select Service" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                    <SelectItem value="Cable Shift / Relocation">🔌 Cable Shift / Relocation (₹250)</SelectItem>
-                    <SelectItem value="Wire / Cable Replacement">🔌 Wire / Cable Replacement (₹200)</SelectItem>
-                    <SelectItem value="New Connection Charge">📡 New Connection Charge (₹500)</SelectItem>
-                    <SelectItem value="STB Repair / Replacement">📦 STB Repair / Replacement (₹300)</SelectItem>
-                    <SelectItem value="Remote Replacement">🎮 Remote Replacement (₹150)</SelectItem>
-                    <SelectItem value="Dish Tuning & Alignment">🛰️ Dish Tuning & Alignment (₹150)</SelectItem>
-                    <SelectItem value="Other Service Charge">🛠️ Other Service Charge</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Search Results Container - Displayed ONLY after clicking Search button */}
+                {activeSearchQuery.length > 0 && (
+                  <div className="mt-6 space-y-4">
+                    {topSearchResults.length === 0 ? (
+                      <div className="p-4 rounded-xl bg-red-950/90 border border-red-700/60 text-red-100 text-sm flex items-center justify-between shadow-xl">
+                        <div className="flex items-center gap-3">
+                          <XCircle className="h-6 w-6 text-red-400 shrink-0" />
+                          <div>
+                            <p className="font-bold text-base text-red-200">
+                              Wrong VC Number or Mobile Number! (తప్పు VC నంబర్ లేదా మొబైల్ నంబర్)
+                            </p>
+                            <p className="text-xs text-red-300 mt-0.5">
+                              "{activeSearchQuery}" కి సంబంధించిన కస్టమర్ వివరాలు లభించలేదు. దయచేసి పూర్తి VC నంబర్ లేదా 10 అంకెల మొబైల్ నంబర్‌ను సరిగా ఎంటర్ చేయండి.
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost" className="text-red-300 hover:text-white hover:bg-red-900/60 shrink-0" onClick={() => setActiveSearchQuery("")}>Clear</Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
+                            Found {topSearchResults.length} Matching Customer(s) for "{activeSearchQuery}":
+                          </p>
+                          <Button size="sm" variant="ghost" className="text-xs text-slate-400 hover:text-white" onClick={() => { setTopSearchTerm(""); setActiveSearchQuery(""); }}>Clear Results</Button>
+                        </div>
+                        {topSearchResults.map((cust) => (
+                          <Card key={cust.id} className="bg-slate-900/95 border-amber-500/50 text-white shadow-xl overflow-hidden">
+                            <CardContent className="p-5">
+                              {/* Header Section: Customer Name, Status, Full Address, Balance */}
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-4">
+                                <div>
+                                  <div className="flex items-center gap-3">
+                                    <h3 className="text-2xl font-bold text-white">{cust.name}</h3>
+                                    <Badge className={cust.status === "Active" ? "bg-emerald-500 text-white font-bold" : "bg-amber-500 text-white font-bold"}>
+                                      {cust.status}
+                                    </Badge>
+                                  </div>
+                                  {/* Full Customer Address */}
+                                  <p className="text-xs text-slate-300 mt-1 flex items-start gap-1 font-medium">
+                                    <MapPin className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                    <span><strong className="text-slate-200">Full Address (చిరునామా):</strong> {getFullCustomerAddress(cust)}</span>
+                                  </p>
+                                </div>
+
+                                <div className="text-left md:text-right bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
+                                  <span className="text-xs text-slate-400 block font-medium">Balance Due / నిల్వ బాకీ</span>
+                                  <span className="text-2xl font-black text-amber-400">
+                                    ₹{(cust.balanceAmount !== undefined ? cust.balanceAmount : (cust.monthlyAmount || 350)).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Customer Basic Info Grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-slate-800/60 p-4 rounded-xl border border-slate-800 mb-4">
+                                {/* VC Number */}
+                                <div>
+                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
+                                    💳 VC Number (VC No)
+                                  </span>
+                                  <span className="font-mono font-bold text-purple-300 text-base">
+                                    {cust.vcNumber || "Not Set"}
+                                  </span>
+                                </div>
+
+                                {/* Contact Person Mobile Number */}
+                                <div>
+                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
+                                    📱 Contact Mobile
+                                  </span>
+                                  <span className="font-bold text-emerald-400 text-base">
+                                    {cust.mobile}
+                                  </span>
+                                </div>
+
+                                {/* Current Package */}
+                                <div>
+                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
+                                    📺 Current Package Plan
+                                  </span>
+                                  <span className="font-bold text-blue-300 text-base">
+                                    {cust.packagePlan || "Standard Plan"}
+                                  </span>
+                                </div>
+
+                                {/* Assigned Dealer Name */}
+                                <div>
+                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
+                                    🏬 Dealer Name (డీలర్ పేరు)
+                                  </span>
+                                  <span className="font-bold text-amber-300 text-base">
+                                    {cust.dealerName || dealerName || "Navanidhi Digital System"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Multi-Month Package Price Breakdown List (1, 3, 6, 12 Months) */}
+                              {(() => {
+                                const prices = getPackagePriceList(cust);
+                                return (
+                                  <div className="bg-slate-950/80 p-4 rounded-xl border border-indigo-900/60 mb-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                                      <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Package className="h-4 w-4 text-amber-400" />
+                                        Package Price List (ప్యాక్ ధరల పట్టిక - 1, 3, 6, 12 నెలలు):
+                                      </h4>
+                                      <span className="text-[11px] text-cyan-300 font-semibold bg-cyan-950/80 border border-cyan-800/80 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                                        ⚡ ఆఫర్ కార్డ్‌పై క్లిక్ చేసి అడ్మిన్‌కు రిచార్జ్ రిక్వెస్ట్ పంపండి
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenOfferRecharge(cust, 1, prices.m1)}
+                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-emerald-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-slate-300 font-bold">1 Month</span>
+                                          <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] px-1.5 py-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">Select</Badge>
+                                        </div>
+                                        <span className="text-lg font-black text-emerald-400 block mt-1">₹{prices.m1.toLocaleString()}</span>
+                                        <span className="text-[10px] text-emerald-300/80 block mt-1 font-semibold flex items-center gap-0.5">
+                                          <Send className="w-3 h-3" /> Click to Request
+                                        </span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenOfferRecharge(cust, 3, prices.m3)}
+                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-blue-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-slate-300 font-bold">3 Months</span>
+                                          <Badge className="bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] px-1.5 py-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">Select</Badge>
+                                        </div>
+                                        <span className="text-lg font-black text-blue-400 block mt-1">₹{prices.m3.toLocaleString()}</span>
+                                        <span className="text-[10px] text-blue-300/80 block mt-1 font-semibold flex items-center gap-0.5">
+                                          <Send className="w-3 h-3" /> Click to Request
+                                        </span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenOfferRecharge(cust, 6, prices.m6)}
+                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-purple-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-slate-300 font-bold">6 Months</span>
+                                          <Badge className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] px-1.5 py-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">Select</Badge>
+                                        </div>
+                                        <span className="text-lg font-black text-purple-400 block mt-1">₹{prices.m6.toLocaleString()}</span>
+                                        <span className="text-[10px] text-purple-300/80 block mt-1 font-semibold flex items-center gap-0.5">
+                                          <Send className="w-3 h-3" /> Click to Request
+                                        </span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenOfferRecharge(cust, 12, prices.m12)}
+                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-amber-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-slate-300 font-bold">12 Months (1 Yr)</span>
+                                          <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">Select</Badge>
+                                        </div>
+                                        <span className="text-lg font-black text-amber-400 block mt-1">₹{prices.m12.toLocaleString()}</span>
+                                        <span className="text-[10px] text-amber-300/80 block mt-1 font-semibold flex items-center gap-0.5">
+                                          <Send className="w-3 h-3" /> Click to Request
+                                        </span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Action Buttons (Admin & Dealer Only - Hidden for Retailers) */}
+                              {userRole !== "Retailer" && (
+                                <div className="flex flex-wrap items-center gap-3 pt-1">
+                                  <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                                    <Link href={`/dashboard/payment-collections?search=${encodeURIComponent(cust.mobile)}`}>
+                                      <HandCoins className="h-4 w-4 mr-1.5" /> Collect Payment
+                                    </Link>
+                                  </Button>
+                                  <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                                    <Link href={`/dashboard/dishtv-customers?search=${encodeURIComponent(cust.mobile)}`}>
+                                      <CreditCard className="h-4 w-4 mr-1.5" /> Recharge
+                                    </Link>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleOpenService(cust)}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5"
+                                  >
+                                    <Wrench className="h-4 w-4" /> Service Charge
+                                  </Button>
+                                  <Button asChild size="sm" variant="outline" className="border-purple-500/60 text-purple-300 hover:bg-purple-950 hover:text-white font-semibold">
+                                    <Link href={`/dashboard/payment-collections?search=${encodeURIComponent(cust.mobile)}`}>
+                                      <History className="h-4 w-4 mr-1.5" /> View Ledger & History
+                                    </Link>
+                                  </Button>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+            )}
+          </header>
+          <audio ref={audioRef} src={notificationSound} />
 
-              <div className="space-y-2">
-                <Label htmlFor="serviceAmountInput" className="text-sm font-medium text-slate-200">Service Amount (₹) *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-amber-400 font-bold">₹</span>
+          {renderDashboard()}
+
+          {/* Dialog for Settle Collection */}
+
+          <Dialog open={isSettleDialogOpen} onOpenChange={(open) => { if (!open) { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); } }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Request Settlement</DialogTitle>
+                <DialogDescription>
+                  Enter the amount you want to settle with the admin. Your total wallet balance is ₹{staffWallet.walletAmount.toLocaleString()}.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="settlement-amount">Settlement Amount (₹)</Label>
                   <Input
-                    id="serviceAmountInput"
+                    id="settlement-amount"
                     type="number"
-                    value={serviceAmount}
-                    onChange={(e) => setServiceAmount(e.target.value)}
-                    className="pl-8 text-lg font-bold text-amber-400 bg-slate-950 border-slate-800"
+                    placeholder="Enter amount to settle"
+                    value={settlementAmount}
+                    onChange={(e) => setSettlementAmount(e.target.value)}
+                    max={staffWallet.walletAmount}
+                    min={1}
                   />
+                  <p className="text-xs text-muted-foreground">Max: ₹{staffWallet.walletAmount.toLocaleString()}</p>
+                </div>
+                <div className="rounded-md bg-muted p-4 text-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Settlement Amount:</span>
+                    <span className="font-bold">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                  </div>
+                  {commissionReceived && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Commission Deduction:</span>
+                        <span className="font-bold text-green-600">- ₹{Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between border-t mt-2 pt-2">
+                        <span className="text-muted-foreground">Net Amount to Send:</span>
+                        <span className="font-bold text-lg">₹{((parseFloat(settlementAmount) || 0) - Math.min(staffWallet.commissionAmount, parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+                  {!commissionReceived && (
+                    <div className="flex justify-between border-t mt-2 pt-2">
+                      <span className="text-muted-foreground">Amount to Send to Admin:</span>
+                      <span className="font-bold text-lg">₹{(parseFloat(settlementAmount) || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-dashed mt-2 pt-2 text-muted-foreground">
+                    <span>Remaining Wallet Balance:</span>
+                    <span className="font-semibold text-foreground">₹{Math.max(0, staffWallet.walletAmount - (parseFloat(settlementAmount) || 0)).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="commission-received" checked={commissionReceived} onCheckedChange={(checked) => setCommissionReceived(Boolean(checked))} />
+                  <Label htmlFor="commission-received">I have received my commission from the admin.</Label>
                 </div>
               </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setIsSettleDialogOpen(false); setCommissionReceived(false); setSettlementAmount(""); }}>Cancel</Button>
+                <Button onClick={handleSettleCollection} disabled={!settlementAmount || parseFloat(settlementAmount) <= 0 || parseFloat(settlementAmount) > staffWallet.walletAmount}>Send Request</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-              <div className="space-y-2">
-                <Label htmlFor="serviceNotesInput" className="text-sm font-medium text-slate-200">Notes / Description (Optional)</Label>
-                <Input
-                  id="serviceNotesInput"
-                  placeholder="e.g. Changed 10 meters wire or replaced remote"
-                  value={serviceNotes}
-                  onChange={(e) => setServiceNotes(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-white"
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={() => setIsServiceDialogOpen(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmService}
-                disabled={isSavingService || !serviceAmount}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
-              >
-                {isSavingService && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Service Charge (₹{parseFloat(serviceAmount || "0").toLocaleString()})
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Service Request Dialog Modal */}
-        <Dialog open={isServiceRequestOpen} onOpenChange={setIsServiceRequestOpen}>
-          <DialogContent className="sm:max-w-lg bg-slate-900 text-slate-100 border-slate-800 max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-amber-400">
-                <Wrench className="h-5 w-5 text-amber-400" />
-                Create Service Request (సర్వీస్ రిక్వెస్ట్)
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs">
-                Submit customer complaint or service visit request. Admin will receive this on their dashboard.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleCreateServiceRequest} className="space-y-4 py-2">
-              {/* Customer Name & Mobile */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Customer Name (కస్టమర్ పేరు) *</Label>
+          {/* Dialog for Customer Search (Collections) */}
+          <Dialog open={isCustomerSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsCustomerSearchDialogOpen)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Find Customer for Collection</DialogTitle>
+                <DialogDescription>Search for a customer by their Name, Mobile, STB ID, or Customer ID.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="flex gap-2">
                   <Input
-                    placeholder="Enter customer name"
-                    value={srCustomerName}
-                    onChange={(e) => setSrCustomerName(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
-                    required
+                    placeholder="Enter search term..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  <Button onClick={() => handleCustomerSearch('collection')} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Search
+                  </Button>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Mobile Number (మొబైల్ నంబర్) *</Label>
-                  <Input
-                    type="tel"
-                    placeholder="10-digit Mobile No"
-                    value={srMobile}
-                    onChange={(e) => setSrMobile(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
-                    required
-                  />
-                </div>
+                {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+                {searchedCustomer && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{searchedCustomer.name}</CardTitle>
+                      <CardDescription>STB: {searchedCustomer.stbId} | Balance: ₹{searchedCustomer.balanceAmount}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button className="w-full" onClick={() => openCollectDialog(searchedCustomer)}>
+                        <HandCoins className="mr-2 h-4 w-4" />
+                        Proceed to Collect
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
+            </DialogContent>
+          </Dialog>
 
-              {/* District & Mandal Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">District (జిల్లా) *</Label>
+          {/* Dialog for Customer Search (Recharge) */}
+          <Dialog open={isRechargeSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsRechargeSearchDialogOpen)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Find Customer to Recharge</DialogTitle>
+                <DialogDescription>Search for a customer to recharge their account.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter search term..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <Button onClick={() => handleCustomerSearch('recharge')} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Search
+                  </Button>
+                </div>
+                {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog for Collection */}
+          {searchedCustomer && (
+            <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Collect from {searchedCustomer.name}</DialogTitle>
+                  <DialogDescription>Amount due: ₹{searchedCustomer.balanceAmount}</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="amount" className="text-right">Amount (₹)</Label>
+                    <Input id="amount" type="number" value={amountCollected} onChange={(e) => setAmountCollected(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Method</Label>
+                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="col-span-3 flex items-center gap-4">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="cash" id="r-cash" />
+                        <Label htmlFor="r-cash">Cash</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="upi" id="r-upi" />
+                        <Label htmlFor="r-upi">UPI</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleConfirmCollection}>Confirm Collection</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Dialog for Recharge */}
+          {searchedCustomer && (
+            <Dialog open={isRechargeDialogOpen} onOpenChange={setIsRechargeDialogOpen}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
+                  <DialogDescription>Select a package to continue with the recharge.</DialogDescription>
+                  <div className="text-sm">
+                    Current Balance: <span className="font-bold text-lg">₹{searchedCustomer.balanceAmount}</span>
+                  </div>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="package" className="text-right">
+                      Package
+                    </Label>
+                    <Select onValueChange={setSelectedPackage}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select a package" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {packages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.packageName} - ₹{pkg.packageAmount}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="months" className="text-right">
+                      Months
+                    </Label>
+                    <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select number of months" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...Array(12)].map((_, i) => (
+                          <SelectItem key={i + 1} value={String(i + 1)}>
+                            {i + 1} Month(s)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedPackageDetails && (
+                    <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                      {offer && (
+                        <>
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Original Amount:</span>
+                            <span>₹{(baseAmount * rechargeMonths).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-destructive">
+                            <span>Discount ({offer.discountPercentage}%):</span>
+                            <span>- ₹{discount.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Recharge Amount:</span>
+                        <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>New Balance After Recharge:</span>
+                        <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
+                      </div>
+                      {paymentReceivedForRecharge && (
+                        <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2 justify-center pt-2">
+                    <Checkbox
+                      id="payment-received-recharge"
+                      checked={paymentReceivedForRecharge}
+                      onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
+                    />
+                    <Label htmlFor="payment-received-recharge" className="text-xs">Payment Received (amount will not be added to balance)</Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Add Extra Service Charge Dialog */}
+          <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
+            <DialogContent className="sm:max-w-md bg-slate-900 text-white border-slate-800">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-amber-400">
+                  <Wrench className="h-5 w-5 text-amber-400" />
+                  Add Extra Service Charge (సర్వీస్ ఛార్జీలు)
+                </DialogTitle>
+                <DialogDescription className="text-slate-300">
+                  Add service charges for <strong className="text-amber-300">{serviceCustomer?.name}</strong> (Mobile: {serviceCustomer?.mobile}).
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-3">
+                <div className="space-y-2">
+                  <Label htmlFor="serviceTypeSelect" className="text-sm font-medium text-slate-200">Select Service Type *</Label>
                   <Select
-                    value={srDistrict}
+                    value={serviceType}
                     onValueChange={(val) => {
-                      setSrDistrict(val);
-                      setSrMandal("");
-                      setSrVillage("");
+                      setServiceType(val);
+                      if (val === "Cable Shift / Relocation") setServiceAmount("250");
+                      else if (val === "Wire / Cable Replacement") setServiceAmount("200");
+                      else if (val === "New Connection Charge") setServiceAmount("500");
+                      else if (val === "STB Repair / Replacement") setServiceAmount("300");
+                      else if (val === "Remote Replacement") setServiceAmount("150");
+                      else if (val === "Dish Tuning & Alignment") setServiceAmount("150");
+                      else setServiceAmount("200");
                     }}
                   >
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
-                      <SelectValue placeholder="Select District" />
+                    <SelectTrigger id="serviceTypeSelect" className="bg-slate-950 border-slate-800 text-white">
+                      <SelectValue placeholder="Select Service" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48">
-                      {AP_LOCATIONS.map((loc) => (
-                        <SelectItem key={loc.district} value={loc.district}>
-                          {loc.district}
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                      <SelectItem value="Cable Shift / Relocation">🔌 Cable Shift / Relocation (₹250)</SelectItem>
+                      <SelectItem value="Wire / Cable Replacement">🔌 Wire / Cable Replacement (₹200)</SelectItem>
+                      <SelectItem value="New Connection Charge">📡 New Connection Charge (₹500)</SelectItem>
+                      <SelectItem value="STB Repair / Replacement">📦 STB Repair / Replacement (₹300)</SelectItem>
+                      <SelectItem value="Remote Replacement">🎮 Remote Replacement (₹150)</SelectItem>
+                      <SelectItem value="Dish Tuning & Alignment">🛰️ Dish Tuning & Alignment (₹150)</SelectItem>
+                      <SelectItem value="Other Service Charge">🛠️ Other Service Charge</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Mandal (మండలం) *</Label>
-                  <Select
-                    value={srMandal}
-                    disabled={!srDistrict}
-                    onValueChange={(val) => {
-                      setSrMandal(val);
-                      setSrVillage("");
-                    }}
-                  >
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
-                      <SelectValue placeholder={srDistrict ? "Select Mandal" : "First pick District"} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48">
-                      {AP_LOCATIONS.find((d) => d.district === srDistrict)?.mandals.map((m) => (
-                        <SelectItem key={m.mandal} value={m.mandal}>
-                          {m.mandal}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="serviceAmountInput" className="text-sm font-medium text-slate-200">Service Amount (₹) *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-amber-400 font-bold">₹</span>
+                    <Input
+                      id="serviceAmountInput"
+                      type="number"
+                      value={serviceAmount}
+                      onChange={(e) => setServiceAmount(e.target.value)}
+                      className="pl-8 text-lg font-bold text-amber-400 bg-slate-950 border-slate-800"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Village & DTH Company */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Village / Area (గ్రామం / వీధి)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="serviceNotesInput" className="text-sm font-medium text-slate-200">Notes / Description (Optional)</Label>
                   <Input
-                    placeholder="Enter Village or Street"
-                    value={srVillage}
-                    onChange={(e) => setSrVillage(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
+                    id="serviceNotesInput"
+                    placeholder="e.g. Changed 10 meters wire or replaced remote"
+                    value={serviceNotes}
+                    onChange={(e) => setServiceNotes(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-white"
                   />
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">DTH Company (డిలే కంపెనీ) *</Label>
-                  <Select value={srDthCompany} onValueChange={setSrDthCompany}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-amber-400 font-bold text-sm">
-                      <SelectValue placeholder="Select DTH Provider" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                      <SelectItem value="DishTV">📡 DishTV</SelectItem>
-                      <SelectItem value="Sun Direct">☀️ Sun Direct</SelectItem>
-                      <SelectItem value="Airtel Digital TV">🔴 Airtel Digital TV</SelectItem>
-                      <SelectItem value="Tata Play">🔵 Tata Play</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
-              {/* Issue Type */}
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-300">Complaint / Issue Type (సమస్య రకం)</Label>
-                <Select value={srComplaintType} onValueChange={setSrComplaintType}>
-                  <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
-                    <SelectValue placeholder="Select Complaint Type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                    <SelectItem value="Signal Issue">📡 No Signal / Low Signal</SelectItem>
-                    <SelectItem value="STB Error / No Display">📺 Set-Top Box Error / No Display</SelectItem>
-                    <SelectItem value="Remote Control Problem">🎮 Remote Control Not Working</SelectItem>
-                    <SelectItem value="Cable Wire Damage">🔌 Cable Wire Damage / Cut</SelectItem>
-                    <SelectItem value="New Relocation / Shifting">🚚 Relocation / Shifting Request</SelectItem>
-                    <SelectItem value="General Service / Repair">🛠️ General Repair / Service Visit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Scheduled Date & Time Slot */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Scheduled Visit Date (తేదీ)</Label>
-                  <Input
-                    type="date"
-                    value={srScheduledDate}
-                    onChange={(e) => setSrScheduledDate(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot (సమయం)</Label>
-                  <Select value={srScheduledTime} onValueChange={setSrScheduledTime}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
-                      <SelectValue placeholder="Select Time Slot" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                      <SelectItem value="Morning (9 AM - 12 PM)">🌅 Morning (9 AM - 12 PM)</SelectItem>
-                      <SelectItem value="Afternoon (12 PM - 4 PM)">☀️ Afternoon (12 PM - 4 PM)</SelectItem>
-                      <SelectItem value="Evening (4 PM - 8 PM)">🌆 Evening (4 PM - 8 PM)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Additional Notes */}
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-300">Additional Notes / Remarks</Label>
-                <Input
-                  placeholder="e.g. Please bring 15 meters wire & DishTV remote"
-                  value={srNotes}
-                  onChange={(e) => setSrNotes(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
-                />
-              </div>
-
-              <DialogFooter className="pt-2 gap-2 sm:gap-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsServiceRequestOpen(false)}
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold"
-                >
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setIsServiceDialogOpen(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800">
                   Cancel
                 </Button>
                 <Button
-                  type="submit"
-                  disabled={isSubmittingSR}
-                  className="bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs"
+                  onClick={handleConfirmService}
+                  disabled={isSavingService || !serviceAmount}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
                 >
-                  {isSubmittingSR && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Submit Service Request
+                  {isSavingService && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Service Charge (₹{parseFloat(serviceAmount || "0").toLocaleString()})
                 </Button>
               </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
 
-        {/* New Connection Booking Dialog */}
-        <Dialog open={isNewConnOpen} onOpenChange={setIsNewConnOpen}>
-          <DialogContent className="sm:max-w-lg bg-slate-900 text-slate-100 border-slate-800 max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-emerald-400">
-                <Package className="h-5 w-5 text-emerald-400" />
-                Book New Connection (కొత్త కనెక్షన్ బుక్ చేయండి)
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs">
-                Fill customer details. Admin will receive this request on their dashboard.
-              </DialogDescription>
-            </DialogHeader>
+          {/* Service Request Dialog Modal */}
+          <Dialog open={isServiceRequestOpen} onOpenChange={setIsServiceRequestOpen}>
+            <DialogContent className="sm:max-w-lg bg-slate-900 text-slate-100 border-slate-800 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold text-amber-400">
+                  <Wrench className="h-5 w-5 text-amber-400" />
+                  Create Service Request (సర్వీస్ రిక్వెస్ట్)
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-xs">
+                  Submit customer complaint or service visit request. Admin will receive this on their dashboard.
+                </DialogDescription>
+              </DialogHeader>
 
-            <form onSubmit={handleCreateNewConnection} className="space-y-4 py-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Customer Name *</Label>
-                  <Input placeholder="Enter customer name" value={ncCustomerName} onChange={(e) => setNcCustomerName(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" required />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Mobile No *</Label>
-                  <Input placeholder="10-digit mobile number" value={ncMobile} onChange={(e) => setNcMobile(e.target.value)} maxLength={10} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" required />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">District *</Label>
-                  <Select value={ncDistrict} onValueChange={(val) => { setNcDistrict(val); setNcMandal(""); setNcVillage(""); }}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue placeholder="Select District" /></SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48 overflow-y-auto">
-                      {AP_LOCATIONS.map((loc) => <SelectItem key={loc.district} value={loc.district}>{loc.district}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Mandal *</Label>
-                  <Select value={ncMandal} onValueChange={(val) => { setNcMandal(val); setNcVillage(""); }} disabled={!ncDistrict}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue placeholder="Select Mandal" /></SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48 overflow-y-auto">
-                      {ncDistrict && AP_LOCATIONS.find((l) => l.district === ncDistrict)?.mandals.map((m) => <SelectItem key={m.mandal} value={m.mandal}>{m.mandal}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Village</Label>
-                  <Select value={ncVillage} onValueChange={setNcVillage} disabled={!ncMandal}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue placeholder="Select Village" /></SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48 overflow-y-auto">
-                      {ncMandal && AP_LOCATIONS.find((l) => l.district === ncDistrict)?.mandals.find((m) => m.mandal === ncMandal)?.villages.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-slate-300">Landmark / Address (గుర్తు)</Label>
-                <Input placeholder="e.g. Near Govt School, Opposite temple..." value={ncLandmark} onChange={(e) => setNcLandmark(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Scheduled Date (తేదీ)</Label>
-                  <Input type="date" value={ncScheduledDate} onChange={(e) => setNcScheduledDate(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot (సమయం)</Label>
-                  <Select value={ncScheduledTime} onValueChange={setNcScheduledTime}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                      <SelectItem value="Morning (9 AM - 12 PM)">🌅 Morning (9 AM - 12 PM)</SelectItem>
-                      <SelectItem value="Afternoon (12 PM - 4 PM)">☀️ Afternoon (12 PM - 4 PM)</SelectItem>
-                      <SelectItem value="Evening (4 PM - 8 PM)">🌆 Evening (4 PM - 8 PM)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <DialogFooter className="pt-2 gap-2 sm:gap-0">
-                <Button type="button" variant="outline" onClick={() => setIsNewConnOpen(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold">Cancel</Button>
-                <Button type="submit" disabled={isSubmittingNC} className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs">
-                  {isSubmittingNC && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Submit New Connection Request 📡
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Customer Offer Recharge Request Dialog Modal */}
-        <Dialog open={isOfferRechargeModalOpen} onOpenChange={setIsOfferRechargeModalOpen}>
-          <DialogContent className="bg-slate-900 text-slate-100 border-slate-800 max-w-lg overflow-hidden">
-            <DialogHeader className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 border-b border-slate-800 -mx-6 -mt-6">
-              <DialogTitle className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                <Tv className="w-5 h-5 text-amber-400" />
-                DishTV Recharge Request (అడ్మిన్‌కు రిచార్జ్ రిక్వెస్ట్)
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs mt-0.5">
-                Pay via UPI and enter unique 12-digit UTR Number to send recharge request to Admin.
-              </DialogDescription>
-            </DialogHeader>
-
-            {rechargeModalCustomer && (
-              <form onSubmit={handleSubmitOfferRechargeRequest} className="space-y-4 pt-2">
-                {/* Customer Details Summary Card */}
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Customer Details (కస్టమర్ వివరాలు)</span>
-                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
-                      {rechargeModalCustomer.status || "Active"}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Customer Name:</span>
-                      <strong className="text-white text-sm block">{rechargeModalCustomer.name}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">VC Number (VC No):</span>
-                      <strong className="text-purple-300 font-mono text-sm block">{rechargeModalCustomer.vcNumber || "N/A"}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Mobile Number:</span>
-                      <strong className="text-emerald-400 font-mono text-sm block">{rechargeModalCustomer.mobile}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Village / Address:</span>
-                      <strong className="text-amber-300 block text-xs">{rechargeModalCustomer.village || rechargeModalCustomer.mandal || "N/A"}</strong>
-                    </div>
-                  </div>
-
-                  <div className="text-xs bg-slate-900 p-3 rounded-lg border border-slate-800 flex items-center justify-between mt-2">
-                    <div>
-                      <span className="text-slate-400 text-[11px] block font-medium">Selected Package & Duration:</span>
-                      <strong className="text-cyan-300 text-sm font-semibold">{rechargeModalCustomer.packagePlan || "Standard Plan"} ({selectedOfferMonths} Month{selectedOfferMonths > 1 ? 's' : ''})</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-400 text-[11px] block font-medium">Total Amount:</span>
-                      <span className="text-xl font-black text-emerald-400">₹{selectedOfferAmount.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Admin UPI Payment Details & QR Code */}
-                <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border border-indigo-700/50 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-300 flex items-center gap-1.5">
-                      <IndianRupee className="w-4 h-4 text-emerald-400" />
-                      UPI Payment Details (అడ్మిన్ UPI కి పేమెంట్ చేయండి):
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-950/80 p-3 rounded-lg border border-slate-800">
-                    <div className="space-y-1 text-center sm:text-left">
-                      <span className="text-[11px] text-slate-400 block font-medium">Admin UPI ID:</span>
-                      <strong className="text-emerald-400 font-mono text-sm block select-all">navanidhidigital@upi</strong>
-                      <p className="text-[10px] text-slate-300">
-                        PhonePe / GPay / Paytm ద్వారా <strong>₹{selectedOfferAmount}</strong> పేమెంట్ చేయండి.
-                      </p>
-                    </div>
-                    <Badge className="bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono text-xs px-3 py-1 shrink-0">
-                      Pay ₹{selectedOfferAmount}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* UTR Entry Field */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
-                    <span>Enter UPI UTR / Transaction Ref Number *</span>
-                    <span className="text-[10px] text-amber-400 font-normal">(ఒకసారి వాడిన UTR అనుమతించబడదు)</span>
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="e.g. 123456789012 (12-digit UTR Number)"
-                    value={rechargeUtrNumber}
-                    onChange={(e) => {
-                      setRechargeUtrNumber(e.target.value);
-                      if (rechargeUtrError) setRechargeUtrError("");
-                    }}
-                    className="bg-slate-950 border-slate-700 text-emerald-400 font-mono font-bold text-base h-11 focus-visible:ring-2 focus-visible:ring-emerald-400"
-                    required
-                  />
-
-                  {rechargeUtrError && (
-                    <div className="p-3 rounded-lg bg-rose-950/90 border border-rose-700/80 text-rose-200 text-xs font-medium flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                      <span>{rechargeUtrError}</span>
-                    </div>
-                  )}
-                </div>
-
-                <DialogFooter className="pt-2">
-                  <Button
-                    type="submit"
-                    disabled={isSubmittingRechargeReq}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm h-11 shadow-lg"
-                  >
-                    {isSubmittingRechargeReq ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying UTR & Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" /> Submit Recharge Request to Admin
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Extra Due / Service Charge Dialog */}
-        <Dialog open={isExtraDueModalOpen} onOpenChange={setIsExtraDueModalOpen}>
-          <DialogContent className="sm:max-w-md bg-slate-900 text-slate-100 border-slate-800">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-lg font-bold text-amber-400">
-                <PlusCircle className="h-5 w-5 text-amber-400" />
-                Add Extra Due / Service Charge
-              </DialogTitle>
-              <DialogDescription className="text-slate-400 text-xs">
-                Add service charge or extra due for wire repair, STB relocation, etc.
-              </DialogDescription>
-            </DialogHeader>
-
-            {!extraDueCustomer ? (
-              /* Step 1: Search Customer */
-              <div className="space-y-4 py-2">
-                <form onSubmit={handleSearchExtraDueCustomer} className="space-y-3">
-                  <Label className="text-xs font-semibold text-slate-300">
-                    Search Customer (Name, Mobile, STB ID)
-                  </Label>
-                  <div className="flex gap-2">
+              <form onSubmit={handleCreateServiceRequest} className="space-y-4 py-2">
+                {/* Customer Name & Mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Customer Name (కస్టమర్ పేరు) *</Label>
                     <Input
-                      placeholder="Enter Name, Mobile, STB ID..."
-                      value={extraDueSearchQuery}
-                      onChange={(e) => setExtraDueSearchQuery(e.target.value)}
-                      className="bg-slate-950 border-slate-800 text-white text-sm"
-                      autoFocus
+                      placeholder="Enter customer name"
+                      value={srCustomerName}
+                      onChange={(e) => setSrCustomerName(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
+                      required
                     />
-                    <Button
-                      type="submit"
-                      disabled={isSearchingExtraDue || !extraDueSearchQuery.trim()}
-                      className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shrink-0"
-                    >
-                      {isSearchingExtraDue ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    </Button>
                   </div>
-                </form>
-
-                {extraDueSearchError && (
-                  <p className="text-xs text-rose-400 font-medium bg-rose-950/40 p-2.5 rounded border border-rose-800">
-                    {extraDueSearchError}
-                  </p>
-                )}
-              </div>
-            ) : (
-              /* Step 2: Customer Selected & Charge Details */
-              <form onSubmit={handleAddExtraDue} className="space-y-4 py-2">
-                {/* Customer Info Card */}
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <strong className="text-white text-sm font-bold">{extraDueCustomer.name}</strong>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExtraDueCustomer(null)}
-                      className="h-6 text-[10px] text-amber-400 hover:text-amber-300 p-1"
-                    >
-                      Change Customer
-                    </Button>
-                  </div>
-                  <p className="text-slate-400">Mobile: <span className="text-white font-mono">{extraDueCustomer.mobile}</span> | STB: <span className="text-white font-mono">{extraDueCustomer.stbId || extraDueCustomer.customerId}</span></p>
-                  <div className="pt-1.5 border-t border-slate-800 flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Current Due:</span>
-                    <span className="font-bold text-amber-400">₹{(extraDueCustomer.balanceAmount || 0).toLocaleString()}</span>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Mobile Number (మొబైల్ నంబర్) *</Label>
+                    <Input
+                      type="tel"
+                      placeholder="10-digit Mobile No"
+                      value={srMobile}
+                      onChange={(e) => setSrMobile(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
+                      required
+                    />
                   </div>
                 </div>
 
-                {/* Service / Reason Dropdown */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-300">Service / Reason *</Label>
-                  <Select value={extraDueReason} onValueChange={setExtraDueReason}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm h-10">
-                      <SelectValue placeholder="Select Service Reason" />
+                {/* District & Mandal Selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">District (జిల్లా) *</Label>
+                    <Select
+                      value={srDistrict}
+                      onValueChange={(val) => {
+                        setSrDistrict(val);
+                        setSrMandal("");
+                        setSrVillage("");
+                      }}
+                    >
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
+                        <SelectValue placeholder="Select District" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48">
+                        {AP_LOCATIONS.map((loc) => (
+                          <SelectItem key={loc.district} value={loc.district}>
+                            {loc.district}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Mandal (మండలం) *</Label>
+                    <Select
+                      value={srMandal}
+                      disabled={!srDistrict}
+                      onValueChange={(val) => {
+                        setSrMandal(val);
+                        setSrVillage("");
+                      }}
+                    >
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
+                        <SelectValue placeholder={srDistrict ? "Select Mandal" : "First pick District"} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48">
+                        {AP_LOCATIONS.find((d) => d.district === srDistrict)?.mandals.map((m) => (
+                          <SelectItem key={m.mandal} value={m.mandal}>
+                            {m.mandal}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Village & DTH Company */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Village / Area (గ్రామం / వీధి)</Label>
+                    <Input
+                      placeholder="Enter Village or Street"
+                      value={srVillage}
+                      onChange={(e) => setSrVillage(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">DTH Company (డిలే కంపెనీ) *</Label>
+                    <Select value={srDthCompany} onValueChange={setSrDthCompany}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-amber-400 font-bold text-sm">
+                        <SelectValue placeholder="Select DTH Provider" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                        <SelectItem value="DishTV">📡 DishTV</SelectItem>
+                        <SelectItem value="Sun Direct">☀️ Sun Direct</SelectItem>
+                        <SelectItem value="Airtel Digital TV">🔴 Airtel Digital TV</SelectItem>
+                        <SelectItem value="Tata Play">🔵 Tata Play</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Issue Type */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-300">Complaint / Issue Type (సమస్య రకం)</Label>
+                  <Select value={srComplaintType} onValueChange={setSrComplaintType}>
+                    <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
+                      <SelectValue placeholder="Select Complaint Type" />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                      <SelectItem value="STB Repair">STB Repair</SelectItem>
-                      <SelectItem value="STB Replace">STB Replace</SelectItem>
-                      <SelectItem value="FTTH Connector Repairs">FTTH Connector Repairs</SelectItem>
-                      <SelectItem value="Remote Control Repairs">Remote Control Repairs</SelectItem>
-                      <SelectItem value="Fiber Cable Replace">Fiber Cable Replace</SelectItem>
-                      <SelectItem value="Fiber Cable Joint">Fiber Cable Joint</SelectItem>
-                      <SelectItem value="Others">Others</SelectItem>
+                      <SelectItem value="Signal Issue">📡 No Signal / Low Signal</SelectItem>
+                      <SelectItem value="STB Error / No Display">📺 Set-Top Box Error / No Display</SelectItem>
+                      <SelectItem value="Remote Control Problem">🎮 Remote Control Not Working</SelectItem>
+                      <SelectItem value="Cable Wire Damage">🔌 Cable Wire Damage / Cut</SelectItem>
+                      <SelectItem value="New Relocation / Shifting">🚚 Relocation / Shifting Request</SelectItem>
+                      <SelectItem value="General Service / Repair">🛠️ General Repair / Service Visit</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Custom Reason Field when "Others" is selected */}
-                {extraDueReason === "Others" && (
-                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <Label className="text-xs font-semibold text-amber-400">Specify Reason / Service *</Label>
+                {/* Scheduled Date & Time Slot */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Scheduled Visit Date (తేదీ)</Label>
                     <Input
-                      placeholder="Enter custom service reason..."
-                      value={extraDueCustomReason}
-                      onChange={(e) => setExtraDueCustomReason(e.target.value)}
-                      className="bg-slate-950 border-amber-500/50 text-slate-100 text-sm h-10 focus-visible:ring-amber-500"
-                      required={extraDueReason === "Others"}
+                      type="date"
+                      value={srScheduledDate}
+                      onChange={(e) => setSrScheduledDate(e.target.value)}
+                      className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
                     />
                   </div>
-                )}
 
-                {/* Amount Entry */}
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Amount to Add (₹) *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-slate-400 font-bold">₹</span>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 200"
-                      value={extraDueAmount}
-                      onChange={(e) => setExtraDueAmount(e.target.value)}
-                      className="bg-slate-950 border-slate-700 text-emerald-400 font-bold text-lg pl-7 h-11"
-                      required
-                      min="1"
-                    />
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot (సమయం)</Label>
+                    <Select value={srScheduledTime} onValueChange={setSrScheduledTime}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
+                        <SelectValue placeholder="Select Time Slot" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                        <SelectItem value="Morning (9 AM - 12 PM)">🌅 Morning (9 AM - 12 PM)</SelectItem>
+                        <SelectItem value="Afternoon (12 PM - 4 PM)">☀️ Afternoon (12 PM - 4 PM)</SelectItem>
+                        <SelectItem value="Evening (4 PM - 8 PM)">🌆 Evening (4 PM - 8 PM)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                {/* Summary */}
-                {parseFloat(extraDueAmount) > 0 && (
-                  <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/50 text-xs text-amber-300 flex justify-between items-center">
-                    <span>New Due:</span>
-                    <strong className="text-sm text-white">₹{((extraDueCustomer.balanceAmount || 0) + (parseFloat(extraDueAmount) || 0)).toLocaleString()}</strong>
-                  </div>
-                )}
+                {/* Additional Notes */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-300">Additional Notes / Remarks</Label>
+                  <Input
+                    placeholder="e.g. Please bring 15 meters wire & DishTV remote"
+                    value={srNotes}
+                    onChange={(e) => setSrNotes(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-slate-100 text-sm"
+                  />
+                </div>
 
-                <DialogFooter className="pt-2 gap-2">
+                <DialogFooter className="pt-2 gap-2 sm:gap-0">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsExtraDueModalOpen(false)}
+                    onClick={() => setIsServiceRequestOpen(false)}
                     className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmittingExtraDue}
-                    className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs"
+                    disabled={isSubmittingSR}
+                    className="bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs"
                   >
-                    {isSubmittingExtraDue ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-1.5" />}
-                    Confirm & Add to Due
+                    {isSubmittingSR && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Submit Service Request
                   </Button>
                 </DialogFooter>
               </form>
-            )}
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
 
-        {/* Payment Success Instant WhatsApp & SMS Receipt Modal */}
-        <PaymentSuccessReceiptModal
-          isOpen={isReceiptModalOpen}
-          onClose={() => setIsReceiptModalOpen(false)}
-          receiptData={receiptModalData}
-          type="payment"
-        />
+          {/* New Connection Booking Dialog */}
+          <Dialog open={isNewConnOpen} onOpenChange={setIsNewConnOpen}>
+            <DialogContent className="sm:max-w-lg bg-slate-900 text-slate-100 border-slate-800 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold text-emerald-400">
+                  <Package className="h-5 w-5 text-emerald-400" />
+                  Book New Connection (కొత్త కనెక్షన్ బుక్ చేయండి)
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-xs">
+                  Fill customer details. Admin will receive this request on their dashboard.
+                </DialogDescription>
+              </DialogHeader>
 
-        {/* Recharge Success Instant WhatsApp & SMS Receipt Modal */}
-        <PaymentSuccessReceiptModal
-          isOpen={isRechargeReceiptModalOpen}
-          onClose={() => setIsRechargeReceiptModalOpen(false)}
-          rechargeData={rechargeReceiptModalData}
-          type="recharge"
-        />
+              <form onSubmit={handleCreateNewConnection} className="space-y-4 py-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Customer Name *</Label>
+                    <Input placeholder="Enter customer name" value={ncCustomerName} onChange={(e) => setNcCustomerName(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" required />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Mobile No *</Label>
+                    <Input placeholder="10-digit mobile number" value={ncMobile} onChange={(e) => setNcMobile(e.target.value)} maxLength={10} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" required />
+                  </div>
+                </div>
 
-      </div>
-    </main>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">District *</Label>
+                    <Select value={ncDistrict} onValueChange={(val) => { setNcDistrict(val); setNcMandal(""); setNcVillage(""); }}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue placeholder="Select District" /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48 overflow-y-auto">
+                        {AP_LOCATIONS.map((loc) => <SelectItem key={loc.district} value={loc.district}>{loc.district}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Mandal *</Label>
+                    <Select value={ncMandal} onValueChange={(val) => { setNcMandal(val); setNcVillage(""); }} disabled={!ncDistrict}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue placeholder="Select Mandal" /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48 overflow-y-auto">
+                        {ncDistrict && AP_LOCATIONS.find((l) => l.district === ncDistrict)?.mandals.map((m) => <SelectItem key={m.mandal} value={m.mandal}>{m.mandal}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Village</Label>
+                    <Select value={ncVillage} onValueChange={setNcVillage} disabled={!ncMandal}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue placeholder="Select Village" /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-48 overflow-y-auto">
+                        {ncMandal && AP_LOCATIONS.find((l) => l.district === ncDistrict)?.mandals.find((m) => m.mandal === ncMandal)?.villages.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-300">Landmark / Address (గుర్తు)</Label>
+                  <Input placeholder="e.g. Near Govt School, Opposite temple..." value={ncLandmark} onChange={(e) => setNcLandmark(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Scheduled Date (తేదీ)</Label>
+                    <Input type="date" value={ncScheduledDate} onChange={(e) => setNcScheduledDate(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot (సమయం)</Label>
+                    <Select value={ncScheduledTime} onValueChange={setNcScheduledTime}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                        <SelectItem value="Morning (9 AM - 12 PM)">🌅 Morning (9 AM - 12 PM)</SelectItem>
+                        <SelectItem value="Afternoon (12 PM - 4 PM)">☀️ Afternoon (12 PM - 4 PM)</SelectItem>
+                        <SelectItem value="Evening (4 PM - 8 PM)">🌆 Evening (4 PM - 8 PM)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <DialogFooter className="pt-2 gap-2 sm:gap-0">
+                  <Button type="button" variant="outline" onClick={() => setIsNewConnOpen(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold">Cancel</Button>
+                  <Button type="submit" disabled={isSubmittingNC} className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs">
+                    {isSubmittingNC && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Submit New Connection Request 📡
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Customer Offer Recharge Request Dialog Modal */}
+          <Dialog open={isOfferRechargeModalOpen} onOpenChange={setIsOfferRechargeModalOpen}>
+            <DialogContent className="bg-slate-900 text-slate-100 border-slate-800 max-w-lg overflow-hidden">
+              <DialogHeader className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 border-b border-slate-800 -mx-6 -mt-6">
+                <DialogTitle className="text-lg font-bold text-amber-400 flex items-center gap-2">
+                  <Tv className="w-5 h-5 text-amber-400" />
+                  DishTV Recharge Request (అడ్మిన్‌కు రిచార్జ్ రిక్వెస్ట్)
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-xs mt-0.5">
+                  Pay via UPI and enter unique 12-digit UTR Number to send recharge request to Admin.
+                </DialogDescription>
+              </DialogHeader>
+
+              {rechargeModalCustomer && (
+                <form onSubmit={handleSubmitOfferRechargeRequest} className="space-y-4 pt-2">
+                  {/* Customer Details Summary Card */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Customer Details (కస్టమర్ వివరాలు)</span>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
+                        {rechargeModalCustomer.status || "Active"}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5 text-xs">
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Customer Name:</span>
+                        <strong className="text-white text-sm block">{rechargeModalCustomer.name}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">VC Number (VC No):</span>
+                        <strong className="text-purple-300 font-mono text-sm block">{rechargeModalCustomer.vcNumber || "N/A"}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Mobile Number:</span>
+                        <strong className="text-emerald-400 font-mono text-sm block">{rechargeModalCustomer.mobile}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Village / Address:</span>
+                        <strong className="text-amber-300 block text-xs">{rechargeModalCustomer.village || rechargeModalCustomer.mandal || "N/A"}</strong>
+                      </div>
+                    </div>
+
+                    <div className="text-xs bg-slate-900 p-3 rounded-lg border border-slate-800 flex items-center justify-between mt-2">
+                      <div>
+                        <span className="text-slate-400 text-[11px] block font-medium">Selected Package & Duration:</span>
+                        <strong className="text-cyan-300 text-sm font-semibold">{rechargeModalCustomer.packagePlan || "Standard Plan"} ({selectedOfferMonths} Month{selectedOfferMonths > 1 ? 's' : ''})</strong>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-400 text-[11px] block font-medium">Total Amount:</span>
+                        <span className="text-xl font-black text-emerald-400">₹{selectedOfferAmount.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Admin UPI Payment Details & QR Code */}
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border border-indigo-700/50 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                        <IndianRupee className="w-4 h-4 text-emerald-400" />
+                        UPI Payment Details (అడ్మిన్ UPI కి పేమెంట్ చేయండి):
+                      </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                      <div className="space-y-1 text-center sm:text-left">
+                        <span className="text-[11px] text-slate-400 block font-medium">Admin UPI ID:</span>
+                        <strong className="text-emerald-400 font-mono text-sm block select-all">navanidhidigital@upi</strong>
+                        <p className="text-[10px] text-slate-300">
+                          PhonePe / GPay / Paytm ద్వారా <strong>₹{selectedOfferAmount}</strong> పేమెంట్ చేయండి.
+                        </p>
+                      </div>
+                      <Badge className="bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono text-xs px-3 py-1 shrink-0">
+                        Pay ₹{selectedOfferAmount}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* UTR Entry Field */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
+                      <span>Enter UPI UTR / Transaction Ref Number *</span>
+                      <span className="text-[10px] text-amber-400 font-normal">(ఒకసారి వాడిన UTR అనుమతించబడదు)</span>
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. 123456789012 (12-digit UTR Number)"
+                      value={rechargeUtrNumber}
+                      onChange={(e) => {
+                        setRechargeUtrNumber(e.target.value);
+                        if (rechargeUtrError) setRechargeUtrError("");
+                      }}
+                      className="bg-slate-950 border-slate-700 text-emerald-400 font-mono font-bold text-base h-11 focus-visible:ring-2 focus-visible:ring-emerald-400"
+                      required
+                    />
+
+                    {rechargeUtrError && (
+                      <div className="p-3 rounded-lg bg-rose-950/90 border border-rose-700/80 text-rose-200 text-xs font-medium flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span>{rechargeUtrError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingRechargeReq}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm h-11 shadow-lg"
+                    >
+                      {isSubmittingRechargeReq ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying UTR & Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" /> Submit Recharge Request to Admin
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Add Extra Due / Service Charge Dialog */}
+          <Dialog open={isExtraDueModalOpen} onOpenChange={setIsExtraDueModalOpen}>
+            <DialogContent className="sm:max-w-md bg-slate-900 text-slate-100 border-slate-800">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-lg font-bold text-amber-400">
+                  <PlusCircle className="h-5 w-5 text-amber-400" />
+                  Add Extra Due / Service Charge
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 text-xs">
+                  Add service charge or extra due for wire repair, STB relocation, etc.
+                </DialogDescription>
+              </DialogHeader>
+
+              {!extraDueCustomer ? (
+                /* Step 1: Search Customer */
+                <div className="space-y-4 py-2">
+                  <form onSubmit={handleSearchExtraDueCustomer} className="space-y-3">
+                    <Label className="text-xs font-semibold text-slate-300">
+                      Search Customer (Name, Mobile, STB ID)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter Name, Mobile, STB ID..."
+                        value={extraDueSearchQuery}
+                        onChange={(e) => setExtraDueSearchQuery(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-white text-sm"
+                        autoFocus
+                      />
+                      <Button
+                        type="submit"
+                        disabled={isSearchingExtraDue || !extraDueSearchQuery.trim()}
+                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shrink-0"
+                      >
+                        {isSearchingExtraDue ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </form>
+
+                  {extraDueSearchError && (
+                    <p className="text-xs text-rose-400 font-medium bg-rose-950/40 p-2.5 rounded border border-rose-800">
+                      {extraDueSearchError}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                /* Step 2: Customer Selected & Charge Details */
+                <form onSubmit={handleAddExtraDue} className="space-y-4 py-2">
+                  {/* Customer Info Card */}
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <strong className="text-white text-sm font-bold">{extraDueCustomer.name}</strong>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExtraDueCustomer(null)}
+                        className="h-6 text-[10px] text-amber-400 hover:text-amber-300 p-1"
+                      >
+                        Change Customer
+                      </Button>
+                    </div>
+                    <p className="text-slate-400">Mobile: <span className="text-white font-mono">{extraDueCustomer.mobile}</span> | STB: <span className="text-white font-mono">{extraDueCustomer.stbId || extraDueCustomer.customerId}</span></p>
+                    <div className="pt-1.5 border-t border-slate-800 flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Current Due:</span>
+                      <span className="font-bold text-amber-400">₹{(extraDueCustomer.balanceAmount || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Service / Reason Dropdown */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-300">Service / Reason *</Label>
+                    <Select value={extraDueReason} onValueChange={setExtraDueReason}>
+                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm h-10">
+                        <SelectValue placeholder="Select Service Reason" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                        <SelectItem value="STB Repair">STB Repair</SelectItem>
+                        <SelectItem value="STB Replace">STB Replace</SelectItem>
+                        <SelectItem value="FTTH Connector Repairs">FTTH Connector Repairs</SelectItem>
+                        <SelectItem value="Remote Control Repairs">Remote Control Repairs</SelectItem>
+                        <SelectItem value="Fiber Cable Replace">Fiber Cable Replace</SelectItem>
+                        <SelectItem value="Fiber Cable Joint">Fiber Cable Joint</SelectItem>
+                        <SelectItem value="Others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Custom Reason Field when "Others" is selected */}
+                  {extraDueReason === "Others" && (
+                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <Label className="text-xs font-semibold text-amber-400">Specify Reason / Service *</Label>
+                      <Input
+                        placeholder="Enter custom service reason..."
+                        value={extraDueCustomReason}
+                        onChange={(e) => setExtraDueCustomReason(e.target.value)}
+                        className="bg-slate-950 border-amber-500/50 text-slate-100 text-sm h-10 focus-visible:ring-amber-500"
+                        required={extraDueReason === "Others"}
+                      />
+                    </div>
+                  )}
+
+                  {/* Amount Entry */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-300">Amount to Add (₹) *</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-slate-400 font-bold">₹</span>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 200"
+                        value={extraDueAmount}
+                        onChange={(e) => setExtraDueAmount(e.target.value)}
+                        className="bg-slate-950 border-slate-700 text-emerald-400 font-bold text-lg pl-7 h-11"
+                        required
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  {parseFloat(extraDueAmount) > 0 && (
+                    <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/50 text-xs text-amber-300 flex justify-between items-center">
+                      <span>New Due:</span>
+                      <strong className="text-sm text-white">₹{((extraDueCustomer.balanceAmount || 0) + (parseFloat(extraDueAmount) || 0)).toLocaleString()}</strong>
+                    </div>
+                  )}
+
+                  <DialogFooter className="pt-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsExtraDueModalOpen(false)}
+                      className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingExtraDue}
+                      className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs"
+                    >
+                      {isSubmittingExtraDue ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-1.5" />}
+                      Confirm & Add to Due
+                    </Button>
+                  </DialogFooter>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Payment Success Instant WhatsApp & SMS Receipt Modal */}
+          <PaymentSuccessReceiptModal
+            isOpen={isReceiptModalOpen}
+            onClose={() => setIsReceiptModalOpen(false)}
+            receiptData={receiptModalData}
+            type="payment"
+          />
+
+          {/* Recharge Success Instant WhatsApp & SMS Receipt Modal */}
+          <PaymentSuccessReceiptModal
+            isOpen={isRechargeReceiptModalOpen}
+            onClose={() => setIsRechargeReceiptModalOpen(false)}
+            rechargeData={rechargeReceiptModalData}
+            type="recharge"
+          />
+
+        </div>
+      </main>
     </>
   );
 }

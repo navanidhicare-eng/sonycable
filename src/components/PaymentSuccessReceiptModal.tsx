@@ -47,6 +47,8 @@ export interface RechargeReceiptData {
   supportNumber?: string;
   customMessage?: string;
   ledgerUrl?: string;
+  isExtraDue?: boolean;
+  serviceReason?: string;
 }
 
 interface PaymentSuccessReceiptModalProps {
@@ -122,10 +124,10 @@ export const generateReceiptText = (data: ReceiptData): string => {
     : (typeof window !== "undefined" ? (localStorage.getItem("receipt_custom_message") || "").trim() : "");
   const customMessageLine = customMsg ? `\n\n${customMsg}` : "";
 
-  return `---------------------------------
-*${businessName}*
-*చెల్లింపు రశీదు (Payment Receipt)*
----------------------------------
+  return `
+${businessName}
+Payment Receipt
+
 కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${totalBillText}
 చెల్లించిన మొత్తం: ₹${data.paidAmount.toLocaleString("en-IN")}
 మిగిలిన బాకీ: ${formattedBalance}
@@ -136,7 +138,76 @@ Sony Cable సేవలను పొందుతున్నందుకు ధ�
 హెల్ప్లైన్ నెంబర్: ${supportNum}${ledgerLine}${customMessageLine}`;
 };
 
+export const generateExtraDueReceiptText = (data: RechargeReceiptData): string => {
+  const businessName = "Sony Cable";
+  const formattedDate = typeof data.date === "string"
+    ? data.date
+    : data.date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+  const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
+
+  let serviceReason = data.serviceReason || data.packageName || "సర్వీస్ ఛార్జ్";
+  if (serviceReason.startsWith("Service Charge - ")) {
+    serviceReason = serviceReason.replace("Service Charge - ", "");
+  }
+
+  const supportNum = "9010737882";
+
+  // పాస్‌బుక్ లెడ్జర్ లింక్ జనరేషన్
+  const docId = data.customerDocId || data.customerId;
+  let ledgerLink = data.ledgerUrl || "";
+  if (!ledgerLink && docId) {
+    const baseUrl = getPublicBaseUrl();
+    if (baseUrl) {
+      ledgerLink = `${baseUrl}/passbook?id=${docId}`;
+    }
+  }
+  const ledgerLine = ledgerLink ? `\n\nపాస్‌బుక్ లెడ్జర్ లింక్:\n${ledgerLink}` : "";
+
+  // బ్యాలెన్స్ ఫార్మాటింగ్ లాజిక్
+  const oldDueVal = Number(data.oldDue || 0);
+  const formattedOldDue = oldDueVal < 0
+    ? `-₹${Math.abs(oldDueVal).toLocaleString("en-IN")}`
+    : `₹${oldDueVal.toLocaleString("en-IN")}`;
+
+  const newDueVal = Number(data.newDue || 0);
+  const formattedNewDue = newDueVal < 0
+    ? `-₹${Math.abs(newDueVal).toLocaleString("en-IN")}`
+    : `₹${newDueVal.toLocaleString("en-IN")}`;
+
+  const customMsg = data.customMessage !== undefined
+    ? data.customMessage.trim()
+    : (typeof window !== "undefined" ? (localStorage.getItem("receipt_custom_message") || "").trim() : "");
+  const customMessageLine = customMsg ? `\n\n${customMsg}` : "";
+
+  return `---------------------------------
+*${businessName}*
+*సర్వీస్ ఛార్జ్ వివరాలు (Service Charge Added)*
+---------------------------------
+కస్టమర్ పేరు: ${data.customerName}${customerIdLine}
+సేవ / వివరాలు: ${serviceReason}
+తేదీ: ${formattedDate}
+పాత బాకీ: ${formattedOldDue}
+సర్వీస్ ఛార్జ్: ₹${data.rechargeAmount.toLocaleString("en-IN")}
+మొత్తం బాకీ: ${formattedNewDue}
+
+Sony Cable Network సేవలను పొందుతున్నందుకు ధన్యవాదాలు!
+హెల్ప్‌లైన్ నెంబర్: ${supportNum}${ledgerLine}${customMessageLine}`;
+};
+
 export const generateRechargeReceiptText = (data: RechargeReceiptData): string => {
+  const isExtraDue = Boolean(data.isExtraDue) || (data.packageName ? /service charge|extra due/i.test(data.packageName) : false);
+  if (isExtraDue) {
+    return generateExtraDueReceiptText(data);
+  }
+
   const businessName = "Sony Cable";
   const formattedDate = typeof data.date === "string"
     ? data.date
@@ -181,10 +252,10 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
     : (typeof window !== "undefined" ? (localStorage.getItem("receipt_custom_message") || "").trim() : "");
   const customMessageLine = customMsg ? `\n\n${customMsg}` : "";
 
-  return `---------------------------------
-*${businessName}*
-*రీఛార్జ్ సక్సెస్‌ఫుల్! (Recharge Successful)*
----------------------------------
+  return `
+${businessName}
+Recharge Successful
+
 కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}${monthsLine}
 రీఛార్జ్ చేసిన తేదీ: ${formattedDate}
 పాత బాకీ: ${formattedOldDue}
@@ -242,6 +313,7 @@ export default function PaymentSuccessReceiptModal({
   }, []);
 
   const isRecharge = type === "recharge" || Boolean(rechargeData);
+  const isExtraDue = Boolean(rechargeData?.isExtraDue) || (rechargeData?.packageName ? /service charge|extra due/i.test(rechargeData.packageName) : false);
   const activeData = isRecharge ? rechargeData : receiptData;
 
   const receiptText = isRecharge && rechargeData
@@ -326,10 +398,18 @@ export default function PaymentSuccessReceiptModal({
             <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
           </div>
           <DialogTitle className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-            {isRecharge ? "Recharge Successful!" : "Payment Successful!"}
+            {isExtraDue
+              ? "Service Charge Added!"
+              : isRecharge
+                ? "Recharge Successful!"
+                : "Payment Successful!"}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground mt-1">
-            {isRecharge && rechargeData ? (
+            {isExtraDue && rechargeData ? (
+              <>
+                Service charge of <strong className="text-foreground">₹{rechargeData.rechargeAmount.toLocaleString("en-IN")}</strong> added for {customerName}.
+              </>
+            ) : isRecharge && rechargeData ? (
               <>
                 Recharge of <strong className="text-foreground">₹{rechargeData.rechargeAmount.toLocaleString("en-IN")}</strong> completed for {customerName}.
               </>
@@ -386,7 +466,7 @@ export default function PaymentSuccessReceiptModal({
             onClick={onClose}
             className="w-full h-10 font-semibold text-slate-700 dark:text-slate-200"
           >
-            {isRecharge ? "Done / Next Recharge" : "Done / Next Collection"}
+            {isExtraDue ? "Done" : isRecharge ? "Done / Next Recharge" : "Done / Next Collection"}
           </Button>
         </div>
       </DialogContent>

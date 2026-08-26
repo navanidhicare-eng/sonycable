@@ -29,7 +29,6 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, Timestamp, getDocs, runTransaction } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sendAutoSms } from "@/lib/autoSms";
 import { format } from "date-fns";
@@ -65,8 +64,6 @@ function StaffComplaintsListContent() {
   const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
   const [currentComplaint, setCurrentComplaint] = useState<Complaint | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
-  const [resolutionAmount, setResolutionAmount] = useState("");
-  const [paymentCollected, setPaymentCollected] = useState(true);
   const [isSubmittingResolve, setIsSubmittingResolve] = useState(false);
   const { user, userRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -163,8 +160,6 @@ function StaffComplaintsListContent() {
   const openResolveDialog = (complaint: Complaint) => {
     setCurrentComplaint(complaint);
     setResolutionNotes("");
-    setResolutionAmount("");
-    setPaymentCollected(true);
     setIsResolveDialogOpen(true);
   };
 
@@ -182,7 +177,6 @@ function StaffComplaintsListContent() {
 
       await runTransaction(db, async (transaction) => {
         const complaintDocRef = doc(db, "complaints", currentComplaint.id);
-        const amountValue = parseFloat(resolutionAmount);
 
         const updatePayload: any = {
           status: "Resolved",
@@ -190,33 +184,6 @@ function StaffComplaintsListContent() {
           resolvedAt: Timestamp.now(),
           resolvedBy: user.displayName || user.email || "Staff",
         };
-
-        if (!isNaN(amountValue) && amountValue > 0) {
-          updatePayload.resolutionAmount = amountValue;
-          updatePayload.paymentCollected = paymentCollected;
-
-          if (paymentCollected) {
-            const paymentRef = doc(collection(db, "payments"));
-            transaction.set(paymentRef, {
-              customerId: currentComplaint.customerId,
-              customerName: currentComplaint.customerName,
-              amount: amountValue,
-              method: "cash",
-              description: `Complaint Service Charge: ${resolutionNotes || 'N/A'}`,
-              collectedBy: user.uid,
-              collectionDate: new Date(),
-              adminId: adminId,
-            });
-          } else {
-            const customerDocRef = doc(db, "customers", currentComplaint.customerId);
-            const customerDoc = await transaction.get(customerDocRef);
-            if (customerDoc.exists()) {
-              const currentBalance = customerDoc.data().balanceAmount || 0;
-              const newBalance = currentBalance + amountValue;
-              transaction.update(customerDocRef, { balanceAmount: newBalance });
-            }
-          }
-        }
 
         transaction.update(complaintDocRef, updatePayload);
       });
@@ -591,27 +558,6 @@ function StaffComplaintsListContent() {
                   onChange={(e) => setResolutionNotes(e.target.value)}
                 />
               </div>
-              <div className="grid w-full gap-1.5">
-                <Label htmlFor="resolution-amount" className="text-xs font-bold">Service Charge (if any) (₹)</Label>
-                <Input
-                  type="number"
-                  id="resolution-amount"
-                  placeholder="Enter amount if customer was charged for repair"
-                  className="h-10 text-xs sm:text-sm"
-                  value={resolutionAmount}
-                  onChange={(e) => setResolutionAmount(e.target.value)}
-                />
-              </div>
-              {resolutionAmount && parseFloat(resolutionAmount) > 0 && (
-                <div className="flex items-center space-x-2 pt-1">
-                  <Checkbox
-                    id="payment-collected"
-                    checked={paymentCollected}
-                    onCheckedChange={(checked) => setPaymentCollected(Boolean(checked))}
-                  />
-                  <Label htmlFor="payment-collected" className="text-xs font-bold">Payment Collected Cash</Label>
-                </div>
-              )}
             </div>
             <DialogFooter>
               <Button 
