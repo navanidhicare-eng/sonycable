@@ -305,9 +305,6 @@ function DashboardLayout({
                 <SidebarMenu>
                   {isRetailer ? (
                     <>
-                      {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
-                      {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
-                      {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
                       {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
                     </>
                   ) : isDealer ? (
@@ -321,7 +318,6 @@ function DashboardLayout({
                       {!isCollectionAgent && (
                         <>
                           {renderNavItem("/dashboard/customers-staff", <Users className="h-4 w-4" />, "Customers")}
-                          {!isNetworkServiceAgent && renderNavItem("/dashboard/recharge", <CreditCard className="h-4 w-4" />, "Recharge")}
                           {renderNavItem("/dashboard/request-recharge", <Send className="h-4 w-4" />, "Recharge Requests")}
                         </>
                       )}
@@ -329,9 +325,6 @@ function DashboardLayout({
                       {renderNavItem("/dashboard/my-collection-history", <History className="h-4 w-4" />, "My Collection History")}
                       {renderNavItem("/dashboard/reminders-staff", <BellRing className="h-4 w-4" />, "Reminders")}
                       {renderNavItem("/dashboard/complaints-staff", <MessageSquareWarning className="h-4 w-4" />, "Complaints Management")}
-                      {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
-                      {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
-                      {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
                       {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
                     </>
                   )}
@@ -351,7 +344,6 @@ function DashboardLayout({
                   <SidebarMenu>
                     {renderNavItem("/dashboard/customers", <Users className="h-4 w-4" />, "Customers")}
                     {renderNavItem("/dashboard/dishtv-customers", <Tv className="h-4 w-4" />, "DishTV Customers")}
-                    {renderNavItem("/dashboard/recharge", <CreditCard className="h-4 w-4" />, "Recharge")}
                     {renderNavItem("/dashboard/transactions", <History className="h-4 w-4" />, "Transactions")}
                     {renderNavItem("/dashboard/collection", <IndianRupee className="h-4 w-4" />, "Collection")}
                     {renderNavItem("/dashboard/reminders", <BellRing className="h-4 w-4" />, "Reminders")}
@@ -383,9 +375,6 @@ function DashboardLayout({
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {renderNavItem("/dashboard/recharge-offers", <Gift className="h-4 w-4" />, "Recharge Offers")}
-                    {renderNavItem("/dashboard/new-connection-offers", <Tv className="h-4 w-4" />, "New Connection Offers")}
-                    {renderNavItem("/dashboard/retailer-commission", <IndianRupee className="h-4 w-4" />, "Retailer Commission")}
                     {renderNavItem("/dashboard/marketplace", <ShoppingBag className="h-4 w-4" />, "Marketplace")}
                     {renderNavItem("/dashboard/offers", <Megaphone className="h-4 w-4" />, "Offers")}
                     {renderNavItem("/dashboard/announcements", <Megaphone className="h-4 w-4" />, "Announcements")}

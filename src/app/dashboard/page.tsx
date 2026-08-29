@@ -100,6 +100,10 @@ interface RechargePackage {
   id: string;
   packageName: string;
   packageAmount: string;
+  threeMonthAmount?: string;
+  sixMonthAmount?: string;
+  twelveMonthAmount?: string;
+  type?: string;
 }
 
 interface RechargeOffer {
@@ -3184,14 +3188,23 @@ export default function DashboardPage() {
 
   const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
 
+  // Duration options strictly from admin-configured package prices
+  const dashboardDurationOptions: { months: number; label: string; price: number }[] = selectedPackageDetails
+    ? [
+        { months: 1,  label: "1 Month",   price: parseFloat(selectedPackageDetails.packageAmount || "0") || 0 },
+        ...(selectedPackageDetails.threeMonthAmount  ? [{ months: 3,  label: "3 Months",  price: parseFloat(selectedPackageDetails.threeMonthAmount)  }] : []),
+        ...(selectedPackageDetails.sixMonthAmount    ? [{ months: 6,  label: "6 Months",  price: parseFloat(selectedPackageDetails.sixMonthAmount)    }] : []),
+        ...(selectedPackageDetails.twelveMonthAmount ? [{ months: 12, label: "12 Months", price: parseFloat(selectedPackageDetails.twelveMonthAmount) }] : []),
+      ].filter(o => o.price > 0)
+    : [];
+  const selectedDashboardDuration = dashboardDurationOptions.find(o => o.months === rechargeMonths);
+  const totalRechargeAmount = selectedDashboardDuration?.price ?? 0;
+
   const baseAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) : 0;
   const offer = rechargeOffers.find(o => o.months === rechargeMonths);
   const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
-  const totalRechargeAmount = baseAmount * rechargeMonths - discount;
 
-  const newBalance = searchedCustomer && selectedPackageDetails && !paymentReceivedForRecharge
-    ? parseFloat(String(searchedCustomer.balanceAmount)) + totalRechargeAmount
-    : searchedCustomer?.balanceAmount;
+  const newBalance = searchedCustomer?.balanceAmount;
   const handleOpenService = (cust: DishTvCustomer) => {
     setServiceCustomer(cust);
     setServiceType("Cable Shift / Relocation");
@@ -3875,7 +3888,7 @@ export default function DashboardPage() {
                     <Label htmlFor="package" className="text-right">
                       Package
                     </Label>
-                    <Select onValueChange={setSelectedPackage}>
+                    <Select onValueChange={(pkgId) => { setSelectedPackage(pkgId); setRechargeMonths(1); }}>
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Select a package" />
                       </SelectTrigger>
@@ -3888,18 +3901,20 @@ export default function DashboardPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="months" className="text-right">
-                      Months
-                    </Label>
-                    <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
+                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="months" className="text-right">Duration</Label>
+                    <Select
+                      value={String(rechargeMonths)}
+                      onValueChange={(val) => setRechargeMonths(Number(val))}
+                      disabled={!selectedPackageDetails || dashboardDurationOptions.length === 0}
+                    >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select number of months" />
+                        <SelectValue placeholder={selectedPackageDetails ? "Select duration" : "Select package first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {[...Array(12)].map((_, i) => (
-                          <SelectItem key={i + 1} value={String(i + 1)}>
-                            {i + 1} Month(s)
+                        {dashboardDurationOptions.map(opt => (
+                          <SelectItem key={opt.months} value={String(opt.months)}>
+                            {opt.label} — ₹{opt.price.toLocaleString()}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -3924,27 +3939,19 @@ export default function DashboardPage() {
                         <span>Recharge Amount:</span>
                         <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>New Balance After Recharge:</span>
-                        <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
-                      </div>
-                      {paymentReceivedForRecharge && (
-                        <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
-                      )}
                     </div>
                   )}
 
-                  <div className="flex items-center space-x-2 justify-center pt-2">
-                    <Checkbox
-                      id="payment-received-recharge"
-                      checked={paymentReceivedForRecharge}
-                      onCheckedChange={(checked) => setPaymentReceivedForRecharge(Boolean(checked))}
-                    />
-                    <Label htmlFor="payment-received-recharge" className="text-xs">Payment Received (amount will not be added to balance)</Label>
-                  </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
+                  <Button
+                    type="button"
+                    onClick={handleRecharge}
+                    disabled={!selectedPackage || !selectedDashboardDuration}
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                  >
+                    Confirm Recharge
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

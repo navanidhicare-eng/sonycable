@@ -235,10 +235,19 @@ export default function PackagesPage() {
 
     setIsSubmitting(true);
 
+    // Timeout helper — Firestore hangs silently when offline or rules block
+    const withTimeout = <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error("Request timed out. Check network or Firestore rules.")), ms)
+        ),
+      ]);
+
     try {
       if (editingPkg && !editingPkg.isBuiltIn) {
         // Update existing package in DB
-        await updateDoc(doc(db, "packages", editingPkg.id), {
+        await withTimeout(updateDoc(doc(db, "packages", editingPkg.id), {
           packageName: formData.packageName.trim(),
           packageAmount: formData.packageAmount.trim(),
           threeMonthAmount: formData.threeMonthAmount.trim(),
@@ -246,15 +255,15 @@ export default function PackagesPage() {
           twelveMonthAmount: formData.twelveMonthAmount.trim(),
           description: formData.description.trim(),
           type: formData.type,
-        });
+        }));
 
         toast({
           title: "Package Updated",
           description: `${formData.packageName} details updated successfully.`,
         });
       } else {
-        // Add new package to DB
-        await addDoc(collection(db, "packages"), {
+        // Add new package to DB (also handles built-in overrides)
+        await withTimeout(addDoc(collection(db, "packages"), {
           packageName: formData.packageName.trim(),
           packageAmount: formData.packageAmount.trim(),
           threeMonthAmount: formData.threeMonthAmount.trim(),
@@ -264,7 +273,7 @@ export default function PackagesPage() {
           type: formData.type,
           userId: user.uid,
           createdAt: Timestamp.now(),
-        });
+        }));
 
         toast({
           title: "Package Created",
@@ -273,12 +282,12 @@ export default function PackagesPage() {
       }
 
       setIsDialogOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving package:", err);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save package details.",
+        description: err?.message || "Could not save package details. Check your connection.",
       });
     } finally {
       setIsSubmitting(false);

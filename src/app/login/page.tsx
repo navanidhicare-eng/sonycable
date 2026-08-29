@@ -88,6 +88,22 @@ export default function LoginPage() {
   const { user: currentUser, loading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
+
+  // Detect if running inside Android APK (Capacitor Native WebView) or Web Browser
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isCapacitorNative = !!(window as any).Capacitor?.isNativePlatform?.();
+      const isCapacitorWebview = typeof (window as any).Capacitor !== "undefined" && (window as any).Capacitor?.getPlatform?.() !== "web";
+      const isAndroidAppUA = /Capacitor|AndroidApp/i.test(navigator.userAgent);
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceAppMode = urlParams.get("app") === "true";
+
+      if (isCapacitorNative || isCapacitorWebview || isAndroidAppUA || forceAppMode) {
+        setIsNativeApp(true);
+      }
+    }
+  }, []);
 
   // Auto-redirect already authenticated users directly to Dashboard so they are never logged out unexpectedly
   useEffect(() => {
@@ -351,6 +367,138 @@ export default function LoginPage() {
 
 
 
+  // 1. Android APK Mode: Render ONLY Login Card (User ID & Password)
+  if (isNativeApp) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 text-slate-100 selection:bg-orange-500 selection:text-white flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-sans">
+        {/* Background Ambient Glow Gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-orange-600/15 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[350px] h-[350px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="w-full max-w-md space-y-6 relative z-10">
+          {/* Brand Header for Android APK view */}
+          <div className="flex flex-col items-center justify-center text-center space-y-2">
+            <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600 via-orange-500 to-red-600 shadow-xl shadow-orange-500/30">
+              <Tv className="w-8 h-8 text-white" />
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500"></span>
+              </span>
+            </div>
+            <h1 className="text-xl font-black tracking-tight text-white">Navanidhi Digital System</h1>
+            <div className="flex items-center gap-1 text-xs font-bold tracking-wider">
+              <span className="text-slate-400">Official</span>
+              <span className="text-orange-400 font-extrabold text-xs">dish<span className="text-red-500">tv</span></span>
+              <span className="text-amber-400 font-extrabold">Partner</span>
+              <span className="text-slate-500">• App Login</span>
+            </div>
+          </div>
+
+          {/* Portal Login Card */}
+          <Card className="bg-slate-900/90 border-slate-800 backdrop-blur-2xl shadow-2xl text-slate-100 rounded-3xl overflow-hidden">
+            <CardHeader className="space-y-2 pb-4 text-center border-b border-slate-800/80 bg-slate-950/40 p-6">
+              <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 via-orange-500 to-red-600 text-white shadow-xl shadow-orange-500/20">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <CardTitle className="text-xl font-black tracking-tight text-white">
+                Portal Login
+              </CardTitle>
+              <CardDescription className="text-slate-400 text-xs">
+                Enter your Email / Mobile Number & Password
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-6">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  {/* Email or Mobile Field */}
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-orange-400" />
+                          Email / Mobile Number
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter email or mobile number"
+                            className="bg-slate-950/80 border-slate-800 text-white placeholder:text-slate-500 py-5 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-orange-500"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-red-400 text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Password Field */}
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-300 font-semibold text-xs flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-orange-400" />
+                          Password
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              className="bg-slate-950/80 border-slate-800 text-white placeholder:text-slate-500 py-5 pr-10 rounded-xl text-sm focus-visible:ring-2 focus-visible:ring-orange-500"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-3.5 text-slate-400 hover:text-white"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-red-400 text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Login Submit Button */}
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-6 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold text-base shadow-lg shadow-orange-500/25 transition-all transform hover:scale-[1.01]"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        Authenticating...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <LogIn className="w-5 h-5" /> Sign In to Portal
+                      </span>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+
+            <CardFooter className="bg-slate-950/60 p-4 text-center border-t border-slate-800/80">
+              <p className="text-[11px] text-slate-400 w-full flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>256-bit Encrypted Secure Session</span>
+              </p>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Web Browser Mode (Mobile Browser & Desktop/System Browser): Show FULL complete Home Page
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 selection:bg-orange-500 selection:text-white relative overflow-hidden font-sans">
       {/* Background Ambient Glow Gradients */}
@@ -399,10 +547,10 @@ export default function LoginPage() {
       </header>
 
       {/* Main Hero & Login Section */}
-      <main className="max-w-7xl mx-auto px-4 lg:px-12 py-12 lg:py-16">
+      <main className="max-w-7xl mx-auto px-4 lg:px-12 py-8 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* Left Column: Hero Content & Graphic Banner (Hidden on Mobile for clean Android login view) */}
-          <div className="hidden lg:block lg:col-span-7 space-y-8">
+          {/* Left Column: Hero Content & Graphic Banner (Visible in all Web Browsers) */}
+          <div className="lg:col-span-7 space-y-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-orange-400" />
               <span>Navanidhi Digital System — Official DishTV Partner</span>
@@ -642,8 +790,8 @@ export default function LoginPage() {
 
           {/* Right Column: DishTV STB Showcase & Glassmorphic Login Portal Card */}
           <div className="lg:col-span-5 space-y-6">
-            {/* DishTV SMRT Hub STB & Satellite Dish Display Card (Hidden on Mobile) */}
-            <div className="hidden lg:block relative rounded-3xl overflow-hidden border border-orange-500/40 bg-gradient-to-br from-slate-900/95 via-slate-950 to-slate-900 p-5 shadow-2xl backdrop-blur-xl group">
+            {/* DishTV SMRT Hub STB & Satellite Dish Display Card */}
+            <div className="hidden sm:block relative rounded-3xl overflow-hidden border border-orange-500/40 bg-gradient-to-br from-slate-900/95 via-slate-950 to-slate-900 p-5 shadow-2xl backdrop-blur-xl group">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black text-[10px] px-2.5 py-0.5 uppercase tracking-wider shadow-md shadow-orange-500/20">
@@ -780,8 +928,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Feature Showcase Grid Section (Hidden on Mobile) */}
-        <section className="hidden lg:block mt-20 pt-12 border-t border-slate-800/80">
+        {/* Feature Showcase Grid Section */}
+        <section className="mt-16 sm:mt-20 pt-8 sm:pt-12 border-t border-slate-800/80">
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Powerful DishTV Operator Capabilities
@@ -843,8 +991,8 @@ export default function LoginPage() {
         </section>
       </main>
 
-      {/* Footer (Hidden on Mobile) */}
-      <footer className="hidden lg:block border-t border-slate-800/80 bg-slate-950 py-8 px-4 lg:px-12 text-slate-400 text-xs mt-16">
+      {/* Footer */}
+      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 px-4 lg:px-12 text-slate-400 text-xs mt-16">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">Navanidhi Digital System</span>

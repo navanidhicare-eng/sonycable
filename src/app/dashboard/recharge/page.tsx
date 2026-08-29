@@ -56,8 +56,12 @@ interface Customer {
 interface Package {
   id: string;
   packageName: string;
-  packageAmount: string;
-  description: string;
+  packageAmount: string;         // 1 Month price
+  threeMonthAmount?: string;     // 3 Month price (admin configured)
+  sixMonthAmount?: string;       // 6 Month price
+  twelveMonthAmount?: string;    // 12 Month price
+  description?: string;
+  type?: string;
 }
 
 interface Area {
@@ -85,7 +89,6 @@ function RechargePageContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [paymentReceived, setPaymentReceived] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
   const [rechargeMonths, setRechargeMonths] = useState(1);
@@ -199,13 +202,8 @@ function RechargePageContent() {
             lastRechargeDate: Timestamp.fromDate(newRechargeDate),
         };
 
-        if (paymentReceived) {
-            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
-        } else {
-            const newBalance = currentCustomer.balanceAmount + totalRechargeAmount;
-            updateData.balanceAmount = newBalance;
-            description = `${currentCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
-        }
+        // Payment is always treated as received
+        description = `${currentCustomer.name} recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
 
         if (discount > 0) {
             description += ` (Discount of ₹${discount.toLocaleString()} applied).`;
@@ -220,14 +218,14 @@ function RechargePageContent() {
             packageName: pkg.packageName,
             amount: totalRechargeAmount,
             months: rechargeMonths,
-            paymentReceived: paymentReceived,
+            paymentReceived: true,
             rechargeDate: newRechargeDate,
             rechargedBy: user.uid,
             adminId: user.uid,
         });
       
         const oldDue = parseFloat(String(currentCustomer.balanceAmount || 0));
-        const newDue = paymentReceived ? oldDue : oldDue + totalRechargeAmount;
+        const newDue = oldDue;
 
         toast({
             title: "Recharge Successful",
@@ -266,20 +264,36 @@ function RechargePageContent() {
   const openDialog = (customer: Customer) => {
     setCurrentCustomer(customer);
     setSelectedPackage(null);
-    setPaymentReceived(true);
     setRechargeMonths(1);
     setIsDialogOpen(true);
   };
+
+  // Reset months when package changes
+  const handlePackageChange = (pkgId: string) => {
+    setSelectedPackage(pkgId);
+    setRechargeMonths(1);
+  };
   
   const selectedPackageDetails = selectedPackage ? packages.find(p => p.id === selectedPackage) : null;
+
+  // ── Build admin-configured duration options for selected package ────────────
+  const durationOptions: { months: number; label: string; price: number }[] = selectedPackageDetails
+    ? [
+        { months: 1,  label: "1 Month",   price: parseFloat(selectedPackageDetails.packageAmount || "0") || 0 },
+        ...(selectedPackageDetails.threeMonthAmount  ? [{ months: 3,  label: "3 Months",  price: parseFloat(selectedPackageDetails.threeMonthAmount)  }] : []),
+        ...(selectedPackageDetails.sixMonthAmount    ? [{ months: 6,  label: "6 Months",  price: parseFloat(selectedPackageDetails.sixMonthAmount)    }] : []),
+        ...(selectedPackageDetails.twelveMonthAmount ? [{ months: 12, label: "12 Months", price: parseFloat(selectedPackageDetails.twelveMonthAmount) }] : []),
+      ].filter(o => o.price > 0)
+    : [];
+
+  // Price is read directly from admin config — no custom injection possible
+  const selectedDurationOption = durationOptions.find(o => o.months === rechargeMonths);
+  const totalRechargeAmount = selectedDurationOption?.price ?? 0;
   const offer = rechargeOffers.find(o => o.months === rechargeMonths);
   const baseAmount = selectedPackageDetails ? parseFloat(selectedPackageDetails.packageAmount) : 0;
   const discount = offer ? (baseAmount * rechargeMonths * offer.discountPercentage) / 100 : 0;
-  const totalRechargeAmount = baseAmount * rechargeMonths - discount;
 
-  const newBalance = currentCustomer && selectedPackageDetails && !paymentReceived
-        ? parseFloat(String(currentCustomer.balanceAmount)) + totalRechargeAmount
-        : currentCustomer?.balanceAmount;
+  const newBalance = currentCustomer?.balanceAmount;
 
 
   return (
@@ -384,7 +398,7 @@ function RechargePageContent() {
                   <Label htmlFor="package" className="text-right">
                     Package
                   </Label>
-                  <Select onValueChange={setSelectedPackage}>
+                  <Select onValueChange={handlePackageChange}>
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Select a package" />
                     </SelectTrigger>
@@ -398,17 +412,19 @@ function RechargePageContent() {
                   </Select>
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="months" className="text-right">
-                    Months
-                  </Label>
-                   <Select value={String(rechargeMonths)} onValueChange={(val) => setRechargeMonths(Number(val))}>
+                  <Label htmlFor="months" className="text-right">Duration</Label>
+                  <Select
+                    value={String(rechargeMonths)}
+                    onValueChange={val => setRechargeMonths(Number(val))}
+                    disabled={!selectedPackageDetails || durationOptions.length === 0}
+                  >
                     <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select number of months" />
+                      <SelectValue placeholder={selectedPackageDetails ? "Select duration" : "Select a package first"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {[...Array(12)].map((_, i) => (
-                        <SelectItem key={i + 1} value={String(i + 1)}>
-                          {i + 1} Month(s)
+                      {durationOptions.map(opt => (
+                        <SelectItem key={opt.months} value={String(opt.months)}>
+                          {opt.label} — ₹{opt.price.toLocaleString()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -433,27 +449,18 @@ function RechargePageContent() {
                             <span>Recharge Amount:</span>
                             <span className="font-bold text-base">₹{totalRechargeAmount.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span>New Balance After Recharge:</span>
-                            <span className="font-bold text-base">₹{newBalance?.toLocaleString()}</span>
-                        </div>
-                            {paymentReceived && (
-                            <p className="text-xs text-muted-foreground">Amount will not be added to balance.</p>
-                        )}
                     </div>
                 )}
-
-                <div className="flex items-center space-x-2 justify-center pt-2">
-                    <Checkbox 
-                      id="payment-received" 
-                      checked={paymentReceived} 
-                      onCheckedChange={(checked) => setPaymentReceived(Boolean(checked))}
-                    />
-                    <Label htmlFor="payment-received" className="text-xs">Payment Received (amount will not be added to balance)</Label>
-                </div>
               </div>
               <DialogFooter>
-                <Button type="button" onClick={handleRecharge} disabled={!selectedPackage}>Confirm Recharge</Button>
+                <Button
+                  type="button"
+                  onClick={handleRecharge}
+                  disabled={!selectedPackage || !selectedDurationOption}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  Confirm Recharge
+                </Button>
               </DialogFooter>
             </DialogContent>
         </Dialog>
