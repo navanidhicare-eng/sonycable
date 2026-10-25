@@ -703,7 +703,7 @@ export default function MarketplacePage() {
                 {/* Product Image URL Input */}
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" /> Product Image Link / URL (చిత్రం లింక్)
+                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" /> Product Image Link / URL
                   </label>
                   <Input
                     placeholder="https://images.unsplash.com/photo-..."

@@ -421,7 +421,7 @@ function DashboardLayout({
           <div className="bg-amber-500/20 border-b border-amber-500/40 text-amber-300 text-xs px-4 py-2 flex items-center justify-between font-bold backdrop-blur-md">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
-              <span>⚡ Working Offline • ఇంటర్నెట్ లేదు (డేటా లోకల్ గా సేవ్ అవుతుంది)</span>
+              <span>⚡ Working Offline • No Internet Connection (Data saved locally)</span>
             </div>
             <span className="text-[10px] bg-amber-500/30 px-2.5 py-0.5 rounded-md text-amber-200 border border-amber-500/40">
               Offline Cache Active

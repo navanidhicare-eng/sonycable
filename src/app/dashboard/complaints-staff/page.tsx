@@ -549,7 +549,7 @@ function StaffComplaintsListContent() {
             </DialogHeader>
             <div className="grid gap-4 py-3">
               <div className="grid w-full gap-1.5">
-                <Label htmlFor="resolution-notes" className="text-xs font-bold">Resolution Notes (వివరణ)</Label>
+                <Label htmlFor="resolution-notes" className="text-xs font-bold">Resolution Notes</Label>
                 <Textarea
                   placeholder="e.g. Wire re-connected, Signal reset, Box replaced..."
                   id="resolution-notes"

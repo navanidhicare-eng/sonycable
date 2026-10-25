@@ -390,7 +390,7 @@ export default function RetailerCommissionPage() {
                   </Badge>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                  Commission Wallet (బాకీ కమీషన్)
+                  Commission Wallet
                 </p>
                 <p className="text-2xl sm:text-3xl font-black text-emerald-400">
                   ₹{(currentRetailerRecord?.walletBalance || 0).toLocaleString()}
@@ -415,7 +415,7 @@ export default function RetailerCommissionPage() {
                   </Badge>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                  Total Commission Earned (మొత్తం గెలుచుకున్నది)
+                  Total Commission Earned
                 </p>
                 <p className="text-2xl sm:text-3xl font-black text-amber-400">
                   ₹{(currentRetailerRecord?.totalEarned || 0).toLocaleString()}
@@ -439,7 +439,7 @@ export default function RetailerCommissionPage() {
                   </Badge>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                  Total Payout Received (బ్యాంక్‌కి జమ అయినది)
+                  Total Payout Received
                 </p>
                 <p className="text-2xl sm:text-3xl font-black text-blue-400">
                   ₹{(currentRetailerRecord?.totalPaid || 0).toLocaleString()}
@@ -467,7 +467,7 @@ export default function RetailerCommissionPage() {
                 </Badge>
               </div>
               <div>
-                <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase">Recharge Margin (రిచార్జ్ కమీషన్)</p>
+                <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase">Recharge Margin</p>
                 <p className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">
                   {commissions.rechargeCommissionRate}%
                 </p>
@@ -488,7 +488,7 @@ export default function RetailerCommissionPage() {
                 </Badge>
               </div>
               <div>
-                <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase">Service Request (సర్వీస్ కమీషన్)</p>
+                <p className="text-[11px] sm:text-xs text-slate-400 font-semibold uppercase">Service Request Margin</p>
                 <p className="text-xl sm:text-2xl font-black text-blue-400 mt-0.5">
                   ₹{commissions.serviceRequestCommission.toLocaleString()} <span className="text-xs text-slate-400 font-normal">/ request</span>
                 </p>
@@ -708,7 +708,7 @@ export default function RetailerCommissionPage() {
                     {/* Notes / Terms */}
                     <div className="space-y-1.5 pt-2 border-t border-slate-800">
                       <label className="text-xs font-bold text-slate-300">
-                        Commission Guidelines & Terms (రిటైలర్ రూల్స్ / నిబంధనలు)
+                        Commission Guidelines & Terms
                       </label>
                       <Input
                         placeholder="e.g. Recharge commission credited instantly. Service request commissions credited upon status resolution."
@@ -776,7 +776,7 @@ export default function RetailerCommissionPage() {
                 {/* Recharge Volume Input */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-300">
-                    Enter Recharge Amount / Value (రిచార్జ్ అమౌంట్ ₹)
+                    Enter Recharge Amount / Value (₹)
                   </label>
                   <Input
                     type="number"
@@ -797,7 +797,7 @@ export default function RetailerCommissionPage() {
                   </div>
 
                   <div className="flex justify-between items-center pt-2 border-t border-slate-800/80 text-slate-300 text-[11px] sm:text-xs">
-                    <span>Retailer Commission Earned (మీ కమీషన్):</span>
+                    <span>Retailer Commission Earned:</span>
                     <span className="font-bold text-emerald-400 text-xs sm:text-sm">
                       + ₹{((calcRechargeVol * commissions.rechargeCommissionRate) / 100).toLocaleString()}
                     </span>
@@ -805,7 +805,7 @@ export default function RetailerCommissionPage() {
 
                   <div className="flex flex-col pt-2.5 border-t border-slate-800 text-xs sm:text-sm font-bold bg-slate-900/60 p-3 rounded-lg border border-amber-500/30">
                     <span className="text-amber-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
-                      Net Amount Payable to Admin (అడ్మిన్‌కు పంపించాల్సిన అమౌంట్):
+                      Net Amount Payable to Admin:
                     </span>
                     <span className="text-cyan-400 text-lg sm:text-xl font-black mt-0.5">
                       ₹{Math.max(0, calcRechargeVol - (calcRechargeVol * commissions.rechargeCommissionRate) / 100).toLocaleString()}

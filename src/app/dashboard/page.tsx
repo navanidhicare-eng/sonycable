@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, User, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle, AlertTriangle, Clock, BellRing, MessageSquare, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Users, User, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle, AlertTriangle, Clock, BellRing, MessageSquare, MessageSquareWarning, ChevronDown, ChevronUp, RefreshCw, Layers, Copy, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,7 @@ interface Customer {
   balanceAmount: number;
   mobile: string;
   customerId: string;
+  gtplId?: string;
   area: string;
   stbId: string;
   expiryDate?: Timestamp;
@@ -196,8 +197,23 @@ export default function DashboardPage() {
   const [isCustomerSearchDialogOpen, setIsCustomerSearchDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchedCustomer, setSearchedCustomer] = useState<Customer | null>(null);
+  const [allDashboardCustomers, setAllDashboardCustomers] = useState<Customer[]>([]);
+  const [liveSearchMatch, setLiveSearchMatch] = useState<Customer | null>(null);
+  const [copiedGtplId, setCopiedGtplId] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+
+  const handleCopyGtplId = (gtplId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!gtplId) return;
+    navigator.clipboard.writeText(gtplId);
+    setCopiedGtplId(gtplId);
+    toast({
+      title: "GTPL ID Copied!",
+      description: `${gtplId} copied to clipboard.`,
+    });
+    setTimeout(() => setCopiedGtplId(null), 2000);
+  };
 
   // States for Collection Dialog
   const [isCollectDialogOpen, setIsCollectDialogOpen] = useState(false);
@@ -291,7 +307,7 @@ export default function DashboardPage() {
 
     const trimmedUtr = rechargeUtrNumber.trim();
     if (!trimmedUtr) {
-      setRechargeUtrError("దయచేసి 12 అంకెల UPI UTR నంబర్‌ను ఎంటర్ చేయండి. (Please enter UTR Number)");
+      setRechargeUtrError("Please enter the 12-digit UPI UTR / Transaction Reference Number.");
       return;
     }
 
@@ -312,7 +328,7 @@ export default function DashboardPage() {
       const snap3 = await getDocs(q3);
 
       if (!snap1.empty || !snap2.empty || !snap3.empty) {
-        setRechargeUtrError("❌ ఈ UTR నంబర్ ఇప్పటికే ఉపయోగించబడింది! ఒకసారి వాడిన UTR మరలా ఎంటర్ చేయడం అనుమతించబడదు. (This UTR Number has already been used! UTRs must be unique)");
+        setRechargeUtrError("❌ This UTR Number has already been used! UTRs must be unique.");
         setIsSubmittingRechargeReq(false);
         return;
       }
@@ -593,7 +609,12 @@ export default function DashboardPage() {
           getDocs(staffQuery),
         ]);
 
-        const customersData = customersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Omit<Customer, 'id'> }));
+        const customersData = customersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          gtplId: doc.data().gtplId || doc.data().gtpl || "",
+        } as Customer));
+        setAllDashboardCustomers(customersData);
         const customerMap = new Map(customersData.map(c => [c.id, c]));
 
         const totalPending = customersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
@@ -705,15 +726,25 @@ export default function DashboardPage() {
 
         const allCustomersQuery = query(collection(db, "customers"), where("userId", "==", staffDocData.adminId));
         const allCustomersSnapshot = await getDocs(allCustomersQuery);
-        const allAdminCustomers = allCustomersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as Omit<Customer, 'id'> }));
+        const allAdminCustomers = allCustomersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          gtplId: doc.data().gtplId || doc.data().gtpl || "",
+        } as Customer));
+        setAllDashboardCustomers(allAdminCustomers);
         const customerMap = new Map(allAdminCustomers.map(c => [c.id, c]));
 
         const allRechargesQuery = query(collection(db, "recharges"), where("adminId", "==", staffDocData.adminId));
         const allRechargesSnapshot = await getDocs(allRechargesQuery);
         const allAdminRecharges = allRechargesSnapshot.docs.map(doc => doc.data() as Recharge);
 
-
         allUnsubscribes.push(onSnapshot(allCustomersQuery, (snapshot) => {
+          const updatedStaffCusts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            gtplId: doc.data().gtplId || doc.data().gtpl || "",
+          } as Customer));
+          setAllDashboardCustomers(updatedStaffCusts);
           const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
           setTotalPendingForStaff(totalPending);
 
@@ -1333,6 +1364,93 @@ export default function DashboardPage() {
   };
 
 
+  // ── Pre-load / Cache Customers for Search Dialogs ──────────────────────────
+  useEffect(() => {
+    if ((isRechargeSearchDialogOpen || isCustomerSearchDialogOpen) && currentUser) {
+      if (allDashboardCustomers.length > 0) return;
+      const loadForSearch = async () => {
+        try {
+          let targetAdminId = currentUser.uid;
+          if (userRole !== "Admin") {
+            const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+            const staffSnapshot = await getDocs(staffQuery);
+            if (!staffSnapshot.empty) {
+              targetAdminId = staffSnapshot.docs[0].data().adminId;
+            }
+          }
+          const q = query(collection(db, "customers"), where("userId", "==", targetAdminId));
+          const snap = await getDocs(q);
+          const list = snap.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+            gtplId: d.data().gtplId || d.data().gtpl || "",
+          } as Customer));
+          setAllDashboardCustomers(list);
+        } catch (err) {
+          console.error("Failed to preload customers for search dialog:", err);
+        }
+      };
+      loadForSearch();
+    }
+  }, [isRechargeSearchDialogOpen, isCustomerSearchDialogOpen, currentUser, userRole, allDashboardCustomers.length]);
+
+  // ── Auto-lookup Customer as soon as Customer ID / GTPL / STB is entered ─────
+  useEffect(() => {
+    const trimmed = searchQuery.trim().toLowerCase();
+    if (!trimmed) {
+      setLiveSearchMatch(null);
+      setSearchError("");
+      return;
+    }
+
+    if (allDashboardCustomers.length === 0) return;
+
+    const staffAreas = staffData?.area || [];
+
+    // 1. Exact match on customerId, gtplId, stbId, or mobile
+    const exact = allDashboardCustomers.find(c => {
+      const matchId = c.customerId && String(c.customerId).trim().toLowerCase() === trimmed;
+      const matchGtpl = (c as any).gtplId && String((c as any).gtplId).trim().toLowerCase() === trimmed;
+      const matchStb = c.stbId && String(c.stbId).trim().toLowerCase() === trimmed;
+      const matchMobile = c.mobile && String(c.mobile).trim() === trimmed;
+      const inArea = staffAreas.length === 0 || staffAreas.includes(c.area);
+      return (matchId || matchGtpl || matchStb || matchMobile) && inArea;
+    });
+
+    if (exact) {
+      setLiveSearchMatch(exact);
+      setSearchError("");
+      return;
+    }
+
+    // 2. Starts-with match on customerId or gtplId
+    const prefix = allDashboardCustomers.find(c => {
+      const matchId = c.customerId && String(c.customerId).trim().toLowerCase().startsWith(trimmed);
+      const matchGtpl = (c as any).gtplId && String((c as any).gtplId).trim().toLowerCase().startsWith(trimmed);
+      const inArea = staffAreas.length === 0 || staffAreas.includes(c.area);
+      return (matchId || matchGtpl) && inArea;
+    });
+
+    if (prefix) {
+      setLiveSearchMatch(prefix);
+      setSearchError("");
+      return;
+    }
+
+    // 3. Partial match on name / stb (if query length >= 3)
+    if (trimmed.length >= 3) {
+      const partial = allDashboardCustomers.find(c => {
+        const matchName = c.name && String(c.name).toLowerCase().includes(trimmed);
+        const matchStb = c.stbId && String(c.stbId).toLowerCase().includes(trimmed);
+        const inArea = staffAreas.length === 0 || staffAreas.includes(c.area);
+        return (matchName || matchStb) && inArea;
+      });
+      setLiveSearchMatch(partial || null);
+    } else {
+      setLiveSearchMatch(null);
+    }
+  }, [searchQuery, allDashboardCustomers, staffData]);
+
   const handleCustomerSearch = async (type: 'collection' | 'recharge') => {
     if (!searchQuery.trim()) return;
 
@@ -1342,51 +1460,60 @@ export default function DashboardPage() {
 
     try {
       let currentStaffData = staffData;
-      if (!currentStaffData && currentUser) {
-        const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
-        const staffSnapshot = await getDocs(staffQuery);
-        if (!staffSnapshot.empty) {
-          currentStaffData = staffSnapshot.docs[0].data() as StaffData;
-          setStaffData(currentStaffData);
+      let targetAdminId = currentStaffData?.adminId;
+
+      if (!targetAdminId && currentUser) {
+        if (userRole === "Admin") {
+          targetAdminId = currentUser.uid;
         } else {
-          setSearchError("Could not find your staff profile.");
-          setIsSearching(false);
-          return;
+          const staffQuery = query(collection(db, "staff"), where("uid", "==", currentUser.uid));
+          const staffSnapshot = await getDocs(staffQuery);
+          if (!staffSnapshot.empty) {
+            currentStaffData = staffSnapshot.docs[0].data() as StaffData;
+            setStaffData(currentStaffData);
+            targetAdminId = currentStaffData.adminId;
+          }
         }
       }
 
-      if (!currentStaffData) {
-        setSearchError("Could not verify your staff details.");
+      if (!targetAdminId) {
+        setSearchError("Could not verify your account details.");
         setIsSearching(false);
         return;
       }
 
-      const customersRef = collection(db, "customers");
-      const q = query(customersRef, where("userId", "==", currentStaffData.adminId));
-      const querySnapshot = await getDocs(q);
-
-      const allAdminCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      let pool = allDashboardCustomers;
+      if (pool.length === 0) {
+        const customersRef = collection(db, "customers");
+        const q = query(customersRef, where("userId", "==", targetAdminId));
+        const querySnapshot = await getDocs(q);
+        pool = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          gtplId: doc.data().gtplId || doc.data().gtpl || "",
+        } as Customer));
+        setAllDashboardCustomers(pool);
+      }
 
       const trimmedSearchQuery = searchQuery.trim().toLowerCase();
+      const staffAreas = currentStaffData?.area || [];
 
-      const foundCustomer = allAdminCustomers.find(c => {
+      const foundCustomer = pool.find(c => {
         const matchesSearchTerm =
-          (c.customerId && c.customerId.trim().toLowerCase() === trimmedSearchQuery) ||
-          (c.mobile && c.mobile.trim() === searchQuery.trim()) ||
-          (c.stbId && c.stbId.trim().toLowerCase() === trimmedSearchQuery) ||
-          (c.name && c.name.trim().toLowerCase().includes(trimmedSearchQuery));
+          (c.customerId && String(c.customerId).trim().toLowerCase() === trimmedSearchQuery) ||
+          ((c as any).gtplId && String((c as any).gtplId).trim().toLowerCase() === trimmedSearchQuery) ||
+          (c.mobile && String(c.mobile).trim() === searchQuery.trim()) ||
+          (c.stbId && String(c.stbId).trim().toLowerCase() === trimmedSearchQuery) ||
+          (c.name && String(c.name).trim().toLowerCase().includes(trimmedSearchQuery));
 
-        const isInAssignedArea = currentStaffData!.area.includes(c.area);
+        const isInAssignedArea = staffAreas.length === 0 || staffAreas.includes(c.area);
 
         return matchesSearchTerm && isInAssignedArea;
       });
 
-
       if (foundCustomer) {
         setSearchedCustomer(foundCustomer);
-        if (type === 'recharge') {
-          openRechargeDialog(foundCustomer);
-        }
+        setLiveSearchMatch(foundCustomer);
       } else {
         setSearchError("Customer not found in your assigned areas or invalid ID/Mobile/Name.");
       }
@@ -2109,7 +2236,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-bold text-emerald-400 flex items-center gap-2">
               <Package className="h-5 w-5 text-emerald-400" />
-              New Connection Requests (కొత్త కనెక్షన్ రిక్వెస్ట్‌లు)
+              New Connection Requests
             </CardTitle>
             <Badge className="bg-emerald-500 text-slate-950 font-black">
               {visibleNewConnections.filter((r) => r.status === "Pending").length} Pending
@@ -2145,7 +2272,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col items-end gap-2 self-end md:self-center shrink-0">
                 {nc.retailerMargin > 0 && nc.status !== "Completed" && (
-                  <p className="text-[11px] text-emerald-400 font-bold">Complete చేస్తే +₹{nc.retailerMargin} credit అవుతుంది</p>
+                  <p className="text-[11px] text-emerald-400 font-bold">+₹{nc.retailerMargin} will be credited upon completion</p>
                 )}
                 {nc.status !== "Completed" && (
                   <Button size="sm" onClick={() => handleCompleteNC(nc)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">
@@ -2252,7 +2379,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-bold text-amber-400 flex items-center gap-2">
               <Wrench className="h-5 w-5 text-amber-400" />
-              Live Service Requests & Complaints (సర్వీస్ రిక్వెస్ట్‌లు)
+              Live Service Requests & Complaints
             </CardTitle>
             <Badge className="bg-amber-500 text-slate-950 font-black">
               {visibleServiceRequests.filter((r) => r.status === "Pending").length} Pending
@@ -2375,7 +2502,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-black text-amber-800 dark:text-amber-300">{pendingComplaints.length}</div>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-semibold">పెండింగ్ ఫిర్యాదులు →</p>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-semibold">Pending Complaints →</p>
           </CardContent>
         </Link>
       </Card>
@@ -2466,7 +2593,8 @@ export default function DashboardPage() {
       }
       if (diffDays === 0) {
         return {
-          text: "Expires Today (ఈ రోజే)",
+          text: "Expires Today",
+          teluguText: "ఈ రోజే",
           days: 0,
           badgeColor: "bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800 font-black",
           isExpired: false,
@@ -2474,7 +2602,8 @@ export default function DashboardPage() {
       }
       if (diffDays === 1) {
         return {
-          text: "in 1 Day (రేపే)",
+          text: "in 1 Day",
+          teluguText: "రేపే",
           days: 1,
           badgeColor: "bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800 font-bold",
           isExpired: false,
@@ -2482,14 +2611,16 @@ export default function DashboardPage() {
       }
       if (diffDays === 2) {
         return {
-          text: "in 2 Days (2 రోజుల్లో)",
+          text: "in 2 Days",
+          teluguText: "2 రోజుల్లో",
           days: 2,
           badgeColor: "bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800 font-bold",
           isExpired: false,
         };
       }
       return {
-        text: "in 3 Days (3 రోజుల్లో)",
+        text: "in 3 Days",
+        teluguText: "3 రోజుల్లో",
         days: 3,
         badgeColor: "bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800 font-bold",
         isExpired: false,
@@ -2558,7 +2689,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="text-base sm:text-2xl font-bold text-red-700 dark:text-red-400 truncate">₹{totalPendingForStaff.toLocaleString()}</div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">మొత్తం బకాయి</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Total Due Balance</p>
             </CardContent>
           </Card>
 
@@ -2575,7 +2706,7 @@ export default function DashboardPage() {
                     <Badge className="bg-amber-600 text-white text-[10px] px-1.5 py-0 font-bold">🚨 Urgent</Badge>
                   )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">పెండింగ్ ఫిర్యాదులు</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Pending Complaints</p>
               </CardContent>
             </Link>
           </Card>
@@ -2587,7 +2718,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-400 truncate">₹{todaysCollectionForStaff.toLocaleString()}</div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ రోజు వసూళ్ళు</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Today's Collection</p>
             </CardContent>
           </Card>
 
@@ -2598,7 +2729,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="text-base sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 truncate">₹{walletAmount.toLocaleString()}</div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Last settlement నుండి</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Since Last Settlement</p>
             </CardContent>
           </Card>
         </div>
@@ -2653,15 +2784,15 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-tight">+ Extra Due</span>
               </button>
 
-              {/* 4. Requests */}
+              {/* 4. Complaint Registration */}
               <Link
-                href="/dashboard/request-recharge"
+                href="/dashboard/complaints-staff/add"
                 className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border hover:bg-muted transition-all active:scale-95 text-center"
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 border border-purple-300 dark:border-purple-800 flex items-center justify-center shadow-xs mb-1">
-                  <Gift className="h-5 w-5" />
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-300 dark:border-rose-800 flex items-center justify-center shadow-xs mb-1">
+                  <MessageSquareWarning className="h-5 w-5" />
                 </div>
-                <span className="text-[10px] font-bold text-foreground leading-tight">Requests</span>
+                <span className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 leading-tight">Complaint Reg.</span>
               </Link>
             </div>
           </div>
@@ -2743,17 +2874,17 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Recharge Requests */}
-          <Link href="/dashboard/request-recharge" className="block">
-            <Card className="bg-purple-600 text-white hover:bg-purple-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
+          {/* Complaint Registration */}
+          <Link href="/dashboard/complaints-staff/add" className="block">
+            <Card className="bg-rose-600 text-white hover:bg-rose-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-semibold">Recharge Requests</CardTitle>
-                <Gift className="h-5 w-5" />
+                <CardTitle className="text-sm font-semibold">Complaint Registration</CardTitle>
+                <MessageSquareWarning className="h-5 w-5" />
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-purple-100">View pending recharge requests</p>
+                <p className="text-xs text-rose-100">Register customer complaint & technician visit</p>
                 <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                  View All <ArrowRight className="h-3 w-3" />
+                  Register Now <ArrowRight className="h-3 w-3" />
                 </div>
               </CardContent>
             </Card>
@@ -2770,7 +2901,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  3 రోజుల్లో ముగిసే రీఛార్జ్ బాక్స్‌లు
+                  Expiring Boxes (Next 3 Days)
                   <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     allExpiringBoxes.length > 0 
                       ? "bg-rose-500 text-white" 
@@ -2780,7 +2911,7 @@ export default function DashboardPage() {
                   </Badge>
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  రాబోయే 3 రోజుల్లో రీఛార్జ్ గడువు ముగిసే కస్టమర్ బాక్స్‌లు
+                  Boxes expiring within the next 3 days
                 </p>
               </div>
             </div>
@@ -2800,10 +2931,10 @@ export default function DashboardPage() {
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                  రాబోయే 3 రోజుల్లో ముగిసే బాక్స్‌లు లేవు!
+                  No boxes expiring in the next 3 days!
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
-                  రాబోయే 3 రోజుల్లో గడువు ముగిసే కస్టమర్ బాక్స్‌లు ప్రస్తుతం ఏవీ లేవు. అన్ని ఖాతాలు యాక్టివ్‌గా ఉన్నాయి.
+                  There are currently no customer boxes expiring in the next 3 days. All accounts are active.
                 </p>
                 <Button
                   variant="outline"
@@ -2812,7 +2943,7 @@ export default function DashboardPage() {
                   className="mt-1 text-xs font-semibold text-slate-700 hover:text-orange-600 rounded-xl"
                 >
                   <Link href="/dashboard/reminders-staff">
-                    అన్ని రిమైండర్స్ చూడండి (View Reminders)
+                    View All Reminders
                   </Link>
                 </Button>
               </div>
@@ -2858,7 +2989,7 @@ export default function DashboardPage() {
 మీ టీవీ కనెక్షన్ వివరాలు:
 🆔 *కస్టమర్ ID:* ${custId}
 📟 *STB / VC నంబర్:* ${box.stbId || "N/A"}
-📅 *గడువు తేదీ:* ${expiryDateStr} (${expiryInfo.text})
+📅 *గడువు తేదీ:* ${expiryDateStr} (${(expiryInfo as any).teluguText || expiryInfo.text})
 💰 *పాత బాకీ (Balance Due):* ${dueText}
 
 మీ టీవీ ప్రసారాలకు అంతరాయం కలగకుండా ఉండటానికి దయచేసి వెంటనే రీఛార్జ్ చేసుకోగలరు.
@@ -2965,7 +3096,7 @@ ${yesReplyLink}
                           </div>
                           <div className="col-span-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
                             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                              పాత బాకీ (Balance Due)
+                              Balance Due
                             </span>
                             <span className={`font-bold text-xs ${
                               dueAmount > 0 ? "text-rose-600 font-mono" : "text-emerald-600"
@@ -3077,7 +3208,7 @@ ${yesReplyLink}
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">₹{dealerStats.totalOutstanding.toLocaleString()}</div>
-          <p className="text-xs mt-1 text-blue-100">Total collection pending amount (మొత్తం బకాయి)</p>
+          <p className="text-xs mt-1 text-blue-100">Total collection pending amount</p>
         </CardContent>
       </Card>
     </div>
@@ -3114,7 +3245,7 @@ ${yesReplyLink}
             )}
           >
             <Tv className="h-3.5 w-3.5 text-cyan-300" />
-            <span>రిచార్జ్ స్థితి</span>
+            <span>Recharge Status</span>
             {myRecharges.length > 0 && (
               <span className="bg-indigo-950 text-cyan-300 border border-indigo-500/40 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                 {myRecharges.length}
@@ -3132,7 +3263,7 @@ ${yesReplyLink}
             )}
           >
             <Package className="h-3.5 w-3.5 text-emerald-300" />
-            <span>కొత్త కనెక్షన్స్</span>
+            <span>New Connections</span>
             {myNCs.length > 0 && (
               <span className="bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                 {myNCs.length}
@@ -3150,7 +3281,7 @@ ${yesReplyLink}
             )}
           >
             <Wrench className="h-3.5 w-3.5 text-amber-300" />
-            <span>సర్వీస్ రిక్వెస్ట్స్</span>
+            <span>Service Requests</span>
             {myService.length > 0 && (
               <span className="bg-amber-950 text-amber-300 border border-amber-500/40 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                 {myService.length}
@@ -3166,10 +3297,10 @@ ${yesReplyLink}
               <div>
                 <CardTitle className="text-base font-bold text-cyan-300 flex items-center gap-2">
                   <Tv className="h-4 w-4 text-cyan-300" />
-                  My DishTV Recharge Requests (రిచార్జ్ స్థితి)
+                  My DishTV Recharge Requests
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-400 mt-0.5">
-                  అడ్మిన్ అప్రూవ్ చేయగానే మీ వాలెట్‌కు కమీషన్ ఆటోమేటిక్‌గా క్రెడిట్ అవుతుంది.
+                  Commission will be automatically credited to your wallet once approved by Admin.
                 </CardDescription>
               </div>
             </CardHeader>
@@ -3177,8 +3308,8 @@ ${yesReplyLink}
               {myRecharges.length === 0 ? (
                 <div className="text-center py-8 border border-dashed border-slate-800 rounded-xl bg-slate-950/50 p-4 space-y-2">
                   <Tv className="h-8 w-8 text-slate-600 mx-auto" />
-                  <p className="text-xs text-slate-400">ప్రస్తుతానికి ఏ రిచార్జ్ రిక్వెస్ట్‌లు లేవు.</p>
-                  <p className="text-[11px] text-slate-500">పై సెర్చ్ బార్‌లో కస్టమర్ VC నంబర్ టైప్ చేసి ఆఫర్ ప్యాకేజ్ ఎంచుకోండి.</p>
+                  <p className="text-xs text-slate-400">No recharge requests found at this time.</p>
+                  <p className="text-[11px] text-slate-500">Search customer VC number above and select an offer package.</p>
                 </div>
               ) : (
                 myRecharges.map((req: any) => {
@@ -3214,7 +3345,7 @@ ${yesReplyLink}
                                 : "bg-amber-500 text-white animate-pulse"
                           )}
                         >
-                          {isCompleted ? "✅ Completed (రిచార్జ్ అయింది)" : isRejected ? "❌ Rejected" : "⏳ Pending Approval"}
+                          {isCompleted ? "✅ Completed" : isRejected ? "❌ Rejected" : "⏳ Pending Approval"}
                         </Badge>
                       </div>
 
@@ -3258,10 +3389,10 @@ ${yesReplyLink}
               <div>
                 <CardTitle className="text-base font-bold text-emerald-400 flex items-center gap-2">
                   <Package className="h-4 w-4 text-emerald-400" />
-                  My New Connection Requests (కొత్త కనెక్షన్లు)
+                  My New Connection Requests
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-400 mt-0.5">
-                  ఇన్‌స్టాలేషన్ పూర్తయిన తర్వాత కమీషన్ మీ వాలెట్‌కు చేరుతుంది.
+                  Commission will be credited to your wallet once installation is completed.
                 </CardDescription>
               </div>
             </CardHeader>
@@ -3269,7 +3400,7 @@ ${yesReplyLink}
               {myNCs.length === 0 ? (
                 <div className="text-center py-8 border border-dashed border-slate-800 rounded-xl bg-slate-950/50 p-4 space-y-2">
                   <Package className="h-8 w-8 text-slate-600 mx-auto" />
-                  <p className="text-xs text-slate-400">ప్రస్తుతానికి ఏ కొత్త కనెక్షన్ రిక్వెస్ట్‌లు లేవు.</p>
+                  <p className="text-xs text-slate-400">No new connection requests found at this time.</p>
                 </div>
               ) : (
                 myNCs.map((nc: any) => {
@@ -3310,10 +3441,10 @@ ${yesReplyLink}
               <div>
                 <CardTitle className="text-base font-bold text-amber-400 flex items-center gap-2">
                   <Wrench className="h-4 w-4 text-amber-400" />
-                  My Service Complaints (సర్వీస్ ఫిర్యాదులు)
+                  My Service Complaints
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-400 mt-0.5">
-                  మీరు పంపిన సర్వీస్ కాంప్లైంట్ల ప్రస్తుత స్థితి.
+                  Current status of submitted service complaints.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -3333,12 +3464,12 @@ ${yesReplyLink}
               {myService.length === 0 ? (
                 <div className="text-center py-8 border border-dashed border-slate-800 rounded-xl bg-slate-950/50 p-4 space-y-2">
                   <Wrench className="h-8 w-8 text-slate-600 mx-auto" />
-                  <p className="text-xs text-slate-400">ప్రస్తుతానికి ఏ సర్వీస్ రిక్వెస్ట్‌లు లేవు.</p>
+                  <p className="text-xs text-slate-400">No service requests found at this time.</p>
                   <Button
                     onClick={() => setIsServiceRequestOpen(true)}
                     className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 py-1.5 h-auto"
                   >
-                    <Wrench className="h-3.5 w-3.5 mr-1" /> + Service Request సబ్మిట్ చేయండి
+                    <Wrench className="h-3.5 w-3.5 mr-1" /> + Submit Service Request
                   </Button>
                 </div>
               ) : (
@@ -3415,10 +3546,10 @@ ${yesReplyLink}
           <div>
             <CardTitle className="text-base font-bold text-amber-400 flex items-center gap-2">
               <Tv className="h-5 w-5 text-amber-400" />
-              Pending DishTV Recharge Requests (రిటైలర్ డిష్‌టీవీ రిచార్జ్ రిక్వెస్ట్‌లు)
+              Pending DishTV Recharge Requests
             </CardTitle>
             <CardDescription className="text-xs text-slate-300">
-              రిటైలర్ పంపిన UTR నంబర్ ధృవీకరించి అప్రూవ్ చేయండి. రిటైలర్ వాలెట్‌కు కమీషన్ అమౌంట్ క్రెడిట్ అవుతుంది.
+              Verify the retailer's UTR number and approve. The commission will be credited to the retailer's wallet.
             </CardDescription>
           </div>
           <Badge className="bg-amber-500 text-slate-950 border-none text-xs px-3 py-1 font-extrabold animate-bounce">
@@ -3489,7 +3620,7 @@ ${yesReplyLink}
                   ) : (
                     <CheckCircle2 className="w-4 h-4 mr-1" />
                   )}
-                  Approve & Complete Recharge (కమీషన్ క్రెడిట్ చేయండి)
+                  Approve & Complete Recharge
                 </Button>
               </div>
             </div>
@@ -3528,6 +3659,7 @@ ${yesReplyLink}
   const cleanupSearchDialog = (setDialogOpen: (val: boolean) => void) => {
     setDialogOpen(false);
     setSearchedCustomer(null);
+    setLiveSearchMatch(null);
     setSearchQuery("");
     setSearchError("");
   };
@@ -3633,7 +3765,7 @@ ${yesReplyLink}
             <div className="w-full rounded-2xl border border-destructive/40 bg-destructive/10 p-5 text-destructive flex items-start gap-4 shadow-sm">
               <AlertCircle className="h-6 w-6 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-base md:text-lg">Account Status: Inactive (ఖాతా ఇన్యాక్టివ్‌లో ఉంది)</h3>
+                <h3 className="font-bold text-base md:text-lg">Account Status: Inactive</h3>
                 <p className="text-xs md:text-sm mt-1 text-destructive/90">
                   Your account is currently marked as inactive. Please settle your balance with Admin to activate your account and regain full system access.
                 </p>
@@ -3789,7 +3921,7 @@ ${yesReplyLink}
                   className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 sm:px-5 sm:py-5 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
                 >
                   <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span>+ Service Request (సర్వీస్ రిక్వెస్ట్)</span>
+                  <span>+ Service Request</span>
                 </Button>
               )}
             </div>
@@ -3804,7 +3936,7 @@ ${yesReplyLink}
                   <div>
                     <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
                       <Search className="h-5 w-5 text-amber-400" />
-                      DishTV Customer VC Search (డిష్‌టీవీ VC నంబర్ వెతుకులాట)
+                      DishTV Customer VC Search
                     </h2>
                     <p className="text-xs text-slate-300 mt-1">
                       Enter Customer VC Number or Mobile Number and click Search button to view details & 1, 3, 6, 12 Month package prices.
@@ -3837,7 +3969,7 @@ ${yesReplyLink}
                     className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold px-6 py-6 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all shrink-0"
                   >
                     <Search className="h-5 w-5" />
-                    <span>Search Customer (వెతకండి)</span>
+                    <span>Search Customer</span>
                   </Button>
                 </form>
 
@@ -3850,10 +3982,10 @@ ${yesReplyLink}
                           <XCircle className="h-6 w-6 text-red-400 shrink-0" />
                           <div>
                             <p className="font-bold text-base text-red-200">
-                              Wrong VC Number or Mobile Number! (తప్పు VC నంబర్ లేదా మొబైల్ నంబర్)
+                              Wrong VC Number or Mobile Number!
                             </p>
                             <p className="text-xs text-red-300 mt-0.5">
-                              "{activeSearchQuery}" కి సంబంధించిన కస్టమర్ వివరాలు లభించలేదు. దయచేసి పూర్తి VC నంబర్ లేదా 10 అంకెల మొబైల్ నంబర్‌ను సరిగా ఎంటర్ చేయండి.
+                              No customer details found for "{activeSearchQuery}". Please make sure to enter a valid VC Number or 10-digit Mobile Number.
                             </p>
                           </div>
                         </div>
@@ -3882,12 +4014,12 @@ ${yesReplyLink}
                                   {/* Full Customer Address */}
                                   <p className="text-xs text-slate-300 mt-1 flex items-start gap-1 font-medium">
                                     <MapPin className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                                    <span><strong className="text-slate-200">Full Address (చిరునామా):</strong> {getFullCustomerAddress(cust)}</span>
+                                    <span><strong className="text-slate-200">Full Address:</strong> {getFullCustomerAddress(cust)}</span>
                                   </p>
                                 </div>
 
                                 <div className="text-left md:text-right bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
-                                  <span className="text-xs text-slate-400 block font-medium">Balance Due / నిల్వ బాకీ</span>
+                                  <span className="text-xs text-slate-400 block font-medium">Balance Due</span>
                                   <span className="text-2xl font-black text-amber-400">
                                     ₹{(cust.balanceAmount !== undefined ? cust.balanceAmount : (cust.monthlyAmount || 350)).toLocaleString()}
                                   </span>
@@ -3899,7 +4031,7 @@ ${yesReplyLink}
                                 {/* VC Number */}
                                 <div>
                                   <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                    💳 VC Number (VC No)
+                                    💳 VC Number
                                   </span>
                                   <span className="font-mono font-bold text-purple-300 text-base">
                                     {cust.vcNumber || "Not Set"}
@@ -3929,7 +4061,7 @@ ${yesReplyLink}
                                 {/* Assigned Dealer Name */}
                                 <div>
                                   <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                    🏬 Dealer Name (డీలర్ పేరు)
+                                    🏬 Dealer Name
                                   </span>
                                   <span className="font-bold text-amber-300 text-base">
                                     {cust.dealerName || dealerName || "Navanidhi Digital System"}
@@ -3945,10 +4077,10 @@ ${yesReplyLink}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                                       <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                                         <Package className="h-4 w-4 text-amber-400" />
-                                        Package Price List (ప్యాక్ ధరల పట్టిక - 1, 3, 6, 12 నెలలు):
+                                        Package Price List (1, 3, 6, 12 Months):
                                       </h4>
                                       <span className="text-[11px] text-cyan-300 font-semibold bg-cyan-950/80 border border-cyan-800/80 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                                        ⚡ ఆఫర్ కార్డ్‌పై క్లిక్ చేసి అడ్మిన్‌కు రిచార్జ్ రిక్వెస్ట్ పంపండి
+                                        ⚡ Click any offer card to submit a recharge request to Admin
                                       </span>
                                     </div>
 
@@ -4142,7 +4274,10 @@ ${yesReplyLink}
                   </Button>
                 </div>
                 {searchError && <p className="text-sm text-destructive">{searchError}</p>}
-                {searchedCustomer && (
+                {(liveSearchMatch || searchedCustomer) && (() => {
+                  const cust = liveSearchMatch || searchedCustomer;
+                  if (!cust) return null;
+                  return (
                   <Card className="border-2 border-orange-500/40 shadow-xl overflow-hidden bg-gradient-to-b from-card to-card/95">
                     <CardHeader className="pb-3 border-b border-border/50 bg-muted/20">
                       <div className="flex items-start justify-between gap-3">
@@ -4151,36 +4286,42 @@ ${yesReplyLink}
                             <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500">
                               <User className="h-4 w-4" />
                             </span>
-                            {searchedCustomer.name}
+                            {cust.name}
                           </CardTitle>
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground pt-0.5">
-                            {searchedCustomer.customerId && (
+                            {cust.customerId && (
                               <span className="font-semibold px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground">
-                                ID: {searchedCustomer.customerId}
+                                ID: {cust.customerId}
+                              </span>
+                            )}
+                            {cust.gtplId && (
+                              <span className="font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-amber-600" />
+                                GTPL: {cust.gtplId}
                               </span>
                             )}
                             <span className="font-medium">
-                              STB: <strong className="text-foreground">{searchedCustomer.stbId || '0'}</strong>
+                              STB: <strong className="text-foreground">{cust.stbId || '0'}</strong>
                             </span>
-                            {searchedCustomer.mobile && (
+                            {cust.mobile && (
                               <>
                                 <span>•</span>
                                 <span className="font-medium">
-                                  📱 {searchedCustomer.mobile}
+                                  📱 {cust.mobile}
                                 </span>
                               </>
                             )}
-                            {searchedCustomer.area && (
+                            {cust.area && (
                               <>
                                 <span>•</span>
                                 <span className="font-medium">
-                                  📍 {searchedCustomer.area}
+                                  📍 {cust.area}
                                 </span>
                               </>
                             )}
                           </div>
                         </div>
-                        {searchedCustomer.balanceAmount > 0 ? (
+                        {cust.balanceAmount > 0 ? (
                           <Badge variant="destructive" className="font-black text-[11px] px-2.5 py-1 uppercase tracking-wider shrink-0 bg-red-600 hover:bg-red-700">
                             Due Pending
                           </Badge>
@@ -4193,9 +4334,18 @@ ${yesReplyLink}
                     </CardHeader>
                     
                     <CardContent className="pt-4 space-y-4">
+                      {/* 🌟 GTPL ID PROMINENT BOX IN COLLECTION 🌟 */}
+                      {cust.gtplId && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/15 border-2 border-amber-500/40 flex items-center justify-between text-xs">
+                          <span className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-amber-600" /> GTPL ID: <strong className="font-mono text-sm">{cust.gtplId}</strong>
+                          </span>
+                          <Badge className="bg-amber-600 text-white font-bold text-[10px] px-2 py-0.5">GTPL Customer</Badge>
+                        </div>
+                      )}
                       {/* 🌟 PROMINENT CUSTOMER BALANCE HIGHLIGHT BOX 🌟 */}
                       <div className={`p-4 rounded-2xl border-2 transition-all shadow-md ${
-                        searchedCustomer.balanceAmount > 0
+                        cust.balanceAmount > 0
                           ? "bg-gradient-to-r from-red-500/15 via-rose-500/10 to-orange-500/15 border-red-500/40 dark:border-red-500/50 shadow-red-500/5"
                           : "bg-gradient-to-r from-emerald-500/15 to-teal-500/10 border-emerald-500/40 text-emerald-600 shadow-emerald-500/5"
                       }`}>
@@ -4203,10 +4353,10 @@ ${yesReplyLink}
                           <div className="space-y-0.5">
                             <span className="text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 text-red-600 dark:text-red-400">
                               <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                              కస్టమర్ బకాయి (Customer Due Balance)
+                              Customer Due Balance
                             </span>
                             <p className="text-xs text-muted-foreground font-medium">
-                              {searchedCustomer.balanceAmount > 0 
+                              {cust.balanceAmount > 0 
                                 ? "Payment collection pending from customer" 
                                 : "No pending due for this customer"}
                             </p>
@@ -4215,15 +4365,15 @@ ${yesReplyLink}
                           <div className="text-right">
                             <div className="flex items-baseline justify-end gap-0.5">
                               <span className={`text-3xl sm:text-4xl font-black tracking-tight ${
-                                searchedCustomer.balanceAmount > 0
+                                cust.balanceAmount > 0
                                   ? "text-red-600 dark:text-red-400 drop-shadow-xs"
                                   : "text-emerald-600 dark:text-emerald-400"
                               }`}>
-                                ₹{Number(searchedCustomer.balanceAmount || 0).toLocaleString('en-IN')}
+                                ₹{Number(cust.balanceAmount || 0).toLocaleString('en-IN')}
                               </span>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              {searchedCustomer.balanceAmount > 0 ? "Pending Due" : "Settled"}
+                              {cust.balanceAmount > 0 ? "Pending Due" : "Settled"}
                             </span>
                           </div>
                         </div>
@@ -4232,38 +4382,161 @@ ${yesReplyLink}
                       <Button 
                         size="lg"
                         className="w-full h-12 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-base shadow-lg shadow-orange-600/25 transition-all"
-                        onClick={() => openCollectDialog(searchedCustomer)}
+                        onClick={() => openCollectDialog(cust)}
                       >
                         <HandCoins className="mr-2.5 h-5 w-5" />
-                        Proceed to Collect • ₹{Number(searchedCustomer.balanceAmount || 0).toLocaleString('en-IN')}
+                        Proceed to Collect • ₹{Number(cust.balanceAmount || 0).toLocaleString('en-IN')}
                       </Button>
                     </CardContent>
                   </Card>
-                )}
+                  );
+                })()}
               </div>
             </DialogContent>
           </Dialog>
 
           {/* Dialog for Customer Search (Recharge) */}
           <Dialog open={isRechargeSearchDialogOpen} onOpenChange={(open) => !open && cleanupSearchDialog(setIsRechargeSearchDialogOpen)}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[480px]">
               <DialogHeader>
-                <DialogTitle>Find Customer to Recharge</DialogTitle>
-                <DialogDescription>Search for a customer to recharge their account.</DialogDescription>
+                <DialogTitle className="flex items-center gap-2">
+                  <RefreshCw className="w-5 h-5 text-orange-500" />
+                  Find Customer to Recharge
+                </DialogTitle>
+                <DialogDescription>
+                  Enter Customer ID, STB ID or Mobile Number.
+                </DialogDescription>
               </DialogHeader>
-              <div className="py-4 space-y-4">
+              <div className="py-2 space-y-4">
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Enter search term..."
+                    placeholder="Enter Customer ID (e.g. 21), STB or Mobile..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleCustomerSearch('recharge');
+                      }
+                    }}
+                    autoFocus
                   />
-                  <Button onClick={() => handleCustomerSearch('recharge')} disabled={isSearching}>
+                  <Button onClick={() => handleCustomerSearch('recharge')} disabled={isSearching} className="bg-orange-600 hover:bg-orange-700 text-white font-bold shrink-0">
                     {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                     Search
                   </Button>
                 </div>
-                {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+                {searchError && <p className="text-xs text-destructive">{searchError}</p>}
+
+                {/* 🌟 AUTOMATIC LIVE DISPLAY OF CUSTOMER & GTPL ID (USER REQUEST) 🌟 */}
+                {(liveSearchMatch || searchedCustomer) && (() => {
+                  const cust = liveSearchMatch || searchedCustomer;
+                  if (!cust) return null;
+                  return (
+                    <Card className="border-2 border-orange-500/40 shadow-md overflow-hidden bg-gradient-to-b from-card to-card/95 transition-all animate-in fade-in-50">
+                      <CardHeader className="pb-2.5 border-b bg-muted/30 p-3.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="p-1 rounded-md bg-orange-500/10 text-orange-600 font-bold">
+                                <User className="h-3.5 w-3.5" />
+                              </span>
+                              <CardTitle className="text-base font-bold text-foreground">
+                                {cust.name}
+                              </CardTitle>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                              <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0 font-bold">
+                                ID: {cust.customerId}
+                              </Badge>
+                              <span>•</span>
+                              <span className="font-mono font-medium">STB: {cust.stbId || "—"}</span>
+                              {cust.mobile && (
+                                <>
+                                  <span>•</span>
+                                  <span>📞 {cust.mobile}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <Badge variant={Number(cust.balanceAmount || 0) > 0 ? "destructive" : "outline"} className="text-[10px] shrink-0 font-bold">
+                            {Number(cust.balanceAmount || 0) > 0 ? `Due: ₹${cust.balanceAmount}` : "No Due"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="p-3.5 space-y-3">
+                        {/* 🌟 GTPL ID DISPLAY WITH SINGLE-CLICK COPY 🌟 */}
+                        {cust.gtplId ? (
+                          <div 
+                            onClick={(e) => handleCopyGtplId(cust.gtplId!, e)}
+                            className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-2 border-amber-500/50 hover:border-amber-500/80 dark:border-amber-500/60 transition-all flex items-center justify-between shadow-xs cursor-pointer group"
+                            title="Click to copy GTPL ID"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                <Layers className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <span className="text-[9px] uppercase font-black tracking-wider text-amber-800 dark:text-amber-400 block">
+                                  GTPL ID
+                                </span>
+                                <span className="text-base font-black font-mono text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
+                                  {cust.gtplId}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => handleCopyGtplId(cust.gtplId!, e)}
+                                className="h-7 px-2.5 text-xs font-bold rounded-lg border-amber-400/80 bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-950/60 dark:border-amber-700 dark:text-amber-200 flex items-center gap-1 shadow-2xs transition-all"
+                              >
+                                {copiedGtplId === cust.gtplId ? (
+                                  <>
+                                    <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-emerald-700 dark:text-emerald-400 text-[11px]">Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3 text-amber-800 dark:text-amber-300" />
+                                    <span className="text-[11px]">Copy</span>
+                                  </>
+                                )}
+                              </Button>
+                              <Badge className="bg-amber-600 hover:bg-amber-700 text-white font-black text-[9px] uppercase px-1.5 py-0.5 shrink-0 hidden sm:inline-flex shadow-xs">
+                                GTPL Active
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-2 rounded-lg bg-muted/50 border border-dashed border-border/80 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Layers className="h-3.5 w-3.5 opacity-50 shrink-0" />
+                            <span>GTPL ID:</span>
+                            <span className="italic font-medium text-slate-500 text-[11px]">No GTPL ID Assigned</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs pt-0.5 text-muted-foreground">
+                          <span>Balance: <strong className="text-foreground">₹{Number(cust.balanceAmount || 0).toLocaleString('en-IN')}</strong></span>
+                          <span>Area: <strong className="text-foreground">{cust.area || "—"}</strong></span>
+                        </div>
+
+                        <Button 
+                          size="default"
+                          className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-600/20"
+                          onClick={() => openRechargeDialog(cust)}
+                        >
+                          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                          Proceed to Recharge • {cust.name}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
               </div>
             </DialogContent>
           </Dialog>
@@ -4284,7 +4557,7 @@ ${yesReplyLink}
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
                         <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        Pending Due (బకాయి మొత్తం)
+                        Pending Due
                       </span>
                       <p className="text-xs font-semibold text-foreground">STB: {searchedCustomer.stbId || '0'}</p>
                     </div>
@@ -4337,11 +4610,30 @@ ${yesReplyLink}
                   </div>
                   {searchedCustomer.expiryDate && (
                     <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>Current Expiry (ప్రస్తుత గడువు):</span>
+                      <span>Current Expiry:</span>
                       <span className="font-bold text-orange-600 dark:text-orange-400">
                         {searchedCustomer.expiryDate?.toDate 
                           ? searchedCustomer.expiryDate.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
                           : 'Active'}
+                      </span>
+                    </div>
+                  )}
+                  {searchedCustomer.gtplId && (
+                    <div 
+                      onClick={(e) => handleCopyGtplId(searchedCustomer.gtplId!, e)}
+                      className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400 font-medium cursor-pointer hover:border-amber-400 transition-colors"
+                      title="Click to copy GTPL ID"
+                    >
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <Layers className="w-3.5 h-3.5 text-amber-600" /> GTPL ID:
+                      </span>
+                      <span className="flex items-center gap-1.5 font-mono font-bold">
+                        {searchedCustomer.gtplId}
+                        {copiedGtplId === searchedCustomer.gtplId ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600 ml-1" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 text-amber-700 ml-1 opacity-70 hover:opacity-100" />
+                        )}
                       </span>
                     </div>
                   )}
@@ -4426,7 +4718,7 @@ ${yesReplyLink}
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-amber-400">
                   <Wrench className="h-5 w-5 text-amber-400" />
-                  Add Extra Service Charge (సర్వీస్ ఛార్జీలు)
+                  Add Extra Service Charge
                 </DialogTitle>
                 <DialogDescription className="text-slate-300">
                   Add service charges for <strong className="text-amber-300">{serviceCustomer?.name}</strong> (Mobile: {serviceCustomer?.mobile}).
@@ -4512,7 +4804,7 @@ ${yesReplyLink}
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl font-bold text-amber-400">
                   <Wrench className="h-5 w-5 text-amber-400" />
-                  Create Service Request (సర్వీస్ రిక్వెస్ట్)
+                  Create Service Request
                 </DialogTitle>
                 <DialogDescription className="text-slate-400 text-xs">
                   Submit customer complaint or service visit request. Admin will receive this on their dashboard.
@@ -4523,7 +4815,7 @@ ${yesReplyLink}
                 {/* Customer Name & Mobile */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Customer Name (కస్టమర్ పేరు) *</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Customer Name *</Label>
                     <Input
                       placeholder="Enter customer name"
                       value={srCustomerName}
@@ -4533,7 +4825,7 @@ ${yesReplyLink}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Mobile Number (మొబైల్ నంబర్) *</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Mobile Number *</Label>
                     <Input
                       type="tel"
                       placeholder="10-digit Mobile No"
@@ -4548,7 +4840,7 @@ ${yesReplyLink}
                 {/* District & Mandal Selection */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">District (జిల్లా) *</Label>
+                    <Label className="text-xs font-semibold text-slate-300">District *</Label>
                     <Select
                       value={srDistrict}
                       onValueChange={(val) => {
@@ -4571,7 +4863,7 @@ ${yesReplyLink}
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Mandal (మండలం) *</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Mandal *</Label>
                     <Select
                       value={srMandal}
                       disabled={!srDistrict}
@@ -4597,7 +4889,7 @@ ${yesReplyLink}
                 {/* Village & DTH Company */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Village / Area (గ్రామం / వీధి)</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Village / Area</Label>
                     <Input
                       placeholder="Enter Village or Street"
                       value={srVillage}
@@ -4607,7 +4899,7 @@ ${yesReplyLink}
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">DTH Company (డిలే కంపెనీ) *</Label>
+                    <Label className="text-xs font-semibold text-slate-300">DTH Company *</Label>
                     <Select value={srDthCompany} onValueChange={setSrDthCompany}>
                       <SelectTrigger className="bg-slate-950 border-slate-800 text-amber-400 font-bold text-sm">
                         <SelectValue placeholder="Select DTH Provider" />
@@ -4624,7 +4916,7 @@ ${yesReplyLink}
 
                 {/* Issue Type */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Complaint / Issue Type (సమస్య రకం)</Label>
+                  <Label className="text-xs font-semibold text-slate-300">Complaint / Issue Type</Label>
                   <Select value={srComplaintType} onValueChange={setSrComplaintType}>
                     <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
                       <SelectValue placeholder="Select Complaint Type" />
@@ -4643,7 +4935,7 @@ ${yesReplyLink}
                 {/* Scheduled Date & Time Slot */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Scheduled Visit Date (తేదీ)</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Scheduled Visit Date</Label>
                     <Input
                       type="date"
                       value={srScheduledDate}
@@ -4653,7 +4945,7 @@ ${yesReplyLink}
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot (సమయం)</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot</Label>
                     <Select value={srScheduledTime} onValueChange={setSrScheduledTime}>
                       <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm">
                         <SelectValue placeholder="Select Time Slot" />
@@ -4706,7 +4998,7 @@ ${yesReplyLink}
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl font-bold text-emerald-400">
                   <Package className="h-5 w-5 text-emerald-400" />
-                  Book New Connection (కొత్త కనెక్షన్ బుక్ చేయండి)
+                  Book New Connection
                 </DialogTitle>
                 <DialogDescription className="text-slate-400 text-xs">
                   Fill customer details. Admin will receive this request on their dashboard.
@@ -4756,17 +5048,17 @@ ${yesReplyLink}
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-300">Landmark / Address (గుర్తు)</Label>
+                  <Label className="text-xs font-semibold text-slate-300">Landmark / Address</Label>
                   <Input placeholder="e.g. Near Govt School, Opposite temple..." value={ncLandmark} onChange={(e) => setNcLandmark(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Scheduled Date (తేదీ)</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Scheduled Date</Label>
                     <Input type="date" value={ncScheduledDate} onChange={(e) => setNcScheduledDate(e.target.value)} className="bg-slate-950 border-slate-800 text-slate-100 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot (సమయం)</Label>
+                    <Label className="text-xs font-semibold text-slate-300">Preferred Time Slot</Label>
                     <Select value={ncScheduledTime} onValueChange={setNcScheduledTime}>
                       <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
@@ -4795,7 +5087,7 @@ ${yesReplyLink}
               <DialogHeader className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 border-b border-slate-800 -mx-6 -mt-6">
                 <DialogTitle className="text-lg font-bold text-amber-400 flex items-center gap-2">
                   <Tv className="w-5 h-5 text-amber-400" />
-                  DishTV Recharge Request (అడ్మిన్‌కు రిచార్జ్ రిక్వెస్ట్)
+                  DishTV Recharge Request
                 </DialogTitle>
                 <DialogDescription className="text-slate-400 text-xs mt-0.5">
                   Pay via UPI and enter unique 12-digit UTR Number to send recharge request to Admin.
@@ -4807,7 +5099,7 @@ ${yesReplyLink}
                   {/* Customer Details Summary Card */}
                   <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Customer Details (కస్టమర్ వివరాలు)</span>
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Customer Details</span>
                       <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
                         {rechargeModalCustomer.status || "Active"}
                       </Badge>
@@ -4849,7 +5141,7 @@ ${yesReplyLink}
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-amber-300 flex items-center gap-1.5">
                         <IndianRupee className="w-4 h-4 text-emerald-400" />
-                        UPI Payment Details (అడ్మిన్ UPI కి పేమెంట్ చేయండి):
+                        UPI Payment Details (Pay to Admin UPI):
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-950/80 p-3 rounded-lg border border-slate-800">
@@ -4857,7 +5149,7 @@ ${yesReplyLink}
                         <span className="text-[11px] text-slate-400 block font-medium">Admin UPI ID:</span>
                         <strong className="text-emerald-400 font-mono text-sm block select-all">navanidhidigital@upi</strong>
                         <p className="text-[10px] text-slate-300">
-                          PhonePe / GPay / Paytm ద్వారా <strong>₹{selectedOfferAmount}</strong> పేమెంట్ చేయండి.
+                          Pay <strong>₹{selectedOfferAmount}</strong> via PhonePe / GPay / Paytm.
                         </p>
                       </div>
                       <Badge className="bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono text-xs px-3 py-1 shrink-0">
@@ -4870,7 +5162,7 @@ ${yesReplyLink}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
                       <span>Enter UPI UTR / Transaction Ref Number *</span>
-                      <span className="text-[10px] text-amber-400 font-normal">(ఒకసారి వాడిన UTR అనుమతించబడదు)</span>
+                      <span className="text-[10px] text-amber-400 font-normal">(Previously used UTRs are not accepted)</span>
                     </label>
                     <Input
                       type="text"

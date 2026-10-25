@@ -342,7 +342,7 @@ export default function NewConnectionOffersPage() {
   const handleBookOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOffer || !customerName || !customerPhone || !ncDistrict || !ncMandal) {
-      toast({ variant: "destructive", title: "అన్ని fields fill చేయండి", description: "Name, Mobile, District & Mandal required." });
+      toast({ variant: "destructive", title: "Please fill all required fields", description: "Name, Mobile, District & Mandal are required." });
       return;
     }
 
@@ -705,7 +705,7 @@ export default function NewConnectionOffersPage() {
 
                 {/* Landmark */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Landmark / Address గుర్తు</label>
+                  <label className="text-xs font-semibold text-slate-300">Landmark / Address Details</label>
                   <input
                     placeholder="e.g. Near Govt School, Opposite temple..."
                     value={ncLandmark}
@@ -717,7 +717,7 @@ export default function NewConnectionOffersPage() {
                 {/* Scheduled Date & Time */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">Scheduled Date (తేదీ)</label>
+                    <label className="text-xs font-semibold text-slate-300">Scheduled Date</label>
                     <input
                       type="date"
                       value={ncScheduledDate}
@@ -726,7 +726,7 @@ export default function NewConnectionOffersPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">Time Slot (సమయం)</label>
+                    <label className="text-xs font-semibold text-slate-300">Time Slot</label>
                     <Select value={ncScheduledTime} onValueChange={setNcScheduledTime}>
                       <SelectTrigger className="bg-slate-950 border-slate-700 text-slate-100 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-700 text-slate-100">

@@ -56,12 +56,12 @@ interface Staff {
 }
 
 const COMPLAINT_CATEGORIES = [
-  { value: "Signal Problem", label: "📶 Signal Problem (సిగ్నల్ రావట్లేదు)" },
-  { value: "Channel / Package Issue", label: "📺 Channel / Package Issue (ఛానెల్స్ రావట్లేదు)" },
-  { value: "Wire Cut / Cable Line Issue", label: "🔌 Wire Cut / Line Issue (కేబుల్ వైర్ తెగిపోయింది)" },
-  { value: "Set-Top Box Problem", label: "📺 Set-Top Box Problem (బాక్స్ ప్రాబ్లమ్)" },
-  { value: "Billing / Recharge Query", label: "💰 Billing / Recharge Query (రీఛార్జ్ / బిల్‌తో సమస్య)" },
-  { value: "Other Complaint", label: "🛠️ Other Complaint (ఇతర సమస్య)" },
+  { value: "Signal Problem", label: "📶 Signal Problem" },
+  { value: "Channel / Package Issue", label: "📺 Channel / Package Issue" },
+  { value: "Wire Cut / Cable Line Issue", label: "🔌 Wire Cut / Cable Line Issue" },
+  { value: "Set-Top Box Problem", label: "📺 Set-Top Box Problem" },
+  { value: "Billing / Recharge Query", label: "💰 Billing / Recharge Query" },
+  { value: "Other Complaint", label: "🛠️ Other Complaint" },
 ];
 
 const formSchema = z.object({
@@ -437,7 +437,7 @@ function RegisterComplaintContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs font-bold uppercase tracking-wider text-foreground">
-                        2. Complaint Category (సమస్య రకం) *
+                        2. Complaint Category *
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
@@ -465,7 +465,7 @@ function RegisterComplaintContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs font-bold uppercase tracking-wider text-foreground">
-                        3. Extra Complaint Description / Notes (వివరాలు)
+                        3. Extra Complaint Description / Notes
                       </FormLabel>
                       <FormControl>
                         <Textarea
@@ -483,7 +483,7 @@ function RegisterComplaintContent() {
                 <div className="bg-amber-500/10 p-3.5 rounded-xl border border-amber-500/30 space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-black uppercase text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                      <Clock className="h-4 w-4" /> 4. Promised Completion Date & Time (పరిష్కరించే తేదీ & సమయం) *
+                      <Clock className="h-4 w-4" /> 4. Promised Completion Date & Time *
                     </Label>
                   </div>
 

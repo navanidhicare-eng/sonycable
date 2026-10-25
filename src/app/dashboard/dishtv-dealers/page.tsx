@@ -767,7 +767,7 @@ export default function DishTvDealersPage() {
             {/* Territory Section */}
             <div className="pt-2 border-t space-y-3">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Assigned Territory (జిల్లా / మండలం / గ్రామం)
+                Assigned Territory (District / Mandal / Village)
               </Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* District */}

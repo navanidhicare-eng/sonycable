@@ -256,7 +256,7 @@ export default function AreasPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-primary" />
-                    Add Custom Location (జిల్లా / మండలం / గ్రామం)
+                    Add Custom Location
                   </CardTitle>
                   <CardDescription>
                     Add new districts, mandals, and villages. These will appear in DishTV and Cable customer dropdowns.
@@ -267,7 +267,7 @@ export default function AreasPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* District */}
                       <div className="space-y-2">
-                        <Label htmlFor="distSelect">District (జిల్లా)</Label>
+                        <Label htmlFor="distSelect">District</Label>
                         <Select
                           value={selectedDistrict}
                           onValueChange={(val) => {
@@ -309,7 +309,7 @@ export default function AreasPage() {
 
                       {/* Mandal */}
                       <div className="space-y-2">
-                        <Label htmlFor="mandalSelect">Mandal (మండలం)</Label>
+                        <Label htmlFor="mandalSelect">Mandal</Label>
                         <Select
                           value={selectedMandal}
                           onValueChange={(val) => setSelectedMandal(val)}
@@ -340,7 +340,7 @@ export default function AreasPage() {
 
                       {/* Village */}
                       <div className="space-y-2">
-                        <Label htmlFor="villageInput">Village (గ్రామం)</Label>
+                        <Label htmlFor="villageInput">Village</Label>
                         <Input
                           id="villageInput"
                           placeholder="e.g. Kinthada, Rampuram..."
@@ -379,9 +379,9 @@ export default function AreasPage() {
                     <Table>
                       <TableHeader className="bg-muted/50">
                         <TableRow>
-                          <TableHead>District (జిల్లా)</TableHead>
-                          <TableHead>Mandal (మండలం)</TableHead>
-                          <TableHead>Village (గ్రామం)</TableHead>
+                          <TableHead>District</TableHead>
+                          <TableHead>Mandal</TableHead>
+                          <TableHead>Village</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>

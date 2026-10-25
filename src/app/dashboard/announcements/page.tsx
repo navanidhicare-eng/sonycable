@@ -236,7 +236,7 @@ export default function AnnouncementsPage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl font-bold">
-                    Receipt Custom Message / Festival Wish (రశీదు పండుగ విష్ మెసేజ్)
+                    Receipt Custom Message / Festival Wish
                   </CardTitle>
                   <CardDescription className="mt-0.5 text-xs">
                     Configure a custom message (e.g. Festival Greetings, Offers, Special Note) to be appended at the bottom of WhatsApp & SMS receipts.
@@ -272,7 +272,7 @@ export default function AnnouncementsPage() {
                   <Textarea
                     id="customMsgInput"
                     rows={4}
-                    placeholder="e.g. 🎉 వినాయక చవితి శుభాకాంక్షలు! 🌸 / Happy Sankranti!"
+                    placeholder="e.g. 🎉 Happy Sankranti / Best Wishes from Sony Cable!"
                     value={customReceiptMsg}
                     onChange={(e) => setCustomReceiptMsg(e.target.value)}
                     className="font-medium text-sm leading-relaxed"
@@ -295,7 +295,7 @@ export default function AnnouncementsPage() {
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
-                    Receipt Preview (రశీదు ప్రివ్యూ)
+                    Receipt Preview
                   </Label>
                   <div className="p-3.5 bg-slate-900 text-slate-100 rounded-lg font-mono text-[11px] leading-tight border border-slate-800 space-y-1">
                     <div className="text-slate-400">---------------------------------</div>

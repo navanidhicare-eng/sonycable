@@ -516,7 +516,7 @@ export default function PaymentCollectionsPage() {
           <Card className="border-l-4 border-l-emerald-500 bg-card">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Today's Collection (నేటి కలెక్షన్)</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Today's Collection</p>
                 <h3 className="text-2xl font-bold mt-1 text-emerald-600">₹{stats.todaysTotal.toLocaleString()}</h3>
               </div>
               <div className="p-2.5 bg-emerald-500/10 rounded-lg text-emerald-600">
@@ -528,7 +528,7 @@ export default function PaymentCollectionsPage() {
           <Card className="border-l-4 border-l-blue-500 bg-card">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">This Month Total (ఈ నెల కలెక్షన్)</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">This Month Total</p>
                 <h3 className="text-2xl font-bold mt-1 text-blue-600">₹{stats.monthlyTotal.toLocaleString()}</h3>
               </div>
               <div className="p-2.5 bg-blue-500/10 rounded-lg text-blue-600">

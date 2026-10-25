@@ -1281,7 +1281,7 @@ export default function DishTvCustomersPage() {
               <div className="space-y-2 p-3 bg-blue-500/5 rounded-lg border border-blue-200/50">
                 <Label htmlFor="dealerSelect" className="text-sm font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
                   <Store className="h-4 w-4 text-blue-600" />
-                  Assign to Dealer (డీలర్‌ను ఎంచుకోండి) *
+                  Assign to Dealer *
                 </Label>
                 <Select
                   value={formData.selectedDealerId}
@@ -1458,12 +1458,12 @@ export default function DishTvCustomersPage() {
             {/* Cascading Location: District -> Mandal -> Village */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                Customer Location (జిల్లా / మండలం / గ్రామం)
+                Customer Location (District / Mandal / Village)
               </Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-muted/20 rounded-lg border">
                 {/* District */}
                 <div className="space-y-1">
-                  <Label htmlFor="district" className="text-xs text-muted-foreground">District (జిల్లా)</Label>
+                  <Label htmlFor="district" className="text-xs text-muted-foreground">District</Label>
                   <Select
                     value={formData.district}
                     onValueChange={(val) => {
@@ -1493,7 +1493,7 @@ export default function DishTvCustomersPage() {
 
                 {/* Mandal */}
                 <div className="space-y-1">
-                  <Label htmlFor="mandal" className="text-xs text-muted-foreground">Mandal (మండలం)</Label>
+                  <Label htmlFor="mandal" className="text-xs text-muted-foreground">Mandal</Label>
                   <Select
                     value={formData.mandal}
                     onValueChange={(val) => {
@@ -1522,7 +1522,7 @@ export default function DishTvCustomersPage() {
 
                 {/* Village */}
                 <div className="space-y-1">
-                  <Label htmlFor="village" className="text-xs text-muted-foreground">Village (గ్రామం)</Label>
+                  <Label htmlFor="village" className="text-xs text-muted-foreground">Village</Label>
                   <Select
                     value={formData.village}
                     onValueChange={(val) => setFormData({ ...formData, village: val })}

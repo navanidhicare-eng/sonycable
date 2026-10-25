@@ -464,7 +464,7 @@ export default function CustomerHistoryClient() {
                 </div>
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider opacity-90">
-                    Net Outstanding Balance (మొత్తం బాకీ)
+                    Net Outstanding Balance
                   </p>
                   <div className="text-lg sm:text-xl font-extrabold tracking-tight">
                     {currentNetDue > 0 && `₹${currentNetDue.toLocaleString()} (Due)`}
@@ -540,12 +540,12 @@ export default function CustomerHistoryClient() {
                           {item.type === 'Recharge' ? (
                             <Badge className="bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900 text-[11px] px-2 py-0.5 flex items-center shrink-0">
                               <ArrowUpRight className="h-3 w-3 mr-1 text-red-600" />
-                              Billed (బాకీ పెరిగినది)
+                              Billed / Due Added
                             </Badge>
                           ) : (
                             <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900 text-[11px] px-2 py-0.5 flex items-center shrink-0">
                               <ArrowDownLeft className="h-3 w-3 mr-1 text-emerald-600" />
-                              Paid (చెల్లించినది)
+                              Paid / Received
                             </Badge>
                           )}
                         </div>
@@ -559,7 +559,7 @@ export default function CustomerHistoryClient() {
                         <div className="flex items-center justify-between pt-2 border-t text-xs">
                           <div>
                             <span className="text-[10px] text-muted-foreground block font-medium uppercase tracking-wider">
-                              {item.type === 'Recharge' ? 'బాకీ పెరిగిన మొత్తం:' : 'చెల్లించిన మొత్తం:'}
+                              {item.type === 'Recharge' ? 'Amount Billed:' : 'Amount Paid:'}
                             </span>
                             {item.type === 'Recharge' ? (
                               <span className="text-base font-extrabold text-red-600 dark:text-red-400">
@@ -573,7 +573,7 @@ export default function CustomerHistoryClient() {
                           </div>
 
                           <div className="text-right">
-                            <span className="text-[10px] text-muted-foreground block font-medium uppercase tracking-wider">మొత్తం బాకీ:</span>
+                            <span className="text-[10px] text-muted-foreground block font-medium uppercase tracking-wider">Net Due:</span>
                             {item.runningBalance > 0 && (
                               <span className="text-amber-700 dark:text-amber-300 font-bold bg-amber-500/10 border border-amber-300/50 dark:border-amber-800 px-2 py-0.5 rounded text-xs inline-block mt-0.5">
                                 ₹{item.runningBalance.toLocaleString()} (Due)
@@ -606,19 +606,19 @@ export default function CustomerHistoryClient() {
                     <TableHeader className="bg-muted/70">
                       <TableRow>
                         <TableHead className="w-[130px] p-4 text-sm font-bold text-foreground whitespace-nowrap">
-                          Date (తేదీ)
+                          Date
                         </TableHead>
                         <TableHead className="p-4 text-sm font-bold text-foreground min-w-[140px]">
-                          Description / Activity (వివరాలు)
+                          Description / Activity
                         </TableHead>
                         <TableHead className="p-4 text-sm text-right font-bold text-red-600 dark:text-red-400 min-w-[160px] whitespace-nowrap">
-                          Billed / Due Added (బాకీ పెరిగినది)
+                          Billed / Due Added
                         </TableHead>
                         <TableHead className="p-4 text-sm text-right font-bold text-emerald-600 dark:text-emerald-400 min-w-[160px] whitespace-nowrap">
-                          Paid / Due Reduced (చెల్లించినది)
+                          Paid / Due Reduced
                         </TableHead>
                         <TableHead className="p-4 text-sm text-right font-bold text-foreground min-w-[190px] whitespace-nowrap">
-                          Running Balance / Net Due (మొత్తం బాకీ)
+                          Running Balance / Net Due
                         </TableHead>
                       </TableRow>
                     </TableHeader>

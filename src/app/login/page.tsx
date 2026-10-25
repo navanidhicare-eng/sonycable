@@ -148,7 +148,7 @@ export default function LoginPage() {
     const vc = homeVcTerm.trim();
 
     if (!mob || !vc) {
-      setPublicSearchError("ఖాతా వివరాల భద్రత కొరకు మొబైల్ నంబర్ మరియు VC నంబర్ రెండూ తప్పనిసరిగా ఎంటర్ చేయాలి. (Please enter BOTH Mobile Number AND VC Number).");
+      setPublicSearchError("For account security, please enter BOTH Registered Mobile Number AND VC Number.");
       setPublicSearchPerformed(true);
       setPublicSearchResult([]);
       return;
@@ -601,7 +601,7 @@ export default function LoginPage() {
                 </span>
               </h1>
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl font-medium leading-relaxed">
-                నవనిధి డిజిటల్ సిస్టమ్ ద్వారా అధికారిక డీలర్ మరియు కస్టమర్ మేనేజ్‌మెంట్ పోర్టల్. Instant DishTV VC Search, 1-3-6-12 Months Pack Offers.
+                Official Dealer & Customer Management Portal powered by Navanidhi Digital System. Instant DishTV VC Search, 1-3-6-12 Months Pack Offers.
               </p>
             </div>
 
@@ -614,10 +614,10 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      DishTV Customer Account Search <span className="text-xs text-amber-400 font-normal">(ఖాతా వెతుకులాట)</span>
+                      DishTV Customer Account Search
                     </h3>
                     <p className="text-xs text-slate-400">
-                      కస్టమర్ భద్రత కోసం Registered Mobile Number మరియు VC Number రెండు ఎంటర్ చేయాలి.
+                      Enter both Registered Mobile Number and VC Number for secure account verification.
                     </p>
                   </div>
                 </div>
@@ -701,7 +701,7 @@ export default function LoginPage() {
                     <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 text-slate-300 text-xs flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
                       <span>
-                        సరైన ఖాతా కనుగొనబడలేదు. నమోదు చేసిన మొబైల్ (<strong className="text-white">{homeMobileTerm}</strong>) మరియు VC నంబర్ (<strong className="text-white">{homeVcTerm}</strong>) సరిగ్గా ఉన్నాయో లేదో సరిచూసుకోండి.
+                        No matching account found. Please make sure the entered Mobile Number (<strong className="text-white">{homeMobileTerm}</strong>) and VC Number (<strong className="text-white">{homeVcTerm}</strong>) are correct.
                       </span>
                     </div>
                   ) : (
@@ -750,7 +750,7 @@ export default function LoginPage() {
                             <div className="bg-slate-900/90 p-3.5 rounded-xl border border-orange-500/30">
                               <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-2.5 flex items-center gap-1.5">
                                 <PackageCheck className="w-4 h-4 text-orange-400" />
-                                Package Price List (ప్యాక్ ధరల పట్టిక - 1, 3, 6, 12 నెలలు):
+                                Package Price List (1, 3, 6, 12 Months):
                               </span>
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                                 <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">

@@ -51,6 +51,7 @@ const formSchema = z.object({
   stbId: z.string().min(1, "STB VC Number is required."),
   stbSerialNumber: z.string().optional(),
   customerId: z.string().min(1, "Customer ID is required."),
+  gtplId: z.string().optional(),
   connectionReference: z.string().optional(),
   monthlyCommission: z.string().optional(),
 });
@@ -70,6 +71,7 @@ interface Customer {
   stbId: string;
   stbSerialNumber?: string;
   customerId: string;
+  gtplId?: string;
   customerType?: "CABLE" | "DTH";
   lastRechargeDate?: Timestamp;
   connectionReference?: string;
@@ -100,6 +102,7 @@ export default function AddCustomerPage() {
       stbId: "",
       stbSerialNumber: "",
       customerId: "",
+      gtplId: "",
       connectionReference: "",
       monthlyCommission: "",
     },
@@ -216,6 +219,7 @@ export default function AddCustomerPage() {
         stbId: data.stbId,
         stbSerialNumber: data.stbSerialNumber || null,
         customerId: data.customerId,
+        gtplId: data.gtplId ? data.gtplId.trim() : null,
         createdAt: Timestamp.fromDate(new Date()),
         userId: user.uid,
         lastRechargeDate: data.lastRechargeDate ? Timestamp.fromDate(data.lastRechargeDate) : null,
@@ -399,6 +403,16 @@ export default function AddCustomerPage() {
                         <FormLabel>STB Serial Number</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter Set-Top Box Serial Number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    {/* GTPL ID */}
+                    <FormField control={form.control} name="gtplId" render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>GTPL ID <span className="text-xs text-muted-foreground font-normal">(Optional)</span></FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter GTPL Subscriber / Account ID (e.g. GTPL12345)" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -775,7 +775,7 @@ export default function DishTvRetailersPage() {
             {/* Address & Location Section */}
             <div className="pt-2 border-t space-y-3">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Retailer Address & Location (షాప్ అడ్రస్ / లొకేషన్)
+                Retailer Address & Location
               </Label>
               
               <div className="space-y-1.5">

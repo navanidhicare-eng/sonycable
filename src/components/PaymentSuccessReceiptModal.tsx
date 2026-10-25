@@ -429,7 +429,7 @@ export default function PaymentSuccessReceiptModal({
         {autoSmsSent ? (
           <div className="flex items-center gap-2 p-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
             <Send className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>మొబైల్‌కి SMS ఆటోమేటిక్‌గా పంపబడింది ({mobile})</span>
+            <span>SMS automatically sent to mobile ({mobile})</span>
           </div>
         ) : null}
 

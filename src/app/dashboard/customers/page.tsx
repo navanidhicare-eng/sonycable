@@ -28,6 +28,7 @@ interface Customer {
   village?: string;
   stbId: string;
   customerId: string;
+  gtplId?: string;
   userId: string;
   createdAt: any;
   lastRechargeDate?: Timestamp;
@@ -107,7 +108,8 @@ export default function CustomersPage() {
         c.name?.toLowerCase().includes(term) ||
         c.mobile?.includes(term) ||
         c.stbId?.toLowerCase().includes(term) ||
-        c.customerId?.toLowerCase().includes(term);
+        c.customerId?.toLowerCase().includes(term) ||
+        c.gtplId?.toLowerCase().includes(term);
 
       const matchDistrict = filterDistrict === "all" || c.district === filterDistrict;
       const matchMandal = filterMandal === "all" || c.mandal === filterMandal;
@@ -386,7 +388,14 @@ export default function CustomersPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-sm font-mono text-xs">{c.stbId || "—"}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{c.customerId}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              <div>{c.customerId}</div>
+                              {c.gtplId && (
+                                <div className="text-[10px] text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 font-mono font-medium rounded px-1.5 py-0.5 mt-0.5 inline-block">
+                                  GTPL: {c.gtplId}
+                                </div>
+                              )}
+                            </TableCell>
                             <TableCell className="text-xs">{formatDate(c.lastRechargeDate)}</TableCell>
                             <TableCell>
                               <div className="flex items-center justify-end gap-0.5">
