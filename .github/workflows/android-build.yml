@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build Sony Cable Android APK
@@ -44,8 +47,22 @@ jobs:
           cd android
           ./gradlew assembleDebug --stacktrace
 
-      - name: Upload SonyCable.apk Artifact
-        uses: actions/upload-artifact@v4
+      - name: Prepare SonyCable.apk
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/SonyCable.apk
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
         with:
-          name: SonyCable-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: v1.0.${{ github.run_number }}
+          name: "Sony Cable Network App (v1.0.${{ github.run_number }})"
+          body: |
+            ### 📱 Sony Cable Network Mobile App
+            - Official DishTV & Sony Cable Network App Icon
+            - Customer due balance highlight in collections
+            - Fast payments collection & recharge
+            
+            **Download SonyCable.apk below to install on your Android device.**
+          files: android/app/build/outputs/apk/debug/SonyCable.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
