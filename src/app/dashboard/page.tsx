@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle, AlertTriangle } from "lucide-react";
+import { Users, User, Package, CircleDollarSign, UserCheck, ShieldCheck, IndianRupee, Wallet, ArrowRight, ArrowLeftRight, CheckCircle2, Loader2, Search, HandCoins, CreditCard, Gift, Send, XCircle, Tv, MapPin, History, Phone, Building2, Wrench, AlertCircle, PlusCircle, AlertTriangle, Clock, BellRing, MessageSquare, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,8 @@ interface DashboardStats {
 interface StaffData {
   id: string;
   name: string;
+  mobile?: string;
+  phone?: string;
   commission: string;
   enrollmentCommission?: number;
   collectionLimit?: number;
@@ -180,6 +182,8 @@ export default function DashboardPage() {
   const [totalPendingForStaff, setTotalPendingForStaff] = useState(0);
   const [todaysCollectionForStaff, setTodaysCollectionForStaff] = useState(0);
   const [pendingComplaints, setPendingComplaints] = useState<Complaint[]>([]);
+  const [expiringCustomersForStaff, setExpiringCustomersForStaff] = useState<Customer[]>([]);
+  const [expandedExpiringBoxes, setExpandedExpiringBoxes] = useState<Record<string, boolean>>({});
 
   // Top Universal Customer Search State
   const [topSearchTerm, setTopSearchTerm] = useState("");
@@ -594,6 +598,23 @@ export default function DashboardPage() {
 
         const totalPending = customersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
 
+        // Compute 3-day expiring customers for Admin (strictly upcoming: today to +3 days)
+        const todayAdmin = new Date();
+        todayAdmin.setHours(0, 0, 0, 0);
+        const threeDaysAdmin = new Date();
+        threeDaysAdmin.setDate(todayAdmin.getDate() + 3);
+        threeDaysAdmin.setHours(23, 59, 59, 999);
+
+        const adminExpiring = customersSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
+          .filter(customer => {
+            if (!customer.expiryDate) return false;
+            const expDate = customer.expiryDate.toDate ? customer.expiryDate.toDate() : new Date((customer.expiryDate as any).seconds * 1000);
+            return expDate >= todayAdmin && expDate <= threeDaysAdmin;
+          });
+        adminExpiring.sort((a, b) => (a.expiryDate?.seconds || 0) - (b.expiryDate?.seconds || 0));
+        setExpiringCustomersForStaff(adminExpiring);
+
         setStats(prevStats => ({
           ...prevStats,
           activeCustomers: customersSnapshot.size,
@@ -695,6 +716,29 @@ export default function DashboardPage() {
         allUnsubscribes.push(onSnapshot(allCustomersQuery, (snapshot) => {
           const totalPending = snapshot.docs.reduce((sum, doc) => sum + (doc.data().balanceAmount || 0), 0);
           setTotalPendingForStaff(totalPending);
+
+          // Compute 3-day expiring boxes for Staff (strictly upcoming: today to +3 days, considering assigned area)
+          const todayStaff = new Date();
+          todayStaff.setHours(0, 0, 0, 0);
+          const threeDaysStaff = new Date();
+          threeDaysStaff.setDate(todayStaff.getDate() + 3);
+          threeDaysStaff.setHours(23, 59, 59, 999);
+
+          const staffAreas = staffDocData.area || [];
+
+          const expiring = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
+            .filter(customer => {
+              if (staffAreas.length > 0 && customer.area && !staffAreas.includes(customer.area)) {
+                return false;
+              }
+              if (!customer.expiryDate) return false;
+              const expDate = customer.expiryDate.toDate ? customer.expiryDate.toDate() : new Date((customer.expiryDate as any).seconds * 1000);
+              return expDate >= todayStaff && expDate <= threeDaysStaff;
+            });
+
+          expiring.sort((a, b) => (a.expiryDate?.seconds || 0) - (b.expiryDate?.seconds || 0));
+          setExpiringCustomersForStaff(expiring);
         }));
 
         const rechargeRequestQuery = query(collection(db, "rechargeRequests"), where("adminId", "==", staffDocData.adminId), where("status", "==", "Pending"));
@@ -1474,11 +1518,23 @@ export default function DashboardPage() {
     const totalRechargeAmount = baseAmount * rechargeMonths - discount;
 
     let description;
-    const customerDocRef = doc(db, "customers", searchedCustomer.id);
+    const collectionName = (searchedCustomer as any).isDishTv ? "dishtv_customers" : "customers";
+    const customerDocRef = doc(db, collectionName, searchedCustomer.id);
 
     try {
       const newRechargeDate = new Date();
-      const newExpiryDate = new Date(newRechargeDate);
+
+      // If customer has a future expiry date, extend from that expiry date (Renewal)!
+      const currentExpiry = searchedCustomer.expiryDate?.toDate 
+        ? searchedCustomer.expiryDate.toDate() 
+        : searchedCustomer.expiryDate 
+          ? new Date((searchedCustomer.expiryDate as any).seconds * 1000) 
+          : null;
+
+      const isRenewal = Boolean(currentExpiry && currentExpiry > newRechargeDate);
+      const baseDate = isRenewal ? new Date(currentExpiry!) : new Date(newRechargeDate);
+
+      const newExpiryDate = new Date(baseDate);
       newExpiryDate.setDate(newExpiryDate.getDate() + 30 * rechargeMonths);
 
       let updateData: any = {
@@ -1486,13 +1542,15 @@ export default function DashboardPage() {
         lastRechargeDate: Timestamp.fromDate(newRechargeDate),
       };
 
+      const actionText = isRenewal ? "renewed" : "recharged";
+
       if (paymentReceivedForRecharge) {
-        description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
+        description = `${searchedCustomer.name} has been ${actionText} with ${pkg.packageName} for ${rechargeMonths} month(s) (₹${totalRechargeAmount}). Payment received.`;
       } else {
         const currentBalance = parseFloat(String(searchedCustomer.balanceAmount));
         const newBalance = currentBalance + totalRechargeAmount;
         updateData.balanceAmount = newBalance;
-        description = `${searchedCustomer.name} has been recharged with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
+        description = `${searchedCustomer.name} has been ${actionText} with ${pkg.packageName} for ${rechargeMonths} month(s). ₹${totalRechargeAmount} added to collection balance.`;
       }
 
       if (discount > 0) {
@@ -1512,13 +1570,14 @@ export default function DashboardPage() {
         rechargeDate: newRechargeDate,
         rechargedBy: currentUser.uid, // staff uid
         adminId: staffData.adminId, // admin uid
+        type: isRenewal ? "Renewal" : "Recharge",
       });
 
       const oldDue = parseFloat(String(searchedCustomer.balanceAmount || 0));
       const newDue = paymentReceivedForRecharge ? oldDue : oldDue + totalRechargeAmount;
 
       toast({
-        title: "Recharge Successful",
+        title: isRenewal ? "Renewal Successful" : "Recharge Successful",
         description: description,
       });
 
@@ -1537,6 +1596,7 @@ export default function DashboardPage() {
         date: newRechargeDate,
         packageName: pkg.packageName,
         months: rechargeMonths,
+        newExpiryDate: newExpiryDate,
         collectedByName: staffData?.name || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Staff'),
       });
       setIsRechargeReceiptModalOpen(true);
@@ -2382,15 +2442,115 @@ export default function DashboardPage() {
 
   const StaffDashboard = () => {
     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
-    const { walletAmount, commissionAmount } = staffWallet;
+    const { walletAmount } = staffWallet;
     const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
     const canApproveRecharge = !isNetworkServiceAgent && !/collection|collation/i.test(userRole || '');
+
+    const getBoxExpiryInfo = (timestamp?: Timestamp | null) => {
+      if (!timestamp) return { text: "No Date", days: 999, badgeColor: "bg-slate-100 text-slate-700", isExpired: false };
+      const expDate = timestamp.toDate ? timestamp.toDate() : new Date((timestamp as any).seconds * 1000);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(expDate);
+      target.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        return {
+          text: `Expired`,
+          days: diffDays,
+          badgeColor: "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:border-red-800",
+          isExpired: true,
+        };
+      }
+      if (diffDays === 0) {
+        return {
+          text: "Expires Today (ఈ రోజే)",
+          days: 0,
+          badgeColor: "bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800 font-black",
+          isExpired: false,
+        };
+      }
+      if (diffDays === 1) {
+        return {
+          text: "in 1 Day (రేపే)",
+          days: 1,
+          badgeColor: "bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800 font-bold",
+          isExpired: false,
+        };
+      }
+      if (diffDays === 2) {
+        return {
+          text: "in 2 Days (2 రోజుల్లో)",
+          days: 2,
+          badgeColor: "bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800 font-bold",
+          isExpired: false,
+        };
+      }
+      return {
+        text: "in 3 Days (3 రోజుల్లో)",
+        days: 3,
+        badgeColor: "bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800 font-bold",
+        isExpired: false,
+      };
+    };
+
+    const allExpiringBoxes = useMemo(() => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(today.getDate() + 3);
+      threeDaysFromNow.setHours(23, 59, 59, 999);
+
+      // Cable customers - strictly only expiring in upcoming 0 to 3 days (excluding past expired)
+      const cableList = (expiringCustomersForStaff || [])
+        .filter(c => {
+          if (!c.expiryDate) return false;
+          const expDate = c.expiryDate.toDate ? c.expiryDate.toDate() : new Date((c.expiryDate as any).seconds * 1000);
+          return expDate >= today && expDate <= threeDaysFromNow;
+        })
+        .map(c => ({
+          ...c,
+          isDishTv: false,
+        }));
+
+      // DishTV customers - strictly only expiring in upcoming 0 to 3 days (excluding past expired)
+      const dishTvList = (allDishTvCustomers || [])
+        .filter(c => {
+          if (!c.expiryDate) return false;
+          const expDate = c.expiryDate.toDate ? c.expiryDate.toDate() : new Date((c.expiryDate as any).seconds * 1000);
+          return expDate >= today && expDate <= threeDaysFromNow;
+        })
+        .map(c => ({
+          id: c.id,
+          name: c.name,
+          mobile: c.mobile,
+          stbId: c.vcNumber || c.id,
+          area: [c.village, c.mandal].filter(Boolean).join(", ") || c.area || "DishTV",
+          expiryDate: c.expiryDate,
+          balanceAmount: c.balanceAmount || c.monthlyAmount || 0,
+          customerId: c.id,
+          userId: c.userId || "",
+          createdAt: c.expiryDate as Timestamp,
+          isDishTv: true,
+        } as Customer & { isDishTv: boolean }));
+
+      const combined = [...cableList, ...dishTvList];
+      combined.sort((a, b) => {
+        const aSec = a.expiryDate?.seconds || 0;
+        const bSec = b.expiryDate?.seconds || 0;
+        return aSec - bSec;
+      });
+
+      return combined;
+    }, [expiringCustomersForStaff, allDishTvCustomers]);
 
     return (
       <div className="space-y-3 sm:space-y-6 animate-slide-in-fade-in">
 
         {/* 📊 STATS ROW (Rendered FIRST on Mobile) */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/30 p-2.5 sm:p-4 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium text-red-700 dark:text-red-400 truncate">Total Outstanding</CardTitle>
@@ -2439,17 +2599,6 @@ export default function DashboardPage() {
             <CardContent className="p-0">
               <div className="text-base sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400 truncate">₹{walletAmount.toLocaleString()}</div>
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Last settlement నుండి</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-purple-500 bg-purple-50 dark:bg-purple-950/30 p-2.5 sm:p-4 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-purple-700 dark:text-purple-400 truncate">Commission Wallet</CardTitle>
-              <IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="text-base sm:text-2xl font-bold text-purple-700 dark:text-purple-400 truncate">₹{commissionAmount.toLocaleString()}</div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">ఈ నెల కమీషన్</p>
             </CardContent>
           </Card>
         </div>
@@ -2611,71 +2760,268 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Bottom Row: Settle Collection + Recharge Requests Card */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Settle Collection */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <ArrowLeftRight className="h-5 w-5 text-primary" />
-                Settle Collection (అడ్మిన్‌కు పంపించండి)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between rounded-lg bg-muted p-3">
-                <span className="text-sm text-muted-foreground">Amount to Settle</span>
-                <span className="text-xl font-bold">₹{walletAmount.toLocaleString()}</span>
+        {/* ⏰ 3 DAYS RECHARGE EXPIRY BOXES SECTION (Fills the empty space below Quick Actions) */}
+        <div className="space-y-3 pt-1">
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/20 shrink-0">
+                <Clock className="w-4 h-4" />
               </div>
-              {hasPendingRequest ? (
-                <div className="space-y-2">
-                  <Button className="w-full" disabled variant="outline">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approval Pending...
-                  </Button>
-                  <Button className="w-full" variant="ghost" onClick={handleCancelSettlement}>
-                    Cancel Request
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">మీ అభ్యర్థన అడ్మిన్ అప్రూవల్ కోసం వేచి ఉంది.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Button
-                    className="w-full bg-primary hover:bg-primary/90"
-                    onClick={() => { setSettlementAmount(String(walletAmount)); setIsSettleDialogOpen(true); }}
-                    disabled={walletAmount === 0}
-                  >
-                    <Send className="mr-2 h-4 w-4" /> Send to Admin
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">వసూల్ చేసిన మొత్తాన్ని అడ్మిన్‌కు పంపండి.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <div>
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  3 రోజుల్లో ముగిసే రీఛార్జ్ బాక్స్‌లు
+                  <Badge className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    allExpiringBoxes.length > 0 
+                      ? "bg-rose-500 text-white" 
+                      : "bg-emerald-500 text-white"
+                  }`}>
+                    {allExpiringBoxes.length} {allExpiringBoxes.length === 1 ? "Box" : "Boxes"}
+                  </Badge>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  రాబోయే 3 రోజుల్లో రీఛార్జ్ గడువు ముగిసే కస్టమర్ బాక్స్‌లు
+                </p>
+              </div>
+            </div>
 
-          {/* Commission Info */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Gift className="h-5 w-5 text-amber-500" />
-                మీ కమీషన్ వివరాలు
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between rounded-lg bg-muted p-2.5">
-                <div>
-                  <p className="font-semibold">కలెక్షన్ కమీషన్</p>
-                  <p className="text-xs text-muted-foreground">వసూలు చేసే మొత్తంపై కమీషన్</p>
+            <Button variant="ghost" size="sm" asChild className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-slate-800 p-2 h-8">
+              <Link href="/dashboard/reminders-staff" className="flex items-center gap-1">
+                View All <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </Button>
+          </div>
+
+          {/* Cards Display */}
+          {allExpiringBoxes.length === 0 ? (
+            <Card className="border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-900/60 dark:to-slate-900 p-6 text-center shadow-xs rounded-2xl">
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800/40">
+                  <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <span className="text-base font-bold text-primary">{staffData?.commission || 'N/A'}</span>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  రాబోయే 3 రోజుల్లో ముగిసే బాక్స్‌లు లేవు!
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+                  రాబోయే 3 రోజుల్లో గడువు ముగిసే కస్టమర్ బాక్స్‌లు ప్రస్తుతం ఏవీ లేవు. అన్ని ఖాతాలు యాక్టివ్‌గా ఉన్నాయి.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="mt-1 text-xs font-semibold text-slate-700 hover:text-orange-600 rounded-xl"
+                >
+                  <Link href="/dashboard/reminders-staff">
+                    అన్ని రిమైండర్స్ చూడండి (View Reminders)
+                  </Link>
+                </Button>
               </div>
-              <div className="flex items-center justify-between rounded-lg bg-muted p-2.5">
-                <div>
-                  <p className="font-semibold">కొత్త కస్టమర్ కమీషన్</p>
-                  <p className="text-xs text-muted-foreground">ప్రతి నూతన కస్టమర్‌కు</p>
-                </div>
-                <span className="text-base font-bold text-primary">₹{staffData?.enrollmentCommission?.toLocaleString() || 'N/A'}</span>
-              </div>
-            </CardContent>
-          </Card>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {allExpiringBoxes.map((box: any) => {
+                const isExpanded = !!expandedExpiringBoxes[box.id];
+                const expiryInfo = getBoxExpiryInfo(box.expiryDate);
+                const expiryDateStr = box.expiryDate?.toDate 
+                  ? box.expiryDate.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : 'N/A';
+                const formattedMobile = (box.mobile || "").replace(/\D/g, "");
+                const custId = box.customerId || box.id || "N/A";
+                const dueAmount = Number(box.balanceAmount) || 0;
+                const dueText = dueAmount > 0 ? `₹${dueAmount.toLocaleString()}` : "₹0 (No Due)";
+
+                const handleCallClick = (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (!formattedMobile) return;
+                  window.location.href = `tel:${formattedMobile}`;
+                };
+
+                const handleWhatsAppClick = (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (!formattedMobile) return;
+                  const phone = formattedMobile.length === 10 ? `91${formattedMobile}` : formattedMobile;
+
+                  const senderName = staffData?.name || currentUser?.displayName || "Prasad";
+                  const rawSenderMobile = staffData?.mobile || staffData?.phone || currentUser?.phoneNumber || "9010737882";
+                  const senderMobile = rawSenderMobile.replace(/\D/g, "").slice(-10) || rawSenderMobile;
+                  const cleanSenderPhone = senderMobile.length === 10 ? `91${senderMobile}` : senderMobile;
+
+                  // 1-Click WhatsApp reply link for customer to reply with "YES" directly to staff
+                  const yesReplyText = encodeURIComponent(`YES, Recharge ID: ${custId} (${box.name})`);
+                  const yesReplyLink = `https://wa.me/${cleanSenderPhone}?text=${yesReplyText}`;
+
+                  const msg = 
+`*Sony Cable Network - రీఛార్జ్ రిమైండర్* 📺
+
+నమస్కారం *${box.name}* గారు,
+
+మీ టీవీ కనెక్షన్ వివరాలు:
+🆔 *కస్టమర్ ID:* ${custId}
+📟 *STB / VC నంబర్:* ${box.stbId || "N/A"}
+📅 *గడువు తేదీ:* ${expiryDateStr} (${expiryInfo.text})
+💰 *పాత బాకీ (Balance Due):* ${dueText}
+
+మీ టీవీ ప్రసారాలకు అంతరాయం కలగకుండా ఉండటానికి దయచేసి వెంటనే రీఛార్జ్ చేసుకోగలరు.
+
+👉 *రీఛార్జ్ చేయించాలనుకుంటే క్రింది లింక్ క్లిక్ చేసి 'YES' అని పంపండి:*
+${yesReplyLink}
+
+సంప్రదించవలసిన వివరాలు:
+👤 *పేరు:* ${senderName}
+📞 *మొబైల్:* ${senderMobile}
+
+ధన్యవాదాలు,
+*Sony Cable Network*`;
+
+                  const waUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
+                  window.open(waUrl, "_blank");
+                };
+
+                return (
+                  <Card
+                    key={box.id}
+                    onClick={() => {
+                      setExpandedExpiringBoxes(prev => ({
+                        ...prev,
+                        [box.id]: !prev[box.id]
+                      }));
+                    }}
+                    className={`rounded-2xl border transition-all cursor-pointer ${
+                      isExpanded
+                        ? "p-3 sm:p-3.5 border-orange-300 dark:border-orange-500/50 bg-white dark:bg-slate-900 shadow-sm space-y-3 ring-1 ring-orange-500/10"
+                        : "p-2.5 sm:p-3 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-xs hover:border-orange-300 dark:hover:border-orange-500/30 hover:shadow-xs"
+                    }`}
+                  >
+                    {/* Collapsed / Header Row: Customer Name, Customer ID & Expiry Badge + Chevron */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 font-black text-xs flex items-center justify-center border border-orange-200 dark:border-orange-500/30 shrink-0">
+                          {box.name ? box.name.slice(0, 2).toUpperCase() : "CU"}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
+                            {box.name}
+                          </h4>
+                          <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">ID: {custId}</span>
+                            <span>•</span>
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{box.area || "Local Area"}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Expiry Badge */}
+                        <Badge className={`text-[10px] px-2 py-0.5 rounded-lg font-bold shrink-0 ${expiryInfo.badgeColor}`}>
+                          {expiryInfo.text}
+                        </Badge>
+                        <div className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-0.5">
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Content (Details + Actions) */}
+                    {isExpanded && (
+                      <div className="space-y-3 pt-1 border-t border-slate-100 dark:border-slate-800/80 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
+                        {/* Middle Details Box */}
+                        <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">
+                              Customer ID
+                            </span>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs truncate block">
+                              {custId}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">
+                              STB / VC ID
+                            </span>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs truncate block">
+                              {box.stbId || "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">
+                              Expiry Date
+                            </span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300 text-xs">
+                              {expiryDateStr}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">
+                              Mobile
+                            </span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300 text-xs">
+                              {box.mobile || "N/A"}
+                            </span>
+                          </div>
+                          <div className="col-span-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                              పాత బాకీ (Balance Due)
+                            </span>
+                            <span className={`font-bold text-xs ${
+                              dueAmount > 0 ? "text-rose-600 font-mono" : "text-emerald-600"
+                            }`}>
+                              {dueText}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons Row */}
+                        <div className="flex items-center gap-2 pt-0.5">
+                          {/* Call Button */}
+                          {formattedMobile ? (
+                            <button
+                              type="button"
+                              onClick={handleCallClick}
+                              className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 transition-all gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>Call</span>
+                            </button>
+                          ) : null}
+
+                          {/* WhatsApp Reminder Button */}
+                          {formattedMobile ? (
+                            <button
+                              type="button"
+                              onClick={handleWhatsAppClick}
+                              className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50 active:scale-95 transition-all gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>WhatsApp</span>
+                            </button>
+                          ) : null}
+
+                          {/* Quick Renewal Button */}
+                          {!isNetworkServiceAgent && (
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRechargeDialog(box);
+                              }}
+                              className="h-8 px-3.5 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-sm shadow-orange-500/20 ml-auto gap-1"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" /> Renewal
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Recharge Requests section */}
@@ -3797,15 +4143,99 @@ export default function DashboardPage() {
                 </div>
                 {searchError && <p className="text-sm text-destructive">{searchError}</p>}
                 {searchedCustomer && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{searchedCustomer.name}</CardTitle>
-                      <CardDescription>STB: {searchedCustomer.stbId} | Balance: ₹{searchedCustomer.balanceAmount}</CardDescription>
+                  <Card className="border-2 border-orange-500/40 shadow-xl overflow-hidden bg-gradient-to-b from-card to-card/95">
+                    <CardHeader className="pb-3 border-b border-border/50 bg-muted/20">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <CardTitle className="text-lg font-black tracking-tight text-foreground flex items-center gap-2">
+                            <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500">
+                              <User className="h-4 w-4" />
+                            </span>
+                            {searchedCustomer.name}
+                          </CardTitle>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground pt-0.5">
+                            {searchedCustomer.customerId && (
+                              <span className="font-semibold px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground">
+                                ID: {searchedCustomer.customerId}
+                              </span>
+                            )}
+                            <span className="font-medium">
+                              STB: <strong className="text-foreground">{searchedCustomer.stbId || '0'}</strong>
+                            </span>
+                            {searchedCustomer.mobile && (
+                              <>
+                                <span>•</span>
+                                <span className="font-medium">
+                                  📱 {searchedCustomer.mobile}
+                                </span>
+                              </>
+                            )}
+                            {searchedCustomer.area && (
+                              <>
+                                <span>•</span>
+                                <span className="font-medium">
+                                  📍 {searchedCustomer.area}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {searchedCustomer.balanceAmount > 0 ? (
+                          <Badge variant="destructive" className="font-black text-[11px] px-2.5 py-1 uppercase tracking-wider shrink-0 bg-red-600 hover:bg-red-700">
+                            Due Pending
+                          </Badge>
+                        ) : (
+                          <Badge className="font-black text-[11px] px-2.5 py-1 uppercase tracking-wider shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white">
+                            Paid / Nil
+                          </Badge>
+                        )}
+                      </div>
                     </CardHeader>
-                    <CardContent>
-                      <Button className="w-full" onClick={() => openCollectDialog(searchedCustomer)}>
-                        <HandCoins className="mr-2 h-4 w-4" />
-                        Proceed to Collect
+                    
+                    <CardContent className="pt-4 space-y-4">
+                      {/* 🌟 PROMINENT CUSTOMER BALANCE HIGHLIGHT BOX 🌟 */}
+                      <div className={`p-4 rounded-2xl border-2 transition-all shadow-md ${
+                        searchedCustomer.balanceAmount > 0
+                          ? "bg-gradient-to-r from-red-500/15 via-rose-500/10 to-orange-500/15 border-red-500/40 dark:border-red-500/50 shadow-red-500/5"
+                          : "bg-gradient-to-r from-emerald-500/15 to-teal-500/10 border-emerald-500/40 text-emerald-600 shadow-emerald-500/5"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                              <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                              కస్టమర్ బకాయి (Customer Due Balance)
+                            </span>
+                            <p className="text-xs text-muted-foreground font-medium">
+                              {searchedCustomer.balanceAmount > 0 
+                                ? "Payment collection pending from customer" 
+                                : "No pending due for this customer"}
+                            </p>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="flex items-baseline justify-end gap-0.5">
+                              <span className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                                searchedCustomer.balanceAmount > 0
+                                  ? "text-red-600 dark:text-red-400 drop-shadow-xs"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}>
+                                ₹{Number(searchedCustomer.balanceAmount || 0).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {searchedCustomer.balanceAmount > 0 ? "Pending Due" : "Settled"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button 
+                        size="lg"
+                        className="w-full h-12 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-base shadow-lg shadow-orange-600/25 transition-all"
+                        onClick={() => openCollectDialog(searchedCustomer)}
+                      >
+                        <HandCoins className="mr-2.5 h-5 w-5" />
+                        Proceed to Collect • ₹{Number(searchedCustomer.balanceAmount || 0).toLocaleString('en-IN')}
                       </Button>
                     </CardContent>
                   </Card>
@@ -3843,8 +4273,25 @@ export default function DashboardPage() {
             <Dialog open={isCollectDialogOpen} onOpenChange={setIsCollectDialogOpen}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Collect from {searchedCustomer.name}</DialogTitle>
-                  <DialogDescription>Amount due: ₹{searchedCustomer.balanceAmount}</DialogDescription>
+                  <DialogTitle className="text-lg font-black flex items-center gap-2">
+                    <HandCoins className="h-5 w-5 text-orange-500" />
+                    Collect from {searchedCustomer.name}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Enter payment details to record collection and auto-generate receipt.
+                  </DialogDescription>
+                  <div className="mt-2 p-3.5 rounded-xl bg-gradient-to-r from-red-500/15 via-rose-500/10 to-orange-500/15 border-2 border-red-500/40 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                        <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        Pending Due (బకాయి మొత్తం)
+                      </span>
+                      <p className="text-xs font-semibold text-foreground">STB: {searchedCustomer.stbId || '0'}</p>
+                    </div>
+                    <span className="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-400">
+                      ₹{Number(searchedCustomer.balanceAmount || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
@@ -3877,11 +4324,27 @@ export default function DashboardPage() {
             <Dialog open={isRechargeDialogOpen} onOpenChange={setIsRechargeDialogOpen}>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Recharge for {searchedCustomer.name}</DialogTitle>
-                  <DialogDescription>Select a package to continue with the recharge.</DialogDescription>
-                  <div className="text-sm">
-                    Current Balance: <span className="font-bold text-lg">₹{searchedCustomer.balanceAmount}</span>
+                  <DialogTitle className="flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-orange-500" />
+                    Renewal / Recharge for {searchedCustomer.name}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Select a package to extend validity without losing remaining active days.
+                  </DialogDescription>
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-500 font-medium">Current Balance:</span>
+                    <span className="font-bold text-sm text-foreground">₹{searchedCustomer.balanceAmount}</span>
                   </div>
+                  {searchedCustomer.expiryDate && (
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>Current Expiry (ప్రస్తుత గడువు):</span>
+                      <span className="font-bold text-orange-600 dark:text-orange-400">
+                        {searchedCustomer.expiryDate?.toDate 
+                          ? searchedCustomer.expiryDate.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
+                          : 'Active'}
+                      </span>
+                    </div>
+                  )}
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
@@ -3948,9 +4411,9 @@ export default function DashboardPage() {
                     type="button"
                     onClick={handleRecharge}
                     disabled={!selectedPackage || !selectedDashboardDuration}
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold"
                   >
-                    Confirm Recharge
+                    Confirm Renewal
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -4453,36 +4916,47 @@ export default function DashboardPage() {
 
           {/* Add Extra Due / Service Charge Dialog */}
           <Dialog open={isExtraDueModalOpen} onOpenChange={setIsExtraDueModalOpen}>
-            <DialogContent className="sm:max-w-md bg-slate-900 text-slate-100 border-slate-800">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-lg font-bold text-amber-400">
-                  <PlusCircle className="h-5 w-5 text-amber-400" />
-                  Add Extra Due / Service Charge
-                </DialogTitle>
-                <DialogDescription className="text-slate-400 text-xs">
-                  Add service charge or extra due for wire repair, STB relocation, etc.
-                </DialogDescription>
+            <DialogContent className="w-[92vw] sm:max-w-md max-h-[88vh] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col overflow-hidden fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              
+              <DialogHeader className="space-y-1 pb-1 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 shrink-0">
+                    <Wrench className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                      Add Service Charge / Extra Due
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500 dark:text-slate-400 text-xs">
+                      Wire repair, STB shift, connector replacement & extra dues
+                    </DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
 
               {!extraDueCustomer ? (
                 /* Step 1: Search Customer */
-                <div className="space-y-4 py-2">
-                  <form onSubmit={handleSearchExtraDueCustomer} className="space-y-3">
-                    <Label className="text-xs font-semibold text-slate-300">
-                      Search Customer (Name, Mobile, STB ID)
+                <div className="space-y-3 py-2 overflow-y-auto">
+                  <form onSubmit={handleSearchExtraDueCustomer} className="space-y-2.5">
+                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Search className="w-3.5 h-3.5 text-orange-500" />
+                      Search Customer (Name, Mobile, or STB ID)
                     </Label>
                     <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter Name, Mobile, STB ID..."
-                        value={extraDueSearchQuery}
-                        onChange={(e) => setExtraDueSearchQuery(e.target.value)}
-                        className="bg-slate-950 border-slate-800 text-white text-sm"
-                        autoFocus
-                      />
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <Input
+                          placeholder="e.g. 98480..., STB No, or Name"
+                          value={extraDueSearchQuery}
+                          onChange={(e) => setExtraDueSearchQuery(e.target.value)}
+                          className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pl-9 pr-3 h-10 rounded-xl text-xs sm:text-sm focus-visible:ring-2 focus-visible:ring-orange-500"
+                          autoFocus
+                        />
+                      </div>
                       <Button
                         type="submit"
                         disabled={isSearchingExtraDue || !extraDueSearchQuery.trim()}
-                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shrink-0"
+                        className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold px-4 h-10 rounded-xl shadow-md shadow-orange-500/20 text-xs shrink-0"
                       >
                         {isSearchingExtraDue ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                       </Button>
@@ -4490,111 +4964,193 @@ export default function DashboardPage() {
                   </form>
 
                   {extraDueSearchError && (
-                    <p className="text-xs text-rose-400 font-medium bg-rose-950/40 p-2.5 rounded border border-rose-800">
-                      {extraDueSearchError}
-                    </p>
+                    <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-700 dark:text-rose-300 font-medium flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                      <span>{extraDueSearchError}</span>
+                    </div>
                   )}
                 </div>
               ) : (
                 /* Step 2: Customer Selected & Charge Details */
-                <form onSubmit={handleAddExtraDue} className="space-y-4 py-2">
+                <form onSubmit={handleAddExtraDue} className="space-y-3 overflow-y-auto pr-1 -mr-1 flex-1 py-1">
                   {/* Customer Info Card */}
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-white text-sm font-bold">{extraDueCustomer.name}</strong>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 font-extrabold text-xs flex items-center justify-center border border-orange-200 dark:border-orange-500/30 shrink-0">
+                          {extraDueCustomer.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                            {extraDueCustomer.name}
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          </h4>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            📱 {extraDueCustomer.mobile || "N/A"} • STB: {extraDueCustomer.stbId || extraDueCustomer.customerId || "N/A"}
+                          </p>
+                        </div>
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setExtraDueCustomer(null)}
-                        className="h-6 text-[10px] text-amber-400 hover:text-amber-300 p-1"
+                        className="h-6 px-2 text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-slate-700 rounded-md"
                       >
-                        Change Customer
+                        Change
                       </Button>
                     </div>
-                    <p className="text-slate-400">Mobile: <span className="text-white font-mono">{extraDueCustomer.mobile}</span> | STB: <span className="text-white font-mono">{extraDueCustomer.stbId || extraDueCustomer.customerId}</span></p>
-                    <div className="pt-1.5 border-t border-slate-800 flex justify-between items-center text-xs">
-                      <span className="text-slate-400">Current Due:</span>
-                      <span className="font-bold text-amber-400">₹{(extraDueCustomer.balanceAmount || 0).toLocaleString()}</span>
+
+                    {/* Current Due Highlight */}
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-200 dark:border-slate-700 text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Current Outstanding Due:</span>
+                      <span className="font-extrabold text-orange-600 dark:text-amber-400 text-xs sm:text-sm font-mono">
+                        ₹{(extraDueCustomer.balanceAmount || 0).toLocaleString()}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Service / Reason Dropdown */}
+                  {/* Service / Reason Quick Select Chips */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-300">Service / Reason *</Label>
-                    <Select value={extraDueReason} onValueChange={setExtraDueReason}>
-                      <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-100 text-sm h-10">
-                        <SelectValue placeholder="Select Service Reason" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                        <SelectItem value="STB Repair">STB Repair</SelectItem>
-                        <SelectItem value="STB Replace">STB Replace</SelectItem>
-                        <SelectItem value="FTTH Connector Repairs">FTTH Connector Repairs</SelectItem>
-                        <SelectItem value="Remote Control Repairs">Remote Control Repairs</SelectItem>
-                        <SelectItem value="Fiber Cable Replace">Fiber Cable Replace</SelectItem>
-                        <SelectItem value="Fiber Cable Joint">Fiber Cable Joint</SelectItem>
-                        <SelectItem value="Others">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Service / Reason *
+                      </Label>
+                      <span className="text-[10px] text-slate-400 font-medium">Tap to select</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {[
+                        { label: "STB Repair", icon: "🔧" },
+                        { label: "STB Replace", icon: "📦" },
+                        { label: "FTTH Connector Repairs", icon: "⚡" },
+                        { label: "Fiber Cable Joint", icon: "🔌" },
+                        { label: "Remote Control Repairs", icon: "🎮" },
+                        { label: "Others", icon: "📝" },
+                      ].map((item) => {
+                        const isSelected = extraDueReason === item.label;
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => setExtraDueReason(item.label)}
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-all text-left truncate ${
+                              isSelected
+                                ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm border border-orange-500 font-bold"
+                                : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 hover:border-orange-300"
+                            }`}
+                          >
+                            <span>{item.icon}</span>
+                            <span className="truncate">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Reason Field when "Others" is selected */}
+                    {extraDueReason === "Others" && (
+                      <div className="space-y-1 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Label className="text-[11px] font-semibold text-orange-600 dark:text-amber-400">Specify Reason / Service *</Label>
+                        <Input
+                          placeholder="e.g. Wire repair, Dish alignment..."
+                          value={extraDueCustomReason}
+                          onChange={(e) => setExtraDueCustomReason(e.target.value)}
+                          className="bg-slate-50 dark:bg-slate-800 border-orange-300 dark:border-orange-500/50 text-slate-900 dark:text-white text-xs h-9 rounded-lg focus-visible:ring-2 focus-visible:ring-orange-500"
+                          required={extraDueReason === "Others"}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {/* Custom Reason Field when "Others" is selected */}
-                  {extraDueReason === "Others" && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <Label className="text-xs font-semibold text-amber-400">Specify Reason / Service *</Label>
-                      <Input
-                        placeholder="Enter custom service reason..."
-                        value={extraDueCustomReason}
-                        onChange={(e) => setExtraDueCustomReason(e.target.value)}
-                        className="bg-slate-950 border-amber-500/50 text-slate-100 text-sm h-10 focus-visible:ring-amber-500"
-                        required={extraDueReason === "Others"}
-                      />
+                  {/* Amount Entry with Quick Presets */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Amount to Add (₹) *
+                      </Label>
+                      {/* Preset Pills */}
+                      <div className="flex items-center gap-1">
+                        {["50", "100", "150", "200", "500"].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => setExtraDueAmount(preset)}
+                            className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                              extraDueAmount === preset
+                                ? "bg-orange-500 text-white shadow-xs"
+                                : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                            }`}
+                          >
+                            ₹{preset}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  )}
 
-                  {/* Amount Entry */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-300">Amount to Add (₹) *</Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-slate-400 font-bold">₹</span>
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500 font-extrabold text-base">
+                        ₹
+                      </div>
                       <Input
                         type="number"
-                        placeholder="e.g. 200"
+                        placeholder="0"
                         value={extraDueAmount}
                         onChange={(e) => setExtraDueAmount(e.target.value)}
-                        className="bg-slate-950 border-slate-700 text-emerald-400 font-bold text-lg pl-7 h-11"
+                        className="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-extrabold text-base sm:text-lg pl-8 pr-3 h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-orange-500"
                         required
                         min="1"
                       />
                     </div>
                   </div>
 
-                  {/* Summary */}
+                  {/* Live Balance Update Summary Banner */}
                   {parseFloat(extraDueAmount) > 0 && (
-                    <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/50 text-xs text-amber-300 flex justify-between items-center">
-                      <span>New Due:</span>
-                      <strong className="text-sm text-white">₹{((extraDueCustomer.balanceAmount || 0) + (parseFloat(extraDueAmount) || 0)).toLocaleString()}</strong>
+                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-800 border border-orange-200 dark:border-orange-500/30 flex items-center justify-between text-xs">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold block uppercase tracking-wider">
+                          Balance Calculation
+                        </span>
+                        <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium text-xs">
+                          <span>₹{(extraDueCustomer.balanceAmount || 0).toLocaleString()}</span>
+                          <span className="text-orange-500 font-bold">+</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">₹{parseFloat(extraDueAmount || "0").toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-orange-600 dark:text-amber-400 font-bold block uppercase tracking-wider">New Total Due</span>
+                        <span className="text-base font-black text-slate-900 dark:text-white font-mono">
+                          ₹{((extraDueCustomer.balanceAmount || 0) + (parseFloat(extraDueAmount) || 0)).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   )}
 
-                  <DialogFooter className="pt-2 gap-2">
+                  {/* Action Buttons - Always Visible in Dialog */}
+                  <div className="flex items-center gap-2 pt-1 pb-0.5 shrink-0">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => setIsExtraDueModalOpen(false)}
-                      className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-bold"
+                      className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={isSubmittingExtraDue}
-                      className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs"
+                      className="flex-[1.4] h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md shadow-orange-500/20 transition-all transform active:scale-95 flex items-center justify-center gap-1.5"
                     >
-                      {isSubmittingExtraDue ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-1.5" />}
-                      Confirm & Add to Due
+                      {isSubmittingExtraDue ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Adding to Due...
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle className="h-4 w-4" /> Confirm & Add to Due
+                        </>
+                      )}
                     </Button>
-                  </DialogFooter>
+                  </div>
                 </form>
               )}
             </DialogContent>

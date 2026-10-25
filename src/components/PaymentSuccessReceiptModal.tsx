@@ -43,6 +43,7 @@ export interface RechargeReceiptData {
   date: Date | string;
   packageName?: string;
   months?: number;
+  newExpiryDate?: Date | string;
   collectedByName?: string;
   supportNumber?: string;
   customMessage?: string;
@@ -223,6 +224,9 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
   const customerIdLine = data.customerId ? `\nకస్టమర్ ID: ${data.customerId}` : "";
   const packageInfo = data.packageName ? `\nప్లాన్: ${data.packageName}` : "";
   const monthsLine = data.months ? `\nరీఛార్జ్ చేసిన నెలలు: ${data.months} నెల(లు)` : "";
+  const expiryLine = data.newExpiryDate 
+    ? `\nకొత్త గడువు తేదీ: ${typeof data.newExpiryDate === 'string' ? data.newExpiryDate : data.newExpiryDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` 
+    : "";
   const supportNum = "9010737882";
 
   // పాస్‌బుక్ లెడ్జర్ లింక్ జనరేషన్
@@ -254,9 +258,9 @@ export const generateRechargeReceiptText = (data: RechargeReceiptData): string =
 
   return `
 ${businessName}
-Recharge Successful
+Recharge / Renewal Successful
 
-కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}${monthsLine}
+కస్టమర్ పేరు: ${data.customerName}${customerIdLine}${packageInfo}${monthsLine}${expiryLine}
 రీఛార్జ్ చేసిన తేదీ: ${formattedDate}
 పాత బాకీ: ${formattedOldDue}
 రీఛార్జ్ మొత్తం: ₹${data.rechargeAmount.toLocaleString("en-IN")}

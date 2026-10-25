@@ -5,6 +5,11 @@ import { Toaster } from "@/components/ui/toaster"
 export const metadata: Metadata = {
   title: 'Navanidhi Digital System - Official DishTV Partner',
   description: 'Navanidhi Digital System - Official DishTV Partner & Dealer Management Portal.',
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

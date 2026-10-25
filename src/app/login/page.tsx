@@ -51,6 +51,7 @@ import {
   X,
   AlertCircle,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -107,10 +108,10 @@ export default function LoginPage() {
 
   // Auto-redirect already authenticated users directly to Dashboard so they are never logged out unexpectedly
   useEffect(() => {
-    if (!authLoading && currentUser) {
-      router.push("/dashboard");
+    if (currentUser) {
+      router.replace("/dashboard");
     }
-  }, [currentUser, authLoading, router]);
+  }, [currentUser, router]);
 
   // Public Home Search State (Requires BOTH Mobile & VC Number for security)
   const [homeMobileTerm, setHomeMobileTerm] = useState("");
@@ -365,7 +366,43 @@ export default function LoginPage() {
     setIsSubmitting(false);
   }
 
+  // If session is being verified or user is already authenticated, show sleek splash screen
+  if (authLoading || currentUser) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+        {/* Ambient Glow Gradients */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] bg-gradient-to-tr from-orange-600/20 via-amber-600/10 to-red-600/20 rounded-full blur-[120px] pointer-events-none" />
 
+        <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-5 max-w-sm px-4">
+          {/* Animated Brand Logo */}
+          <div className="relative flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-amber-600 via-orange-500 to-red-600 shadow-2xl shadow-orange-500/40 animate-pulse">
+            <Tv className="w-9 h-9 sm:w-11 sm:h-11 text-white" />
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-400 border-2 border-slate-950"></span>
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+              Navanidhi Digital System
+            </h1>
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold tracking-wider">
+              <span className="text-slate-400">Official</span>
+              <span className="text-orange-400 font-extrabold text-xs">dish<span className="text-red-500">tv</span></span>
+              <span className="text-amber-400 font-extrabold">Partner</span>
+            </div>
+          </div>
+
+          {/* Loading status indicator */}
+          <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/80 border border-slate-800 text-xs font-medium text-slate-300 shadow-lg">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
+            <span suppressHydrationWarning>Verifying session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Android APK Mode: Render ONLY Login Card (User ID & Password)
   if (isNativeApp) {
