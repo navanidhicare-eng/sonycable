@@ -198,20 +198,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.primaryDark],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
                       borderRadius: BorderRadius.circular(13),
                       boxShadow: AppColors.orangeShadow,
                     ),
                     child: Stack(
                       children: [
-                        const Center(child: Icon(Icons.tv_rounded, color: Colors.white, size: 24)),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: Image.asset(
+                            'assets/images/app_icon.png',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.tv_rounded, color: Colors.white, size: 24),
+                          ),
+                        ),
                         Positioned(
-                          top: 4,
-                          right: 4,
+                          top: 2,
+                          right: 2,
                           child: Container(
                             width: 8,
                             height: 8,
