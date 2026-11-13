@@ -295,47 +295,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                           label: "Customer ID",
                           controller: _customerIdController,
                           icon: Icons.badge_outlined,
-                          hint: "Customer ID",
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField(
-                          label: "STB ID",
-                          controller: _stbIdController,
-                          icon: Icons.live_tv_outlined,
-                          hint: "STB Number",
-                          onScan: () async {
-                            final code = await BarcodeScannerModal.scan(
-                              context,
-                              title: "Scan STB Barcode",
-                            );
-                            if (code != null && code.isNotEmpty) {
-                              setState(() => _stbIdController.text = code);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          label: "STB VC Number",
-                          controller: _gtplIdController,
-                          icon: Icons.sim_card_outlined,
-                          hint: "Optional",
-                          onScan: () async {
-                            final code = await BarcodeScannerModal.scan(
-                              context,
-                              title: "Scan VC Barcode",
-                            );
-                            if (code != null && code.isNotEmpty) {
-                              setState(() => _gtplIdController.text = code);
-                            }
-                          },
+                          hint: "e.g. 640",
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -344,10 +304,42 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                           label: "Area / Line",
                           controller: _areaController,
                           icon: Icons.location_on_outlined,
-                          hint: "e.g. LINE-3",
+                          hint: "e.g. LINE-6",
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    label: "STB ID (Set Top Box Number)",
+                    controller: _stbIdController,
+                    icon: Icons.live_tv_outlined,
+                    hint: "Enter or scan full STB ID",
+                    onScan: () async {
+                      final code = await BarcodeScannerModal.scan(
+                        context,
+                        title: "Scan STB Barcode",
+                      );
+                      if (code != null && code.isNotEmpty) {
+                        setState(() => _stbIdController.text = code);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    label: "STB VC Number (Smart Card)",
+                    controller: _gtplIdController,
+                    icon: Icons.sim_card_outlined,
+                    hint: "Enter or scan full VC Number",
+                    onScan: () async {
+                      final code = await BarcodeScannerModal.scan(
+                        context,
+                        title: "Scan VC Barcode",
+                      );
+                      if (code != null && code.isNotEmpty) {
+                        setState(() => _gtplIdController.text = code);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -528,18 +520,19 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           style: TextStyle(
             color: textColor ?? AppColors.textPrimary,
             fontWeight: FontWeight.w600,
-            fontSize: 14,
+            fontSize: 15,
+            letterSpacing: 0.5,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-            prefixIcon: Icon(icon, color: AppColors.textMuted, size: 18),
+            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13, letterSpacing: 0),
+            prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
             suffixIcon: onScan != null
                 ? IconButton(
                     icon: const Icon(
                       Icons.qr_code_scanner_rounded,
                       color: AppColors.primary,
-                      size: 22,
+                      size: 24,
                     ),
                     tooltip: "Scan Barcode from Box",
                     onPressed: onScan,
@@ -547,7 +540,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                 : null,
             filled: true,
             fillColor: AppColors.surfaceSecondary,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.border),
