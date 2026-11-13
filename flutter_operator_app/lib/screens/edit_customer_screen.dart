@@ -27,6 +27,8 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
 
   DateTime? _selectedExpiryDate;
   bool _isSubmitting = false;
+  List<String> _availableAreas = [];
+  bool _isLoadingAreas = true;
 
   @override
   void initState() {
@@ -40,6 +42,37 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     _areaController = TextEditingController(text: c.area);
     _balanceController = TextEditingController(text: c.balanceAmount.toInt().toString());
     _selectedExpiryDate = c.expiryDate;
+    _loadAreas();
+  }
+
+  Future<void> _loadAreas() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('areas').get();
+      final Set<String> areaSet = {};
+      for (var d in snap.docs) {
+        final name = (d.data()['name'] ?? d.data()['areaName'] ?? d.id).toString().trim();
+        if (name.isNotEmpty) areaSet.add(name);
+      }
+      final currentArea = widget.customer.area.trim();
+      if (currentArea.isNotEmpty) {
+        areaSet.add(currentArea);
+      }
+      final list = areaSet.toList()..sort();
+      if (mounted) {
+        setState(() {
+          _availableAreas = list;
+          _isLoadingAreas = false;
+          if (_areaController.text.trim().isEmpty && list.isNotEmpty) {
+            _areaController.text = list.first;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading areas: $e");
+      if (mounted) {
+        setState(() => _isLoadingAreas = false);
+      }
+    }
   }
 
   @override
@@ -300,12 +333,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildTextField(
-                          label: "Area / Line",
-                          controller: _areaController,
-                          icon: Icons.location_on_outlined,
-                          hint: "e.g. LINE-6",
-                        ),
+                        child: _buildAreaDropdown(),
                       ),
                     ],
                   ),
@@ -490,6 +518,84 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
           ...children,
         ],
       ),
+    );
+  }
+
+  Widget _buildAreaDropdown() {
+    final currentValue = _areaController.text.trim();
+    final items = _availableAreas.isEmpty
+        ? (currentValue.isNotEmpty ? [currentValue] : ['MAIN ROAD'])
+        : _availableAreas;
+
+    final selectedValue = items.contains(currentValue)
+        ? currentValue
+        : (items.isNotEmpty ? items.first : null);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Area / Line",
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceSecondary,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          alignment: Alignment.center,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selectedValue,
+              isExpanded: true,
+              icon: _isLoadingAreas
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.arrow_drop_down_rounded, color: AppColors.primary, size: 26),
+              items: items.map((area) {
+                return DropdownMenuItem<String>(
+                  value: area,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textMuted),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          area,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (newVal) {
+                if (newVal != null) {
+                  setState(() {
+                    _areaController.text = newVal;
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
