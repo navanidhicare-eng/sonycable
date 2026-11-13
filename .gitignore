@@ -47,4 +47,10 @@ firestore-debug.log
 # android
 android/app/build
 android/.gradle
-android/build
+android/build
+
+# flutter & apk
+*.apk
+*.aab
+flutter_operator_app/build
+/public/downloads/*.apk
