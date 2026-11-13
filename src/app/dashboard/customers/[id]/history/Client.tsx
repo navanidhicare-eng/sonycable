@@ -735,7 +735,6 @@ export default function CustomerHistoryClient() {
                         <TableHead className="font-bold">Date</TableHead>
                         <TableHead className="font-bold">Package Name</TableHead>
                         <TableHead className="font-bold text-right">Billed Amount (₹)</TableHead>
-                        <TableHead className="font-bold text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -747,16 +746,11 @@ export default function CustomerHistoryClient() {
                             <TableCell className="text-right font-bold text-red-600 dark:text-red-400">
                               +₹{(parseFloat(String(item.amount)) || 0).toLocaleString()}
                             </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant={item.status === 'Paid' ? 'default' : 'destructive'} className="text-xs">
-                                {item.status || 'Active'}
-                              </Badge>
-                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                          <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                             No recharge history found.
                           </TableCell>
                         </TableRow>
