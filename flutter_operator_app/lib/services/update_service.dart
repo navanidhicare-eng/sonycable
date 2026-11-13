@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ota_update/ota_update.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 
 class AppUpdateInfo {
@@ -48,7 +49,10 @@ class UpdateService {
       final int currentBuild = int.tryParse(packageInfo.buildNumber) ?? 1;
 
       // If remote build is higher, or remote version string differs
-      if (info.buildNumber > currentBuild && info.apkUrl.isNotEmpty) {
+      final isNewerBuild = info.buildNumber > currentBuild;
+      final isNewerVersion = info.latestVersion != packageInfo.version;
+
+      if ((isNewerBuild || isNewerVersion) && info.apkUrl.isNotEmpty) {
         return info;
       }
       return null;
@@ -291,6 +295,19 @@ class _UpdateDialogContentState extends State<_UpdateDialogContent> {
               Text(
                 _statusMessage,
                 style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626)),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(widget.update.apkUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  icon: const Icon(Icons.open_in_browser_rounded, size: 16),
+                  label: const Text("Download in Browser", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
               ),
             ],
           ],
