@@ -54,7 +54,8 @@ import { PlusCircle, Loader2, Edit, Trash2, Tv, Radio } from "lucide-react";
 export interface PackageItem {
   id: string;
   packageName: string;
-  packageAmount: string; // 1 Month
+  packageAmount: string; // 1 Month Customer Price
+  msoAmount?: string; // MSO / Wholesale Cost (Operator Expense)
   threeMonthAmount?: string;
   sixMonthAmount?: string;
   twelveMonthAmount?: string;
@@ -109,6 +110,7 @@ export default function PackagesPage() {
   const [formData, setFormData] = useState({
     packageName: "",
     packageAmount: "",
+    msoAmount: "",
     threeMonthAmount: "",
     sixMonthAmount: "",
     twelveMonthAmount: "",
@@ -195,6 +197,7 @@ export default function PackagesPage() {
     setFormData({
       packageName: "",
       packageAmount: "",
+      msoAmount: "",
       threeMonthAmount: "",
       sixMonthAmount: "",
       twelveMonthAmount: "",
@@ -211,6 +214,7 @@ export default function PackagesPage() {
     setFormData({
       packageName: pkg.packageName || "",
       packageAmount: mAmt,
+      msoAmount: pkg.msoAmount || (num ? String(Math.round(num * 0.70)) : ""),
       threeMonthAmount: pkg.threeMonthAmount || (num ? String(num * 3) : ""),
       sixMonthAmount: pkg.sixMonthAmount || (num ? String(num * 6) : ""),
       twelveMonthAmount: pkg.twelveMonthAmount || (num ? String(num * 12) : ""),
@@ -250,6 +254,7 @@ export default function PackagesPage() {
         await withTimeout(updateDoc(doc(db, "packages", editingPkg.id), {
           packageName: formData.packageName.trim(),
           packageAmount: formData.packageAmount.trim(),
+          msoAmount: formData.msoAmount.trim(),
           threeMonthAmount: formData.threeMonthAmount.trim(),
           sixMonthAmount: formData.sixMonthAmount.trim(),
           twelveMonthAmount: formData.twelveMonthAmount.trim(),
@@ -266,6 +271,7 @@ export default function PackagesPage() {
         await withTimeout(addDoc(collection(db, "packages"), {
           packageName: formData.packageName.trim(),
           packageAmount: formData.packageAmount.trim(),
+          msoAmount: formData.msoAmount.trim(),
           threeMonthAmount: formData.threeMonthAmount.trim(),
           sixMonthAmount: formData.sixMonthAmount.trim(),
           twelveMonthAmount: formData.twelveMonthAmount.trim(),
@@ -391,12 +397,13 @@ export default function PackagesPage() {
                     <Table>
                       <TableHeader className="bg-muted/50">
                         <TableRow>
-                          <TableHead className="w-[220px]">Package Name</TableHead>
-                          <TableHead>1 Month (₹)</TableHead>
-                          <TableHead>3 Months (₹)</TableHead>
-                          <TableHead>6 Months (₹)</TableHead>
-                          <TableHead>12 Months (₹)</TableHead>
-                          <TableHead>Description</TableHead>
+                          <TableHead className="w-[200px]">Package Name</TableHead>
+                          <TableHead>Customer (1M)</TableHead>
+                          <TableHead className="text-emerald-700">MSO Cost (1M)</TableHead>
+                          <TableHead className="text-emerald-700">Margin</TableHead>
+                          <TableHead>3 Months</TableHead>
+                          <TableHead>6 Months</TableHead>
+                          <TableHead>12 Months</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -404,6 +411,8 @@ export default function PackagesPage() {
                         {dishTvPackagesList.length > 0 ? (
                           dishTvPackagesList.map((pkg) => {
                             const mAmt = parseFloat(pkg.packageAmount) || 0;
+                            const msoAmt = parseFloat(pkg.msoAmount || "") || (mAmt ? Math.round(mAmt * 0.70) : 0);
+                            const margin = Math.max(0, mAmt - msoAmt);
                             const t3 = pkg.threeMonthAmount || (mAmt ? String(mAmt * 3) : "—");
                             const t6 = pkg.sixMonthAmount || (mAmt ? String(mAmt * 6) : "—");
                             const t12 = pkg.twelveMonthAmount || (mAmt ? String(mAmt * 12) : "—");
@@ -423,12 +432,17 @@ export default function PackagesPage() {
                                     ₹{pkg.packageAmount}
                                   </Badge>
                                 </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="font-mono text-sm font-semibold text-emerald-700 border-emerald-300 bg-emerald-50">
+                                    ₹{msoAmt}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="font-bold text-sm text-emerald-600">
+                                  +₹{margin}
+                                </TableCell>
                                 <TableCell className="font-medium text-sm">₹{t3}</TableCell>
                                 <TableCell className="font-medium text-sm">₹{t6}</TableCell>
                                 <TableCell className="font-medium text-sm">₹{t12}</TableCell>
-                                <TableCell className="text-muted-foreground text-xs max-w-[200px] truncate">
-                                  {pkg.description || "Default DishTV Package"}
-                                </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1">
                                     <Button
@@ -637,18 +651,65 @@ export default function PackagesPage() {
                     />
                   </div>
                 </div>
+
+                {/* MSO Cost Input */}
+                <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-200 mt-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="msoAmount" className="text-xs font-bold text-emerald-800">
+                      MSO / GTPL Wholesale Cost (మీ ఖర్చు ₹/నెల)
+                    </Label>
+                    {formData.packageAmount && formData.msoAmount && (
+                      <span className="text-[11px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                        Margin: +₹{Math.max(0, (parseFloat(formData.packageAmount) || 0) - (parseFloat(formData.msoAmount) || 0))}
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    id="msoAmount"
+                    type="number"
+                    placeholder="e.g. 210"
+                    value={formData.msoAmount}
+                    onChange={(e) => setFormData({ ...formData, msoAmount: e.target.value })}
+                    className="mt-1.5 bg-white border-emerald-300 text-sm h-9"
+                  />
+                  <p className="text-[11px] text-emerald-600 mt-1">
+                    Amount deducted from your MSO portal for 1 month. You can update this anytime rates change.
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label htmlFor="cableAmount">Monthly Package Amount (₹) *</Label>
-                <Input
-                  id="cableAmount"
-                  type="number"
-                  required
-                  placeholder="e.g. 300"
-                  value={formData.packageAmount}
-                  onChange={(e) => setFormData({ ...formData, packageAmount: e.target.value })}
-                />
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cableAmount">Monthly Package Amount (₹) *</Label>
+                  <Input
+                    id="cableAmount"
+                    type="number"
+                    required
+                    placeholder="e.g. 300"
+                    value={formData.packageAmount}
+                    onChange={(e) => setFormData({ ...formData, packageAmount: e.target.value })}
+                  />
+                </div>
+                <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-200">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="cableMso" className="text-xs font-bold text-emerald-800">
+                      MSO Cost (మీ ఖర్చు ₹/నెల)
+                    </Label>
+                    {formData.packageAmount && formData.msoAmount && (
+                      <span className="text-[11px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                        Margin: +₹{Math.max(0, (parseFloat(formData.packageAmount) || 0) - (parseFloat(formData.msoAmount) || 0))}
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    id="cableMso"
+                    type="number"
+                    placeholder="e.g. 210"
+                    value={formData.msoAmount}
+                    onChange={(e) => setFormData({ ...formData, msoAmount: e.target.value })}
+                    className="mt-1.5 bg-white border-emerald-300 text-sm h-9"
+                  />
+                </div>
               </div>
             )}
 
