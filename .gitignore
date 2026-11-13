@@ -53,4 +53,4 @@ android/build
 *.apk
 *.aab
 flutter_operator_app/build
-/public/downloads/*.apk
+!public/downloads/SonyCable_Operator.apk
