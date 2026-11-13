@@ -1287,14 +1287,55 @@ class ActionModals {
 
                                 setModalState(() => isSubmitting = true);
                                 try {
+                                  final now = DateTime.now();
                                   final newTotal = selectedCustomer!.balanceAmount + amount;
 
+                                  // 1. Update customer's total due balance
                                   await FirebaseFirestore.instance
                                       .collection('customers')
                                       .doc(selectedCustomer!.id)
-                                      .update({'balanceAmount': newTotal});
+                                      .update({
+                                    'balanceAmount': newTotal,
+                                    'updatedAt': FieldValue.serverTimestamp(),
+                                  });
 
-                                  if (context.mounted) Navigator.pop(context);
+                                  // 2. Record in 'recharges' collection so it appears in Ledger & Passbook!
+                                  await FirebaseFirestore.instance.collection('recharges').add({
+                                    'customerId': selectedCustomer!.id,
+                                    'customerName': selectedCustomer!.name,
+                                    'amount': amount,
+                                    'msoCost': 0.0, // Extra due is 100% operator service revenue
+                                    'profitMargin': amount,
+                                    'packageName': "Service Charge - $selectedReason",
+                                    'isExtraDue': true,
+                                    'reason': selectedReason,
+                                    'rechargeDate': Timestamp.fromDate(now),
+                                    'rechargedBy': operatorUid,
+                                    'rechargedByName': operatorName,
+                                    'adminId': selectedCustomer!.adminId,
+                                    'type': 'Extra Due',
+                                    'paymentReceived': false,
+                                  });
+
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+
+                                    // Play success chime
+                                    SoundService.playSuccessSound();
+
+                                    // Show PhonePe-style Success Popup
+                                    PaymentSuccessDialog.show(
+                                      context,
+                                      customer: selectedCustomer!,
+                                      amountPaid: amount,
+                                      paymentMethod: "Added to Due ($selectedReason)",
+                                      remainingBalance: newTotal,
+                                      previousBalance: selectedCustomer!.balanceAmount,
+                                      operatorName: operatorName,
+                                      packageName: "Service: $selectedReason",
+                                      isRecharge: false,
+                                    );
+                                  }
 
                                   final msg = WhatsAppService.getExtraDueReceiptMessage(
                                     customerName: selectedCustomer!.name,
