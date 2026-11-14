@@ -71,6 +71,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 return matchesSearch && matchesDue;
               }).toList();
 
+              // Sort alphabetically by Customer Name (A to Z)
+              filtered.sort((a, b) => a.name.trim().toLowerCase().compareTo(b.name.trim().toLowerCase()));
+
               return Column(
                 children: [
                   // Search & Filter Header
@@ -125,8 +128,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             ),
                             const Spacer(),
                             Text(
-                              "${filtered.length} Customers",
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              "A to Z • ${filtered.length} Customers",
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
