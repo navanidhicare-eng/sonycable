@@ -256,9 +256,9 @@ export default function StaffRemindersPage() {
                                 </Button>
                               )}
                                 <Button variant={isExpired ? "destructive" : "default"} size="sm" asChild>
-                                  <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    {isExpired ? 'Request Recharge' : 'Renewal'}
+                                  <Link href="/dashboard/collection">
+                                    <CreditCard className="mr-2 h-4 w-4" />
+                                    Collect
                                   </Link>
                                 </Button>
                             </TableCell>
@@ -318,9 +318,9 @@ export default function StaffRemindersPage() {
                                           </Button>
                                         )}
                                         <Button className="flex-1" variant={isExpired ? "destructive" : "default"} asChild>
-                                          <Link href={`/dashboard/request-recharge/${customer.id}`}>
-                                            <Send className="mr-2 h-4 w-4" />
-                                            {isExpired ? 'Request Recharge' : 'Renewal'}
+                                          <Link href="/dashboard/collection">
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Collect Payment
                                           </Link>
                                         </Button>
                                     </div>

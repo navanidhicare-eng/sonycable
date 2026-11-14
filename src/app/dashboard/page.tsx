@@ -1573,33 +1573,11 @@ export default function DashboardPage() {
         adminId: staffData.adminId,
       });
 
-      // Compute new wallet balance after this collection
-      const newWalletAmount = (staffWallet?.walletAmount || 0) + collectedAmount;
-      const limit = staffData.collectionLimit ?? 10000;
-
-      // Auto-Deactivation check: Lock account if limit is reached or exceeded
-      let isAutoLocked = false;
-      if (limit > 0 && newWalletAmount >= limit) {
-        isAutoLocked = true;
-        await updateDoc(doc(db, "staff", staffData.id), { status: "inactive" });
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('userStatus', 'inactive');
-        }
-        setStaffData(prev => prev ? { ...prev, status: 'inactive' } : null);
-      }
-
-      if (isAutoLocked) {
-        toast({
-          variant: "destructive",
-          title: "Collection Limit Reached! 🔒",
-          description: `Limit reached (Limit: ₹${limit.toLocaleString()}). Account auto-locked! Please deposit collected cash with Admin to reactivate.`,
-        });
-      } else {
-        toast({
-          title: "Collection Recorded",
-          description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
-        });
-      }
+      // Unlimited collection for staff (no collection limits or auto-locking)
+      toast({
+        title: "Collection Recorded",
+        description: `Collected ₹${amountCollected} from ${searchedCustomer.name} via ${paymentMethod}.`,
+      });
 
       // Trigger Instant WhatsApp & SMS Payment Receipt Modal
       setReceiptModalData({
@@ -1898,30 +1876,7 @@ export default function DashboardPage() {
   );
 
   const StaffRechargeCard = () => {
-    const isNetworkServiceAgent = userRole?.toLowerCase().replace(/\s/g, "") === 'networkserviceagent';
 
-    if (isNetworkServiceAgent) {
-      return (
-        <Card className="bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-          <Link href="/dashboard/request-recharge" className="block h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Request Recharge
-              </CardTitle>
-              <Send className="h-4 w-4 text-white" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <p className="text-xs">
-                  Request a customer recharge from admin
-                </p>
-                <ArrowRight className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Link>
-        </Card>
-      );
-    }
 
     return (
       <Card className="bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer" onClick={() => setIsRechargeSearchDialogOpen(true)}>
@@ -2800,39 +2755,23 @@ export default function DashboardPage() {
 
         {/* 💻 DESKTOP QUICK ACTION CARDS (>= sm) */}
         <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Recharge / Request Recharge */}
-          {isNetworkServiceAgent ? (
-            <Link href="/dashboard/request-recharge" className="block">
-              <Card className="bg-blue-600 text-white hover:bg-blue-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer h-full">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-semibold">Request Recharge</CardTitle>
-                  <Send className="h-5 w-5" />
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-blue-100">Request a customer recharge from admin</p>
-                  <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                    Go to Requests <ArrowRight className="h-3 w-3" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ) : (
-            <Card
-              className="bg-emerald-600 text-white hover:bg-emerald-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-              onClick={() => setIsRechargeSearchDialogOpen(true)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-semibold">Recharge Customer</CardTitle>
-                <CreditCard className="h-5 w-5" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-emerald-100">Recharge a customer account quickly</p>
-                <div className="flex items-center gap-1 mt-3 text-xs font-bold">
-                  Click to Search <ArrowRight className="h-3 w-3" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Recharge Customer */}
+          <Card
+            className="bg-emerald-600 text-white hover:bg-emerald-500 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+            onClick={() => setIsRechargeSearchDialogOpen(true)}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold">Recharge Customer</CardTitle>
+              <CreditCard className="h-5 w-5" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-emerald-100">Recharge a customer account quickly</p>
+              <div className="flex items-center gap-1 mt-3 text-xs font-bold">
+                Recharge Now <ArrowRight className="h-3 w-3" />
+              </div>
+            </CardContent>
+          </Card>
+
 
           {/* Collect Payment */}
           <Card
@@ -3164,9 +3103,9 @@ ${yesReplyLink}
   const DealerDashboard = () => (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-slide-in-fade-in">
       <Card className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-        <Link href="/dashboard/dishtv-customers" className="block h-full">
+        <Link href="/dashboard/customers" className="block h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Manage DishTV Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Manage Customers</CardTitle>
             <Tv className="h-5 w-5 text-primary-foreground" />
           </CardHeader>
           <CardContent>
@@ -3743,8 +3682,8 @@ ${yesReplyLink}
     }
   };
 
-  const isLimitBreached = (staffData?.collectionLimit ?? 10000) > 0 && (staffWallet?.walletAmount || 0) >= (staffData?.collectionLimit ?? 10000);
-  const isInactiveStaff = !authLoading && userRole && userRole !== 'Admin' && userRole !== 'Dealer' && userRole !== 'Retailer' && (userStatus === 'inactive' || staffData?.status === 'inactive' || isLimitBreached);
+  const isLimitBreached = false;
+  const isInactiveStaff = false;
 
   if (isInactiveStaff) {
     const hasPendingRequest = settlementRequests.some(req => req.status === 'pending' && req.staffId === currentUser?.uid);
@@ -3914,277 +3853,14 @@ ${yesReplyLink}
                 )}
               </div>
 
-              {/* 🚫 Hide Service Request button for Staff/Recharge Staff (Only show for Admin, Dealer, Retailer) */}
-              {(!userRole || userRole === "Admin" || /dealer|retailer/i.test(userRole)) && (
-                <Button
-                  onClick={() => setIsServiceRequestOpen(true)}
-                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 sm:px-5 sm:py-5 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                >
-                  <Wrench className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span>+ Service Request</span>
-                </Button>
-              )}
+
             </div>
             <p className="mt-1 max-w-3xl text-xs text-muted-foreground md:text-xl">
               {!authLoading && !firestoreLoading && getWelcomeMessage()}
             </p>
 
-            {/* Top Universal Customer Quick Search Bar (Admin, Dealer & Retailer) */}
-            {!authLoading && !firestoreLoading && (userRole === "Admin" || /dealer|retailer/i.test(userRole || "")) && (
-              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl border border-indigo-700/40">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                  <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
-                      <Search className="h-5 w-5 text-amber-400" />
-                      DishTV Customer VC Search
-                    </h2>
-                    <p className="text-xs text-slate-300 mt-1">
-                      Enter Customer VC Number or Mobile Number and click Search button to view details & 1, 3, 6, 12 Month package prices.
-                    </p>
-                  </div>
-                </div>
 
-                <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 items-stretch w-full max-w-3xl">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
-                    <Input
-                      type="text"
-                      placeholder="Enter VC Number or Mobile (e.g. 015... or 98480...)..."
-                      className="pl-12 pr-10 py-6 text-base bg-slate-900/90 border-slate-700 text-white placeholder:text-slate-400 rounded-xl focus-visible:ring-2 focus-visible:ring-amber-400"
-                      value={topSearchTerm}
-                      onChange={(e) => setTopSearchTerm(e.target.value)}
-                    />
-                    {topSearchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => { setTopSearchTerm(""); setActiveSearchQuery(""); }}
-                        className="absolute right-3 top-3.5 text-slate-400 hover:text-white"
-                      >
-                        <XCircle className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                  <Button
-                    type="submit"
-                    className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-600 hover:to-red-700 text-white font-bold px-6 py-6 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all shrink-0"
-                  >
-                    <Search className="h-5 w-5" />
-                    <span>Search Customer</span>
-                  </Button>
-                </form>
 
-                {/* Search Results Container - Displayed ONLY after clicking Search button */}
-                {activeSearchQuery.length > 0 && (
-                  <div className="mt-6 space-y-4">
-                    {topSearchResults.length === 0 ? (
-                      <div className="p-4 rounded-xl bg-red-950/90 border border-red-700/60 text-red-100 text-sm flex items-center justify-between shadow-xl">
-                        <div className="flex items-center gap-3">
-                          <XCircle className="h-6 w-6 text-red-400 shrink-0" />
-                          <div>
-                            <p className="font-bold text-base text-red-200">
-                              Wrong VC Number or Mobile Number!
-                            </p>
-                            <p className="text-xs text-red-300 mt-0.5">
-                              No customer details found for "{activeSearchQuery}". Please make sure to enter a valid VC Number or 10-digit Mobile Number.
-                            </p>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="ghost" className="text-red-300 hover:text-white hover:bg-red-900/60 shrink-0" onClick={() => setActiveSearchQuery("")}>Clear</Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
-                            Found {topSearchResults.length} Matching Customer(s) for "{activeSearchQuery}":
-                          </p>
-                          <Button size="sm" variant="ghost" className="text-xs text-slate-400 hover:text-white" onClick={() => { setTopSearchTerm(""); setActiveSearchQuery(""); }}>Clear Results</Button>
-                        </div>
-                        {topSearchResults.map((cust) => (
-                          <Card key={cust.id} className="bg-slate-900/95 border-amber-500/50 text-white shadow-xl overflow-hidden">
-                            <CardContent className="p-5">
-                              {/* Header Section: Customer Name, Status, Full Address, Balance */}
-                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-4">
-                                <div>
-                                  <div className="flex items-center gap-3">
-                                    <h3 className="text-2xl font-bold text-white">{cust.name}</h3>
-                                    <Badge className={cust.status === "Active" ? "bg-emerald-500 text-white font-bold" : "bg-amber-500 text-white font-bold"}>
-                                      {cust.status}
-                                    </Badge>
-                                  </div>
-                                  {/* Full Customer Address */}
-                                  <p className="text-xs text-slate-300 mt-1 flex items-start gap-1 font-medium">
-                                    <MapPin className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                                    <span><strong className="text-slate-200">Full Address:</strong> {getFullCustomerAddress(cust)}</span>
-                                  </p>
-                                </div>
-
-                                <div className="text-left md:text-right bg-slate-800/80 p-3 rounded-xl border border-slate-700/60">
-                                  <span className="text-xs text-slate-400 block font-medium">Balance Due</span>
-                                  <span className="text-2xl font-black text-amber-400">
-                                    ₹{(cust.balanceAmount !== undefined ? cust.balanceAmount : (cust.monthlyAmount || 350)).toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Customer Basic Info Grid */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-slate-800/60 p-4 rounded-xl border border-slate-800 mb-4">
-                                {/* VC Number */}
-                                <div>
-                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                    💳 VC Number
-                                  </span>
-                                  <span className="font-mono font-bold text-purple-300 text-base">
-                                    {cust.vcNumber || "Not Set"}
-                                  </span>
-                                </div>
-
-                                {/* Contact Person Mobile Number */}
-                                <div>
-                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                    📱 Contact Mobile
-                                  </span>
-                                  <span className="font-bold text-emerald-400 text-base">
-                                    {cust.mobile}
-                                  </span>
-                                </div>
-
-                                {/* Current Package */}
-                                <div>
-                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                    📺 Current Package Plan
-                                  </span>
-                                  <span className="font-bold text-blue-300 text-base">
-                                    {cust.packagePlan || "Standard Plan"}
-                                  </span>
-                                </div>
-
-                                {/* Assigned Dealer Name */}
-                                <div>
-                                  <span className="text-xs text-slate-400 block font-medium flex items-center gap-1">
-                                    🏬 Dealer Name
-                                  </span>
-                                  <span className="font-bold text-amber-300 text-base">
-                                    {cust.dealerName || dealerName || "Navanidhi Digital System"}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Multi-Month Package Price Breakdown List (1, 3, 6, 12 Months) */}
-                              {(() => {
-                                const prices = getPackagePriceList(cust);
-                                return (
-                                  <div className="bg-slate-950/80 p-4 rounded-xl border border-indigo-900/60 mb-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                                      <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Package className="h-4 w-4 text-amber-400" />
-                                        Package Price List (1, 3, 6, 12 Months):
-                                      </h4>
-                                      <span className="text-[11px] text-cyan-300 font-semibold bg-cyan-950/80 border border-cyan-800/80 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                                        ⚡ Click any offer card to submit a recharge request to Admin
-                                      </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenOfferRecharge(cust, 1, prices.m1)}
-                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-emerald-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] text-slate-300 font-bold">1 Month</span>
-                                          <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] px-1.5 py-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">Select</Badge>
-                                        </div>
-                                        <span className="text-lg font-black text-emerald-400 block mt-1">₹{prices.m1.toLocaleString()}</span>
-                                        <span className="text-[10px] text-emerald-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                          <Send className="w-3 h-3" /> Click to Request
-                                        </span>
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenOfferRecharge(cust, 3, prices.m3)}
-                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-blue-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] text-slate-300 font-bold">3 Months</span>
-                                          <Badge className="bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] px-1.5 py-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">Select</Badge>
-                                        </div>
-                                        <span className="text-lg font-black text-blue-400 block mt-1">₹{prices.m3.toLocaleString()}</span>
-                                        <span className="text-[10px] text-blue-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                          <Send className="w-3 h-3" /> Click to Request
-                                        </span>
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenOfferRecharge(cust, 6, prices.m6)}
-                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-purple-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] text-slate-300 font-bold">6 Months</span>
-                                          <Badge className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] px-1.5 py-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">Select</Badge>
-                                        </div>
-                                        <span className="text-lg font-black text-purple-400 block mt-1">₹{prices.m6.toLocaleString()}</span>
-                                        <span className="text-[10px] text-purple-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                          <Send className="w-3 h-3" /> Click to Request
-                                        </span>
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenOfferRecharge(cust, 12, prices.m12)}
-                                        className="bg-slate-900 hover:bg-slate-850 p-3 rounded-xl border border-slate-800 hover:border-amber-500/80 hover:scale-[1.03] transition-all text-left group shadow-lg cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] text-slate-300 font-bold">12 Months (1 Yr)</span>
-                                          <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">Select</Badge>
-                                        </div>
-                                        <span className="text-lg font-black text-amber-400 block mt-1">₹{prices.m12.toLocaleString()}</span>
-                                        <span className="text-[10px] text-amber-300/80 block mt-1 font-semibold flex items-center gap-0.5">
-                                          <Send className="w-3 h-3" /> Click to Request
-                                        </span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Action Buttons (Admin & Dealer Only - Hidden for Retailers) */}
-                              {userRole !== "Retailer" && (
-                                <div className="flex flex-wrap items-center gap-3 pt-1">
-                                  <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
-                                    <Link href={`/dashboard/payment-collections?search=${encodeURIComponent(cust.mobile)}`}>
-                                      <HandCoins className="h-4 w-4 mr-1.5" /> Collect Payment
-                                    </Link>
-                                  </Button>
-                                  <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
-                                    <Link href={`/dashboard/dishtv-customers?search=${encodeURIComponent(cust.mobile)}`}>
-                                      <CreditCard className="h-4 w-4 mr-1.5" /> Recharge
-                                    </Link>
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleOpenService(cust)}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5"
-                                  >
-                                    <Wrench className="h-4 w-4" /> Service Charge
-                                  </Button>
-                                  <Button asChild size="sm" variant="outline" className="border-purple-500/60 text-purple-300 hover:bg-purple-950 hover:text-white font-semibold">
-                                    <Link href={`/dashboard/payment-collections?search=${encodeURIComponent(cust.mobile)}`}>
-                                      <History className="h-4 w-4 mr-1.5" /> View Ledger & History
-                                    </Link>
-                                  </Button>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </header>
           <audio ref={audioRef} src={notificationSound} />
 

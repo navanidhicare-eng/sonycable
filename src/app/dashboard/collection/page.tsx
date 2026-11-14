@@ -200,14 +200,7 @@ export default function CollectionPage() {
           staffDocId = staffSnap.docs[0].id;
           collectionLimit = staffData.collectionLimit ?? 10000;
 
-          if (staffData.status === 'inactive') {
-            toast({
-              variant: "destructive",
-              title: "Collection Blocked 🔒",
-              description: "Your account is currently INACTIVE. Please deposit cash with Admin to reactivate.",
-            });
-            return;
-          }
+
         }
 
         const customerDocRef = doc(db, "customers", currentCustomer.id);
@@ -241,39 +234,11 @@ export default function CollectionPage() {
           });
         });
 
-        // Check if collection limit is reached and auto-lock staff account
-        if (staffDocId) {
-          const paymentsQuery = query(collection(db, "payments"), where("collectedBy", "==", user.uid));
-          const paymentsSnap = await getDocs(paymentsQuery);
-          const totalCollected = paymentsSnap.docs.reduce((sum, p) => sum + (parseFloat(p.data().amount) || 0), 0);
-
-          const settlementsQuery = query(collection(db, "settlements"), where("staffId", "==", user.uid), where("status", "==", "approved"));
-          const settlementsSnap = await getDocs(settlementsQuery);
-          const totalSettled = settlementsSnap.docs.reduce((sum, s) => sum + (parseFloat(s.data().amount) || 0), 0);
-
-          const walletBalance = totalCollected - totalSettled;
-          if (collectionLimit > 0 && walletBalance >= collectionLimit) {
-            await updateDoc(doc(db, "staff", staffDocId), { status: "inactive" });
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('userStatus', 'inactive');
-            }
-            toast({
-              variant: "destructive",
-              title: "Collection Limit Reached! 🔒",
-              description: `Collection limit reached (Limit: ₹${collectionLimit.toLocaleString()}). Account auto-locked. Please deposit collected cash with Admin.`,
-            });
-          } else {
-            toast({
-              title: "Collection Recorded",
-              description: `Collected ₹${collectedAmount} from ${currentCustomer.name} via ${paymentMethod}.`,
-            });
-          }
-        } else {
-          toast({
-            title: "Collection Recorded",
-            description: `Collected ₹${collectedAmount} from ${currentCustomer.name} via ${paymentMethod}.`,
-          });
-        }
+        // Unlimited collection for staff (no limits or auto-locking)
+        toast({
+          title: "Collection Recorded",
+          description: `Collected ₹${collectedAmount} from ${currentCustomer.name} via ${paymentMethod}.`,
+        });
 
         // Trigger Instant WhatsApp & SMS Receipt Modal
         setReceiptModalData({

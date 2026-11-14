@@ -39,15 +39,9 @@ const formSchema = z.object({
     message: "You have to select at least one area.",
   }),
   role: z.string({ required_error: "Please select a role." }),
-  commission: z.string().min(1, "Commission is required."),
-  enrollmentCommission: z.preprocess(
-    (val) => (val === "" || val === undefined ? "0" : val),
-    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v), "Please enter a valid number.")
-  ),
-  collectionLimit: z.preprocess(
-    (val) => (val === "" || val === undefined ? "10000" : val),
-    z.string().transform(v => parseFloat(v)).refine(v => !isNaN(v) && v >= 0, "Please enter a valid collection limit.")
-  ),
+  commission: z.string().optional(),
+  enrollmentCommission: z.any().optional(),
+  collectionLimit: z.any().optional(),
   email: z.string().email("Please enter a valid email address.").optional(),
 });
 
@@ -75,9 +69,9 @@ export default function EditStaffClient() {
     defaultValues: {
       staffName: "",
       mobileNumber: "",
-      commission: "",
+      commission: "0",
       enrollmentCommission: 0,
-      collectionLimit: 10000,
+      collectionLimit: 0,
       area: [],
     },
   });
@@ -180,15 +174,15 @@ export default function EditStaffClient() {
              <Button asChild variant="outline" size="sm">
                 <Link href="/dashboard/staff" className="flex items-center gap-2">
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Back to Staff List</span>
+                    <span>Back to Operators List</span>
                 </Link>
             </Button>
         </div>
         <Card className="w-full max-w-2xl">
           <CardHeader>
-            <CardTitle className="text-2xl">Edit Staff Member</CardTitle>
+            <CardTitle className="text-2xl">Edit Operator</CardTitle>
             <CardDescription>
-              Update the details for this staff member.
+              Update the details for this operator.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -220,9 +214,9 @@ export default function EditStaffClient() {
                     name="staffName"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Staff Name</FormLabel>
+                        <FormLabel>Operator Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="Enter staff's full name" {...field} />
+                            <Input placeholder="Enter operator's full name" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -316,56 +310,7 @@ export default function EditStaffClient() {
                         </FormItem>
                     )}
                     />
-                    <FormField
-                    control={form.control}
-                    name="commission"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Collection Commission</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., 5%" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        <FormDescriptionComponent>
-                            Enter commission as a percentage (e.g. 5%).
-                        </FormDescriptionComponent>
-                        </FormItem>
-                    )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="enrollmentCommission"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Customer Enrollment Commission (₹)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="e.g., 100" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                          <FormDescriptionComponent>
-                            Fixed, one-time amount for each new customer enrolled.
-                          </FormDescriptionComponent>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="collectionLimit"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Collection Limit (₹)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="e.g., 10000" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                          <FormDescriptionComponent>
-                            Max cash allowed in hand before account auto-locks (Default: ₹10,000).
-                          </FormDescriptionComponent>
-                        </FormItem>
-                      )}
-                    />
                     
                     <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (

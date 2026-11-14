@@ -125,19 +125,7 @@ export default function StaffPage() {
     return map;
   }, [staffList, payments, settlements]);
 
-  // Auto-sync staff status in Firestore to inactive if collection limit is reached or exceeded
-  useEffect(() => {
-    if (!staffList.length) return;
-    staffList.forEach((staff) => {
-      const cashInHand = staffWalletsMap[staff.uid] || 0;
-      const limit = staff.collectionLimit ?? 10000;
-      if (limit > 0 && cashInHand >= limit && staff.status !== "inactive") {
-        updateDoc(doc(db, "staff", staff.id), { status: "inactive" }).catch((err) =>
-          console.error("Error auto-locking staff doc:", err)
-        );
-      }
-    });
-  }, [staffList, staffWalletsMap]);
+
 
   const handleToggleStatus = async (staff: Staff, isActive: boolean) => {
     const newStatus = isActive ? "active" : "inactive";
@@ -256,23 +244,23 @@ export default function StaffPage() {
           <header className="mb-10 flex w-full max-w-6xl flex-col items-center text-center sm:flex-row sm:justify-between sm:text-left">
             <div>
               <h1 className="text-4xl font-bold tracking-tighter md:text-5xl">
-                Staff Management
+                Operator Management
               </h1>
               <p className="mt-4 max-w-3xl text-lg text-muted-foreground md:text-xl">
-                Manage your collection agents, auto-lock collection limits, and cash settlements.
+                Manage your operators, collection agents, and cash settlements.
               </p>
             </div>
             <Button asChild className="mt-4 sm:mt-0">
               <Link href="/dashboard/staff/add">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add Staff
+                Add Operator
               </Link>
             </Button>
           </header>
 
           <Card className="w-full max-w-6xl">
             <CardHeader>
-              <CardTitle>Staff List & Collection Limits</CardTitle>
+              <CardTitle>Operators List</CardTitle>
             </CardHeader>
             <CardContent>
               {loading || authLoading ? (
@@ -283,12 +271,9 @@ export default function StaffPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Staff Name</TableHead>
+                      <TableHead>Operator Name</TableHead>
                       <TableHead>Mobile</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead>Cash in Hand (Pending)</TableHead>
-                      <TableHead>Collection Limit</TableHead>
-                      <TableHead>Commission</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -296,10 +281,7 @@ export default function StaffPage() {
                   <TableBody>
                     {staffList.length > 0 ? (
                       staffList.map((staff) => {
-                        const cashInHand = staffWalletsMap[staff.uid] || 0;
-                        const limit = staff.collectionLimit ?? 10000;
-                        const isLimitReached = cashInHand >= limit && limit > 0;
-                        const isActive = !isLimitReached && (staff.status || "active") === "active";
+                        const isActive = (staff.status || "active") === "active";
 
                         return (
                           <TableRow key={staff.id}>
@@ -316,24 +298,6 @@ export default function StaffPage() {
                               <Badge variant="outline">{staff.role}</Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col">
-                                <span className={`font-bold ${isLimitReached ? "text-rose-600 font-extrabold" : "text-emerald-600"}`}>
-                                  ₹{cashInHand.toLocaleString()}
-                                </span>
-                                {isLimitReached && (
-                                  <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">
-                                    Limit Reached
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="font-medium text-slate-700">
-                              ₹{limit.toLocaleString()}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary">{staff.commission}</Badge>
-                            </TableCell>
-                            <TableCell>
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={isActive}
@@ -345,15 +309,6 @@ export default function StaffPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openSettleModal(staff)}
-                                className="border-emerald-600/40 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 text-xs font-semibold"
-                              >
-                                <HandCoins className="mr-1 h-3.5 w-3.5 text-emerald-600" />
-                                Settle Cash
-                              </Button>
                               <Button variant="ghost" size="icon" asChild>
                                 <Link href={`/dashboard/staff/${staff.id}/edit`}>
                                   <Pencil className="h-4 w-4" />
@@ -368,8 +323,8 @@ export default function StaffPage() {
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No staff found.
+                        <TableCell colSpan={5} className="h-24 text-center">
+                          No operators found.
                         </TableCell>
                       </TableRow>
                     )}
@@ -381,81 +336,7 @@ export default function StaffPage() {
         </div>
       </main>
 
-      {/* Admin Settle Cash Modal */}
-      {selectedStaffForSettle && (
-        <Dialog open={isSettleModalOpen} onOpenChange={setIsSettleModalOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                <HandCoins className="h-5 w-5 text-emerald-600" />
-                Settle Cash from {selectedStaffForSettle.name}
-              </DialogTitle>
-              <DialogDescription>
-                Record cash received from this staff member.
-              </DialogDescription>
-            </DialogHeader>
 
-            <div className="space-y-4 py-3 text-sm">
-              <div className="p-3 rounded-lg bg-muted space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Collected Cash in Hand:</span>
-                  <strong className="text-rose-600 font-bold">
-                    ₹{(staffWalletsMap[selectedStaffForSettle.uid] || 0).toLocaleString()}
-                  </strong>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Collection Limit:</span>
-                  <span className="font-medium text-foreground">
-                    ₹{(selectedStaffForSettle.collectionLimit ?? 10000).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Current Account Status:</span>
-                  <Badge variant={selectedStaffForSettle.status === "active" ? "default" : "destructive"}>
-                    {selectedStaffForSettle.status === "active" ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="settle-amount">Amount Received (₹)</Label>
-                <Input
-                  id="settle-amount"
-                  type="number"
-                  placeholder="Enter cash amount received"
-                  value={settleAmount}
-                  onChange={(e) => setSettleAmount(e.target.value)}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  💡 If remaining balance drops below ₹{(selectedStaffForSettle.collectionLimit ?? 10000).toLocaleString()}, status will automatically change to ACTIVE.
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsSettleModalOpen(false)}
-                disabled={isSubmittingSettle}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmAdminSettle}
-                disabled={isSubmittingSettle}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-              >
-                {isSubmittingSettle ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                )}
-                Confirm Settlement
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Delete Staff Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
