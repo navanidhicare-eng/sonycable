@@ -1221,7 +1221,8 @@ class ActionModals {
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
-                      children: ["Wire Repair", "STB Shift", "Connector", "New Remote", "Technician Visit"].map((r) {
+                      runSpacing: 8,
+                      children: ["Wire Repair", "Replace STB", "STB Shift", "Connector", "New Remote", "Technician Visit"].map((r) {
                         final isSel = selectedReason == r;
                         return ChoiceChip(
                           label: Text(r),
