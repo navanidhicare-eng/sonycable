@@ -490,59 +490,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       UpdateService.checkManually(context);
                     },
                   ),
-
-                  const SizedBox(height: 10),
-
-                  // Quick Modals Actions
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          "QUICK ACTIONS",
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.credit_card_rounded,
-                    label: "Recharge Package",
-                    iconColor: const Color(0xFF10B981),
-                    onTap: () => _openQuickAction(context, 0),
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.currency_rupee_rounded,
-                    label: "Collect Due Payment",
-                    iconColor: AppColors.primary,
-                    onTap: () => _openQuickAction(context, 1),
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.add_circle_outline_rounded,
-                    label: "+ Extra Due",
-                    iconColor: const Color(0xFFD97706),
-                    onTap: () => _openQuickAction(context, 2),
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.rate_review_rounded,
-                    label: "Register Complaint",
-                    iconColor: const Color(0xFFE11D48),
-                    onTap: () => _openQuickAction(context, 3),
-                  ),
                 ],
               ),
             ),
@@ -788,12 +735,15 @@ class _DashboardHomeTab extends StatelessWidget {
                     final todaysCollection = allPayments
                         .where((p) =>
                             p.collectedBy == operatorUid &&
-                            p.collectionDate.isAfter(todayStart))
+                            !p.collectionDate.isBefore(todayStart))
                         .fold<double>(0.0, (sum, p) => sum + p.amount);
 
-                    // Operator total cash collected in hand
-                    final myTotalCollection = allPayments
-                        .where((p) => p.collectedBy == operatorUid)
+                    // This Month's Collection by this operator
+                    final monthStart = DateTime(now.year, now.month, 1);
+                    final thisMonthCollection = allPayments
+                        .where((p) =>
+                            p.collectedBy == operatorUid &&
+                            !p.collectionDate.isBefore(monthStart))
                         .fold<double>(0.0, (sum, p) => sum + p.amount);
 
                     final today = DateTime(now.year, now.month, now.day);
@@ -876,13 +826,14 @@ class _DashboardHomeTab extends StatelessWidget {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: _buildMetricCard(
-                                      title: "Collection Wallet",
-                                      value: "₹${currency.format(myTotalCollection.toInt())}",
-                                      subtitle: "Total Cash Collected",
-                                      icon: Icons.account_balance_wallet_outlined,
+                                      title: "This Month's Collection",
+                                      value: "₹${currency.format(thisMonthCollection.toInt())}",
+                                      subtitle: "This Month's Collection",
+                                      icon: Icons.calendar_month_rounded,
                                       bgColor: const Color(0xFFF0FDF4),
                                       textColor: const Color(0xFF166534),
                                       borderColor: const Color(0xFFBBF7D0),
+                                      onTap: () => onNavigateToTab(4),
                                     ),
                                   ),
                                 ],
