@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/customer.dart';
 import '../models/models.dart';
@@ -346,9 +347,57 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      _buildInfoRow("STB ID (Set Top Box):", cust.stbId?.isNotEmpty == true ? cust.stbId! : "Not Assigned"),
+                      _buildInfoRow(
+                        "STB ID (Set Top Box):",
+                        cust.stbId?.isNotEmpty == true ? cust.stbId! : "Not Assigned",
+                        canCopy: true,
+                        onCopy: () {
+                          final val = cust.stbId ?? '';
+                          if (val.isNotEmpty && val != '0') {
+                            Clipboard.setData(ClipboardData(text: val));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+                                    const SizedBox(width: 8),
+                                    Text("STB ID copied: $val"),
+                                  ],
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: const Color(0xFF0F172A),
+                              ),
+                            );
+                          }
+                        },
+                      ),
                       const Divider(height: 18),
-                      _buildInfoRow("STB VC Number (Smart Card):", cust.gtplId?.isNotEmpty == true ? cust.gtplId! : "Not Assigned"),
+                      _buildInfoRow(
+                        "STB VC Number (Smart Card):",
+                        cust.gtplId?.isNotEmpty == true ? cust.gtplId! : "Not Assigned",
+                        canCopy: true,
+                        onCopy: () {
+                          final val = cust.gtplId ?? '';
+                          if (val.isNotEmpty && val != '0') {
+                            Clipboard.setData(ClipboardData(text: val));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+                                    const SizedBox(width: 8),
+                                    Text("VC Number copied: $val"),
+                                  ],
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: const Color(0xFF0F172A),
+                              ),
+                            );
+                          }
+                        },
+                      ),
                       const Divider(height: 18),
                       _buildInfoRow("Assigned Area / Line:", cust.area.isNotEmpty ? cust.area : "Not Set"),
                       if (cust.lastRechargeDate != null) ...[
@@ -358,34 +407,6 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                           DateFormat('dd MMM yyyy, hh:mm a').format(cust.lastRechargeDate!),
                         ),
                       ],
-                      const Divider(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 42,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            elevation: 0,
-                          ),
-                          icon: const Icon(Icons.bolt_rounded, size: 20),
-                          label: const Text(
-                            "1-Click Refresh STB (NXT Digital)",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          onPressed: () {
-                            final targetId = cust.stbId?.isNotEmpty == true
-                                ? cust.stbId!
-                                : (cust.gtplId?.isNotEmpty == true ? cust.gtplId! : '');
-                            NxtDigitalModals.showRetrackModal(
-                              context,
-                              deviceId: targetId,
-                              customerName: cust.name,
-                            );
-                          },
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -594,9 +615,15 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    bool canCopy = false,
+    VoidCallback? onCopy,
+  }) {
+    final showCopy = canCopy && value.isNotEmpty && value != "Not Assigned" && value != "0";
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
@@ -605,14 +632,55 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
         ),
         const SizedBox(width: 10),
         Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (showCopy) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: onCopy,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.copy_rounded,
+                          size: 13,
+                          color: Color(0xFF2563EB),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "Copy",
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],

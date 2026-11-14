@@ -10,6 +10,7 @@ import '../services/nxt_digital_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/action_modals.dart';
 import '../widgets/nxt_digital_modals.dart';
+import '../widgets/barcode_scanner_modal.dart';
 import 'customers_screen.dart';
 import 'complaints_screen.dart';
 import 'reminders_screen.dart';
@@ -1504,12 +1505,16 @@ class _StbQuickLocatorCardState extends State<_StbQuickLocatorCard> {
     }
   }
 
-  Future<void> _handlePaste() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data?.text != null && data!.text!.trim().isNotEmpty) {
+  Future<void> _handleScanBarcode() async {
+    final code = await BarcodeScannerModal.scan(
+      context,
+      title: "Scan STB Barcode",
+    );
+    if (code != null && code.trim().isNotEmpty) {
       setState(() {
-        _controller.text = data.text!.trim();
+        _controller.text = code.trim();
       });
+      _handleLocate();
     }
   }
 
@@ -1634,9 +1639,9 @@ class _StbQuickLocatorCardState extends State<_StbQuickLocatorCard> {
                             },
                           ),
                         IconButton(
-                          tooltip: "Paste from clipboard",
-                          icon: const Icon(Icons.content_paste_rounded, size: 16, color: Color(0xFF2563EB)),
-                          onPressed: _handlePaste,
+                          tooltip: "Scan Barcode from Box",
+                          icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: Color(0xFF2563EB)),
+                          onPressed: _handleScanBarcode,
                         ),
                       ],
                     ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/nxt_digital_service.dart';
 import '../theme/app_theme.dart';
+import 'barcode_scanner_modal.dart';
 
 class NxtDigitalModals {
   static final AudioPlayer _audioPlayer = AudioPlayer();
@@ -340,12 +341,33 @@ class NxtDigitalModals {
                       decoration: InputDecoration(
                         hintText: "Enter STB ID or VC Number...",
                         prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          onPressed: () => setModalState(() {
-                            controller.clear();
-                            result = null;
-                          }),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (controller.text.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                onPressed: () => setModalState(() {
+                                  controller.clear();
+                                  result = null;
+                                }),
+                              ),
+                            IconButton(
+                              tooltip: "Scan Barcode from Box",
+                              icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: Color(0xFF2563EB)),
+                              onPressed: () async {
+                                final code = await BarcodeScannerModal.scan(
+                                  context,
+                                  title: "Scan STB Barcode",
+                                );
+                                if (code != null && code.trim().isNotEmpty) {
+                                  setModalState(() {
+                                    controller.text = code.trim();
+                                  });
+                                }
+                              },
+                            ),
+                          ],
                         ),
                         filled: true,
                         fillColor: AppColors.inputBg,
@@ -728,3 +750,4 @@ class _RetrackExecutionSheetState extends State<_RetrackExecutionSheet> {
     );
   }
 }
+
