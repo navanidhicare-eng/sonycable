@@ -437,7 +437,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   _buildDrawerItem(
                     icon: Icons.picture_as_pdf_rounded,
-                    label: "Reports (STB & VC)",
+                    label: "Customer Reports",
                     iconColor: const Color(0xFFE11D48),
                     onTap: () {
                       Navigator.pop(context);

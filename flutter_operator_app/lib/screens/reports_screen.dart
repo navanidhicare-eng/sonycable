@@ -6,8 +6,12 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/customer.dart';
 import '../theme/app_theme.dart';
+import 'customers_screen.dart';
+import 'reminders_screen.dart';
+import 'my_collections_screen.dart';
 
-class ReportsScreen extends StatefulWidget {
+/// Reports Center / Hub where all report categories are listed
+class ReportsScreen extends StatelessWidget {
   final String operatorName;
   final String operatorUid;
 
@@ -18,10 +22,286 @@ class ReportsScreen extends StatefulWidget {
   });
 
   @override
-  State<ReportsScreen> createState() => _ReportsScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Customer Reports",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textPrimary),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Banner
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.analytics_rounded, color: Color(0xFFF97316), size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "Reports & Exports Hub",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Choose a report below to view live data, filter by line, and export printable PDF records.",
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            const Text(
+              "AVAILABLE REPORTS",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textMuted,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 1. VC No & STB ID Report (Target Report)
+            _buildReportCard(
+              context,
+              title: "VC No & STB ID Report",
+              subtitle: "Customers with assigned STB box & smartcard VC numbers. Filter by lines & export A4 Master PDF.",
+              badge: "PDF Export",
+              badgeColor: const Color(0xFFEA580C),
+              icon: Icons.developer_board_rounded,
+              iconColor: const Color(0xFFEA580C),
+              iconBgColor: const Color(0xFFFFF7ED),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StbVcReportScreen(
+                      operatorName: operatorName,
+                      operatorUid: operatorUid,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Pending Due Balances Report
+            _buildReportCard(
+              context,
+              title: "Pending Due Balances",
+              subtitle: "List of all customers with pending dues and line-wise balance totals.",
+              badge: "Collections",
+              badgeColor: const Color(0xFFDC2626),
+              icon: Icons.account_balance_wallet_rounded,
+              iconColor: const Color(0xFFDC2626),
+              iconBgColor: const Color(0xFFFEF2F2),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CustomersScreen(
+                      operatorName: operatorName,
+                      operatorUid: operatorUid,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // 3. Expiring Subscriptions Report
+            _buildReportCard(
+              context,
+              title: "Expiring Subscriptions",
+              subtitle: "Connections expiring within next 3 to 7 days for renewal collection.",
+              badge: "Renewals",
+              badgeColor: const Color(0xFFD97706),
+              icon: Icons.alarm_rounded,
+              iconColor: const Color(0xFFD97706),
+              iconBgColor: const Color(0xFFFFFBEB),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RemindersScreen(
+                      operatorName: operatorName,
+                      operatorUid: operatorUid,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // 4. Daily Collections History
+            _buildReportCard(
+              context,
+              title: "Collections & Cash History",
+              subtitle: "Daily cash & PhonePe receipts ledger with transaction details.",
+              badge: "Payments",
+              badgeColor: const Color(0xFF059669),
+              icon: Icons.receipt_long_rounded,
+              iconColor: const Color(0xFF059669),
+              iconBgColor: const Color(0xFFECFDF5),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MyCollectionsScreen(
+                      operatorName: operatorName,
+                      operatorUid: operatorUid,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String badge,
+    required Color badgeColor,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+/// Dedicated VC No & STB ID Report Screen
+class StbVcReportScreen extends StatefulWidget {
+  final String operatorName;
+  final String operatorUid;
+
+  const StbVcReportScreen({
+    super.key,
+    required this.operatorName,
+    required this.operatorUid,
+  });
+
+  @override
+  State<StbVcReportScreen> createState() => _StbVcReportScreenState();
+}
+
+class _StbVcReportScreenState extends State<StbVcReportScreen> {
   String _searchQuery = "";
   String _selectedArea = "All Lines";
   bool _isGeneratingPdf = false;
@@ -52,8 +332,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
       final pdf = pw.Document();
       final nowFormatted = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
-
-      // Chunk customers into pages of 24 per page for optimal table layout
       final int totalCount = customers.length;
 
       pdf.addPage(
@@ -221,7 +499,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Customer Reports",
+          "VC No & STB ID Report",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textPrimary),
         ),
       ),
