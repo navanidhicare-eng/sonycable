@@ -631,3 +631,4 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
     );
   }
 }
+

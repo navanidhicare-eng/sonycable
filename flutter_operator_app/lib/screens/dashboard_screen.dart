@@ -13,6 +13,7 @@ import 'reminders_screen.dart';
 import 'my_collections_screen.dart';
 import 'customer_ledger_screen.dart';
 import 'recharge_expenses_screen.dart';
+import 'reports_screen.dart';
 import '../services/update_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -33,53 +34,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UpdateService.checkOnStartup(context);
     });
-  }
-
-  Future<void> _openQuickAction(BuildContext context, int actionType) async {
-    Navigator.of(context).pop(); // close drawer
-
-    final operator = widget.authService.currentOperator;
-    final operatorName = operator?.name ?? "Operator";
-    final operatorUid = widget.authService.currentUser?.uid ?? "";
-
-    final custSnap = await FirebaseFirestore.instance.collection('customers').get();
-    final pkgSnap = await FirebaseFirestore.instance.collection('packages').get();
-
-    final allCustomers = custSnap.docs.map((d) => Customer.fromFirestore(d)).toList();
-    final packages = pkgSnap.docs.map((d) => CablePackage.fromFirestore(d)).toList();
-
-    if (!context.mounted) return;
-
-    if (actionType == 0) {
-      ActionModals.showRechargeModal(
-        context,
-        operatorName: operatorName,
-        operatorUid: operatorUid,
-        allCustomers: allCustomers,
-        packages: packages,
-      );
-    } else if (actionType == 1) {
-      ActionModals.showCollectModal(
-        context,
-        operatorName: operatorName,
-        operatorUid: operatorUid,
-        allCustomers: allCustomers,
-      );
-    } else if (actionType == 2) {
-      ActionModals.showExtraDueModal(
-        context,
-        operatorName: operatorName,
-        operatorUid: operatorUid,
-        allCustomers: allCustomers,
-      );
-    } else if (actionType == 3) {
-      ActionModals.showComplaintModal(
-        context,
-        operatorName: operatorName,
-        operatorUid: operatorUid,
-        allCustomers: allCustomers,
-      );
-    }
   }
 
   void _confirmLogout(BuildContext context) {
@@ -474,6 +428,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => RechargeExpensesScreen(
+                            operatorName: operatorName,
+                            operatorUid: widget.authService.currentUser?.uid ?? "",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: "Reports (STB & VC)",
+                    iconColor: const Color(0xFFE11D48),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReportsScreen(
                             operatorName: operatorName,
                             operatorUid: widget.authService.currentUser?.uid ?? "",
                           ),
