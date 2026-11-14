@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../services/whatsapp_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/action_modals.dart';
+import '../widgets/nxt_digital_modals.dart';
 import 'customer_ledger_screen.dart';
 
 class CustomerDetailsScreen extends StatefulWidget {
@@ -357,6 +358,34 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                           DateFormat('dd MMM yyyy, hh:mm a').format(cust.lastRechargeDate!),
                         ),
                       ],
+                      const Divider(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.bolt_rounded, size: 20),
+                          label: const Text(
+                            "1-Click Refresh STB (NXT Digital)",
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          onPressed: () {
+                            final targetId = cust.stbId?.isNotEmpty == true
+                                ? cust.stbId!
+                                : (cust.gtplId?.isNotEmpty == true ? cust.gtplId! : '');
+                            NxtDigitalModals.showRetrackModal(
+                              context,
+                              deviceId: targetId,
+                              customerName: cust.name,
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -449,6 +478,26 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                       operatorName: widget.operatorName,
                       operatorUid: widget.operatorUid,
                       preSelectedCustomer: cust,
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+
+                _buildActionButton(
+                  title: "Refresh STB (NXT Digital)",
+                  subtitle: "Send instant satellite rehit / activation signal to TV box",
+                  icon: Icons.bolt_rounded,
+                  iconColor: const Color(0xFF2563EB),
+                  bgColor: const Color(0xFFEFF6FF),
+                  borderColor: const Color(0xFFBFDBFE),
+                  onTap: () {
+                    final targetId = cust.stbId?.isNotEmpty == true
+                        ? cust.stbId!
+                        : (cust.gtplId?.isNotEmpty == true ? cust.gtplId! : '');
+                    NxtDigitalModals.showRetrackModal(
+                      context,
+                      deviceId: targetId,
+                      customerName: cust.name,
                     );
                   },
                 ),

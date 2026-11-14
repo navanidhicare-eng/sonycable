@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/customer.dart';
 import '../models/models.dart';
 import '../services/auth_service.dart';
 import '../services/whatsapp_service.dart';
+import '../services/nxt_digital_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/action_modals.dart';
+import '../widgets/nxt_digital_modals.dart';
 import 'customers_screen.dart';
 import 'complaints_screen.dart';
 import 'reminders_screen.dart';
@@ -453,6 +456,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
                   _buildDrawerItem(
+                    icon: Icons.travel_explore_rounded,
+                    label: "STB Quick Locator (NXT Digital)",
+                    iconColor: const Color(0xFF2563EB),
+                    onTap: () {
+                      Navigator.pop(context);
+                      NxtDigitalModals.showLocatorModal(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.satellite_alt_rounded,
+                    label: "NXT Digital Portal Login",
+                    iconColor: const Color(0xFF0284C7),
+                    onTap: () {
+                      Navigator.pop(context);
+                      NxtDigitalModals.showSettingsModal(context);
+                    },
+                  ),
+                  _buildDrawerItem(
                     icon: Icons.system_update_rounded,
                     label: "Check for Updates",
                     iconColor: const Color(0xFF10B981),
@@ -817,6 +838,10 @@ class _DashboardHomeTab extends StatelessWidget {
                                 allCustomers: allCustomers,
                                 packages: allPackages,
                               ),
+                              const SizedBox(height: 20),
+
+                              // STB Quick Locator (NXT Digital)
+                              const _StbQuickLocatorCard(),
                               const SizedBox(height: 24),
 
                               // Expiring Boxes Section
@@ -1412,6 +1437,416 @@ class _DashboardHomeTab extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Quick STB Locator Card on Homepage
+class _StbQuickLocatorCard extends StatefulWidget {
+  const _StbQuickLocatorCard();
+
+  @override
+  State<_StbQuickLocatorCard> createState() => _StbQuickLocatorCardState();
+}
+
+class _StbQuickLocatorCardState extends State<_StbQuickLocatorCard> {
+  final TextEditingController _controller = TextEditingController();
+  bool _isLoading = false;
+  NxtTrackResult? _result;
+  bool _showRawDebug = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLocate() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter an STB Number or VC / Smartcard ID."),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
+    final hasCreds = await NxtDigitalService.hasCredentials();
+    if (!hasCreds) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please configure your NXT Digital username & password first."),
+          backgroundColor: Color(0xFFD97706),
+        ),
+      );
+      NxtDigitalModals.showSettingsModal(context);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _result = null;
+      _showRawDebug = false;
+    });
+
+    final res = await NxtDigitalService.trackStb(text);
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _result = res;
+      });
+    }
+  }
+
+  Future<void> _handlePaste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.trim().isNotEmpty) {
+      setState(() {
+        _controller.text = data.text!.trim();
+      });
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value, {Color? valueColor, bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 105,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                color: valueColor ?? AppColors.textPrimary,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(Icons.satellite_alt_rounded, color: Color(0xFF2563EB), size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "STB Quick Locator",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      "Live search & retrack on NXT Digital Portal",
+                      style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: () => NxtDigitalModals.showSettingsModal(context),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.tune_rounded, size: 12, color: AppColors.textSecondary),
+                      SizedBox(width: 4),
+                      Text("Portal Login", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Input field row
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Enter STB / VC Number...",
+                    hintStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12, color: AppColors.textMuted),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF2563EB), size: 20),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_controller.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 16, color: AppColors.textMuted),
+                            onPressed: () {
+                              setState(() {
+                                _controller.clear();
+                                _result = null;
+                              });
+                            },
+                          ),
+                        IconButton(
+                          tooltip: "Paste from clipboard",
+                          icon: const Icon(Icons.content_paste_rounded, size: 16, color: Color(0xFF2563EB)),
+                          onPressed: _handlePaste,
+                        ),
+                      ],
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                    ),
+                  ),
+                  onSubmitted: (_) => _handleLocate(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 42,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    elevation: 0,
+                  ),
+                  onPressed: _isLoading ? null : _handleLocate,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Row(
+                          children: [
+                            Icon(Icons.travel_explore_rounded, size: 16),
+                            SizedBox(width: 4),
+                            Text("Locate", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+
+          // Result display
+          if (_result != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _result!.isSuccess ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _result!.isSuccess ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _result!.isSuccess ? Icons.verified_rounded : Icons.info_outline_rounded,
+                        color: _result!.isSuccess ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _result!.isSuccess ? "STB Located on NXT Portal" : "Tracking Notice / Error",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            color: _result!.isSuccess ? const Color(0xFF166534) : const Color(0xFF991B1B),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: _result!.isSuccess ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA),
+                          ),
+                        ),
+                        child: Text(
+                          "${_result!.latencyMs}ms",
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 14),
+                  if (_result!.customerName != null)
+                    _buildInfoRow("Customer:", _result!.customerName!, isBold: true),
+                  if (_result!.lcoCode != null)
+                    _buildInfoRow("LCO Code:", _result!.lcoCode!),
+                  if (_result!.canNumber != null)
+                    _buildInfoRow("CAN Number:", _result!.canNumber!, valueColor: const Color(0xFF2563EB), isBold: true),
+                  if (_result!.casType != null)
+                    _buildInfoRow("CAS / Item:", "${_result!.casType} (${_result!.itemCode ?? ''})"),
+                  _buildInfoRow("Server Msg:", _result!.rawMessage, valueColor: _result!.isSuccess ? const Color(0xFF166534) : const Color(0xFF991B1B)),
+
+                  const SizedBox(height: 10),
+
+                  // Action Buttons Row (1-Click Retrack + Debug Log)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 36,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF16A34A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                            icon: const Icon(Icons.bolt_rounded, size: 16),
+                            label: const Text(
+                              "1-Click Refresh STB",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+                            ),
+                            onPressed: () {
+                              NxtDigitalModals.showRetrackModal(
+                                context,
+                                deviceId: _controller.text.trim(),
+                                customerName: _result!.customerName ?? "Customer",
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 36,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          onPressed: () {
+                            setState(() => _showRawDebug = !_showRawDebug);
+                          },
+                          child: Text(
+                            _showRawDebug ? "Hide Debug" : "Debug Log",
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Raw Debug View
+                  if (_showRawDebug) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "RAW NXT RESPONSE",
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.bold),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: _result!.rawResponse));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Debug response copied!"), duration: Duration(seconds: 1)),
+                                  );
+                                },
+                                child: const Icon(Icons.copy_rounded, color: Colors.white70, size: 14),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _result!.rawResponse,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                              color: Color(0xFF4ADE80),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
