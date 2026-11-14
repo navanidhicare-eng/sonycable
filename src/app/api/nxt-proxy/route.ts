@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { endpoint, method = "GET", headers = {}, body, isFormData = false } = await req.json();
@@ -35,12 +46,32 @@ export async function POST(req: NextRequest) {
     const setCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [res.headers.get("set-cookie") || ""];
     const text = await res.text();
 
-    return NextResponse.json({
-      status: res.status,
-      cookies: setCookies,
-      body: text
-    });
+    return NextResponse.json(
+      {
+        status: res.status,
+        cookies: setCookies,
+        body: text
+      },
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        }
+      }
+    );
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        }
+      }
+    );
   }
 }
+

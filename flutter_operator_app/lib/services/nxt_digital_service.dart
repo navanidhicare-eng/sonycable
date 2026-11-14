@@ -113,7 +113,10 @@ class NxtDigitalService {
   }) async {
     if (kIsWeb) {
       // On Web, proxy through Next.js API route to bypass browser CORS
-      final proxyUrl = Uri.parse('/api/nxt-proxy');
+      // If running flutter web dev server on port 8085 or similar, route to Next.js port 9002
+      final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
+      final scheme = Uri.base.scheme.isNotEmpty ? Uri.base.scheme : 'http';
+      final proxyUrl = Uri.parse('$scheme://$host:9002/api/nxt-proxy');
       final res = await http.post(
         proxyUrl,
         headers: {'Content-Type': 'application/json'},
@@ -484,3 +487,4 @@ class NxtDigitalService {
     }
   }
 }
+
