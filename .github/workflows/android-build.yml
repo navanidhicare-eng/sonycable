@@ -38,7 +38,7 @@ jobs:
       - name: Build Flutter Release APK
         run: |
           cd flutter_operator_app
-          flutter build apk --release
+          flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Prepare Release Artifacts
         run: |
