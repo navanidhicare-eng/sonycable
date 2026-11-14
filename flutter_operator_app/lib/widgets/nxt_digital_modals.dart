@@ -20,6 +20,7 @@ class NxtDigitalModals {
     final userController = TextEditingController(text: creds['username']);
     final passController = TextEditingController(text: creds['password']);
 
+    bool obscurePassword = true;
     bool isTesting = false;
     String? testStatusMessage;
     bool? testStatusSuccess;
@@ -107,12 +108,25 @@ class NxtDigitalModals {
                     const SizedBox(height: 6),
                     TextField(
                       controller: passController,
-                      obscureText: true,
+                      obscureText: obscurePassword,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: "Enter portal password",
                         hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                         prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            color: AppColors.textSecondary,
+                            size: 20,
+                          ),
+                          tooltip: obscurePassword ? "Show password" : "Hide password",
+                          onPressed: () {
+                            setModalState(() {
+                              obscurePassword = !obscurePassword;
+                            });
+                          },
+                        ),
                         filled: true,
                         fillColor: AppColors.inputBg,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
