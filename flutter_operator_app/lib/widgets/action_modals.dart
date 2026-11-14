@@ -1447,6 +1447,29 @@ class ActionModals {
                         setModalState(() => suggestions = sList);
                       },
                     ),
+                    if (selectedCustomer != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "${selectedCustomer!.name} (ID: ${selectedCustomer!.displayId}) • ${selectedCustomer!.area}",
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Common Issues
@@ -1454,6 +1477,7 @@ class ActionModals {
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
+                      runSpacing: 8,
                       children: [
                         "No Signal / Blue Screen",
                         "Wire Cut / Fiber Damage",
@@ -1461,21 +1485,22 @@ class ActionModals {
                         "Box Not Powering ON",
                         "Audio / Picture Glitch",
                         "STB Relocation",
+                        "Replace STB",
                       ].map((issue) {
                         final isSel = selectedIssue == issue;
                         return ChoiceChip(
                           label: Text(issue),
                           selected: isSel,
-                          selectedColor: AppColors.primary,
+                          selectedColor: const Color(0xFFDC2626),
                           backgroundColor: const Color(0xFFF8FAFC),
                           side: BorderSide(
-                            color: isSel ? AppColors.primary : const Color(0xFFCBD5E1),
+                            color: isSel ? const Color(0xFFDC2626) : const Color(0xFFCBD5E1),
                             width: 1.2,
                           ),
                           labelStyle: TextStyle(
                             color: isSel ? Colors.white : const Color(0xFF334155),
                             fontWeight: FontWeight.bold,
-                            fontSize: 11,
+                            fontSize: 11.5,
                           ),
                           onSelected: (_) => setModalState(() => selectedIssue = issue),
                         );
@@ -1497,7 +1522,7 @@ class ActionModals {
                         fillColor: AppColors.surfaceSecondary,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.border)),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.border)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFDC2626), width: 2)),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -1512,15 +1537,25 @@ class ActionModals {
                             ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                             : const Text("Register & Send WhatsApp Alert", style: TextStyle(fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: const Color(0xFFDC2626),
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: const Color(0xFFE2E8F0),
                           disabledForegroundColor: const Color(0xFF94A3B8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                        onPressed: (isSubmitting || selectedCustomer == null)
+                        onPressed: isSubmitting
                             ? null
                             : () async {
+                                if (selectedCustomer == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Please select a Customer first!"),
+                                      backgroundColor: AppColors.danger,
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 setModalState(() => isSubmitting = true);
                                 try {
                                   final fullIssue = detailsController.text.trim().isNotEmpty
@@ -1539,7 +1574,19 @@ class ActionModals {
                                     'adminId': selectedCustomer!.adminId,
                                   });
 
-                                  if (context.mounted) Navigator.pop(context);
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+
+                                    // Play PhonePe success chime
+                                    SoundService.playSuccessSound();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Complaint for ${selectedCustomer!.name} registered successfully! ✅"),
+                                        backgroundColor: AppColors.success,
+                                      ),
+                                    );
+                                  }
 
                                   final msg = WhatsAppService.getComplaintRegisteredMessage(
                                     customerName: selectedCustomer!.name,
