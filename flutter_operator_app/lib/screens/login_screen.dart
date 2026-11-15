@@ -40,13 +40,31 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    final error = await widget.authService.login(email, password);
+    try {
+      final error = await widget.authService.login(email, password).timeout(
+        const Duration(seconds: 14),
+        onTimeout: () => "Login request timed out. Please check your network.",
+      );
 
-    if (mounted) {
-      setState(() {
-        _isSubmitting = false;
-        _errorMessage = error;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = error;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = "Error: $e";
+        });
+      }
+    } finally {
+      if (mounted && _isSubmitting) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 

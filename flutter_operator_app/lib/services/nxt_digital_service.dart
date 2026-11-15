@@ -149,7 +149,7 @@ class NxtDigitalService {
           final request = http.MultipartRequest('POST', url);
           request.headers.addAll(reqHeaders);
           body.forEach((key, val) => request.fields[key] = val.toString());
-          final streamed = await request.send();
+          final streamed = await request.send().timeout(const Duration(seconds: 10));
           final res = await http.Response.fromStream(streamed);
 
           return {
@@ -158,7 +158,11 @@ class NxtDigitalService {
             'body': res.body,
           };
         } else {
-          final res = await http.post(url, headers: reqHeaders, body: body != null ? jsonEncode(body) : null);
+          final res = await http.post(
+            url,
+            headers: reqHeaders,
+            body: body != null ? jsonEncode(body) : null,
+          ).timeout(const Duration(seconds: 10));
           return {
             'status': res.statusCode,
             'cookies': [res.headers['set-cookie'] ?? ''],
@@ -166,7 +170,7 @@ class NxtDigitalService {
           };
         }
       } else {
-        final res = await http.get(url, headers: reqHeaders);
+        final res = await http.get(url, headers: reqHeaders).timeout(const Duration(seconds: 10));
         return {
           'status': res.statusCode,
           'cookies': [res.headers['set-cookie'] ?? ''],

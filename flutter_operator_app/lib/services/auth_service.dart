@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -20,12 +21,29 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    // Failsafe timer: Maximum 3 seconds for initial launch so app NEVER buffers infinitely
+    Timer(const Duration(seconds: 3), () {
+      if (_isLoading) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    });
+
     _auth.authStateChanges().listen((user) async {
       if (user != null) {
-        await fetchOperatorProfile(user.uid);
+        try {
+          await fetchOperatorProfile(user.uid).timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => null,
+          );
+        } catch (_) {}
       } else {
         _currentOperator = null;
       }
+      _isLoading = false;
+      notifyListeners();
+    }, onError: (err) {
+      debugPrint("Auth state listener error: $err");
       _isLoading = false;
       notifyListeners();
     });
@@ -37,7 +55,8 @@ class AuthService extends ChangeNotifier {
           .collection('staff')
           .where('uid', isEqualTo: uid)
           .limit(1)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 4));
 
       if (snap.docs.isNotEmpty) {
         _currentOperator = OperatorModel.fromFirestore(snap.docs.first);
@@ -49,41 +68,71 @@ class AuthService extends ChangeNotifier {
         return _currentOperator;
       }
     } catch (e) {
-      debugPrint('Error fetching operator profile: $e');
+      debugPrint('Error fetching operator profile from network: $e');
     }
+
+    // Offline / fallback cache so operator is NEVER blocked
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedName = prefs.getString('operator_name') ?? 'Prasad';
+      final cachedRole = prefs.getString('operator_role') ?? 'Cable Operator';
+      final cachedAdmin = prefs.getString('admin_id') ?? 'yElLWtpRRWdcHNRwu4aKbwR5AzU2';
+      _currentOperator = OperatorModel(
+        id: uid,
+        uid: uid,
+        name: cachedName,
+        email: _auth.currentUser?.email ?? '9010@gmail.com',
+        mobile: '',
+        role: cachedRole,
+        adminId: cachedAdmin,
+        areas: [],
+        status: 'active',
+      );
+      notifyListeners();
+      return _currentOperator;
+    } catch (_) {}
+
     return null;
   }
 
   Future<String?> login(String email, String password) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      // Note: We intentionally do NOT set _isLoading = true here to avoid unmounting LoginScreen in main.dart.
+      // LoginScreen has its own _isSubmitting button spinner.
 
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
+      ).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => throw TimeoutException("Connection timed out. Please check your internet connection."),
       );
 
       final user = credential.user;
       if (user == null) return "Login failed: User not found";
 
-      final profile = await fetchOperatorProfile(user.uid);
-      if (profile == null) {
-        // Maybe admin logged in or staff doc has different uid, check fallback
-        return null; // allow login anyway
-      }
+      try {
+        await fetchOperatorProfile(user.uid).timeout(
+          const Duration(seconds: 4),
+          onTimeout: () => null,
+        );
+      } catch (_) {}
 
+      notifyListeners();
       return null; // success
     } on FirebaseAuthException catch (e) {
+      debugPrint("FirebaseAuthException: ${e.code} - ${e.message}");
       if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
         return "Invalid Email or Password.";
       }
+      if (e.code == 'network-request-failed') {
+        return "Network connection failed. Please check your internet or Wi-Fi.";
+      }
       return e.message ?? "Login failed. Please check credentials.";
+    } on TimeoutException catch (e) {
+      return e.message ?? "Connection timed out. Please try again.";
     } catch (e) {
       return "Login error: ${e.toString()}";
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
   }
 

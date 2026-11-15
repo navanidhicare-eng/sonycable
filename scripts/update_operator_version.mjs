@@ -18,15 +18,15 @@ async function run() {
   const snap = await getDoc(ref);
   console.log('Current Firestore config:', snap.data());
   await setDoc(ref, {
-    version: '1.0.9',
-    latestVersion: '1.0.9',
-    buildNumber: 2010,
+    version: '1.0.10',
+    latestVersion: '1.0.10',
+    buildNumber: 2011,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: 'Fixed AndroidManifest permissions for Android 13 and below, and resolved operator login & NXT STB refresh.',
+    releaseNotes: 'Fixed operator login infinite buffering on Android 13, added network timeouts, and local profile fallback.',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.9+2010 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.10+2011 successfully!');
   process.exit(0);
 }
 
