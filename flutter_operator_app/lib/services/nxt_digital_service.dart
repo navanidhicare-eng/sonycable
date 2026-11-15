@@ -138,6 +138,7 @@ class NxtDigitalService {
       final url = Uri.parse('$_baseUrl$endpoint');
       final reqHeaders = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
         'Referer': '$_baseUrl/',
         'Origin': _baseUrl,
         if (headers != null) ...headers,
@@ -205,6 +206,11 @@ class NxtDigitalService {
       final rawText = res['body']?.toString() ?? '';
 
       // Extract the authenticated session cookie
+      // Note: NXT Digital issues two Set-Cookie headers on login:
+      // 1) Pre-auth session (e.g. PHPSESSID=aaa)
+      // 2) Post-auth session (e.g. PHPSESSID=bbb)
+      // On native Android, Dart joins multiple Set-Cookie headers into one comma-separated string.
+      // We must extract the LAST PHPSESSID token, which is the authenticated session!
       final dynamic cookiesData = res['cookies'];
       List<String> cookiesList = [];
       if (cookiesData is List) {
@@ -213,12 +219,12 @@ class NxtDigitalService {
         cookiesList = [cookiesData];
       }
 
-      for (final c in cookiesList) {
-        if (c.contains('PHPSESSID=')) {
-          final match = RegExp(r'PHPSESSID=([^;]+)').firstMatch(c);
-          if (match != null) {
-            _cachedSessionCookie = 'PHPSESSID=${match.group(1)}';
-          }
+      final combinedCookies = cookiesList.join(', ');
+      final allSessionMatches = RegExp(r'PHPSESSID=([^;, ]+)').allMatches(combinedCookies);
+      if (allSessionMatches.isNotEmpty) {
+        final lastToken = allSessionMatches.last.group(1);
+        if (lastToken != null && lastToken.isNotEmpty) {
+          _cachedSessionCookie = 'PHPSESSID=$lastToken';
         }
       }
 
@@ -424,6 +430,15 @@ class NxtDigitalService {
 
       final latency = stopwatch.elapsedMilliseconds;
       final rawTrack = trackRes['body']?.toString() ?? '';
+
+      // If session expired or invalid, re-login once and retry
+      if (trackRes['status'] == 401 || rawTrack.contains("No valid session") || rawTrack.contains("Session expired")) {
+        _cachedSessionCookie = null;
+        final relogin = await login();
+        if (relogin.isSuccess) {
+          return await trackStb(cleanId);
+        }
+      }
 
       Map<String, dynamic> trackJson = {};
       try {
