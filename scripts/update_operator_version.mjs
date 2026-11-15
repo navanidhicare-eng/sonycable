@@ -18,15 +18,15 @@ async function run() {
   const snap = await getDoc(ref);
   console.log('Current Firestore config:', snap.data());
   await setDoc(ref, {
-    version: '1.0.8',
-    latestVersion: '1.0.8',
-    buildNumber: 2009,
+    version: '1.0.9',
+    latestVersion: '1.0.9',
+    buildNumber: 2010,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: 'Fixed NXT Digital STB locator and retrack session authentication on Android devices.',
+    releaseNotes: 'Fixed AndroidManifest permissions for Android 13 and below, and resolved operator login & NXT STB refresh.',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.8+2009 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.9+2010 successfully!');
   process.exit(0);
 }
 
