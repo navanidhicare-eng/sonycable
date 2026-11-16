@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, Search, Loader2, Upload, RefreshCw, Pencil, Trash2, ChevronLeft, ChevronRight, MapPin, Eye } from "lucide-react";
+import { PlusCircle, Search, Loader2, Upload, RefreshCw, Pencil, Trash2, ChevronLeft, ChevronRight, MapPin, Eye, FileDown } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, Timestamp, writeBatch, doc, getDocs, deleteDoc } from "firebase/firestore";
@@ -17,6 +17,8 @@ import Papa from "papaparse";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AP_LOCATIONS } from "@/lib/apLocations";
 import { format } from "date-fns";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Customer {
   id: string;
@@ -52,6 +54,7 @@ export default function CustomersPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // ── Firestore listener ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -133,6 +136,138 @@ export default function CustomersPage() {
   const locationLabel = (c: Customer) => {
     const parts = [c.village || c.area, c.mandal].filter(Boolean);
     return parts.length ? parts.join(", ") : "—";
+  };
+
+  // ── PDF Export ─────────────────────────────────────────────────────────────
+  const downloadCustomersPdf = () => {
+    if (filtered.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Data",
+        description: "No customers found to export.",
+      });
+      return;
+    }
+
+    try {
+      setIsExportingPdf(true);
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Brand Header Banner
+      doc.setFillColor(249, 115, 22); // Orange #F97316
+      doc.rect(0, 0, pageWidth, 22, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text("NAVANIDHI DIGITAL / SONY CABLE NETWORK", 14, 10);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(255, 237, 213);
+      doc.text("Customer Directory & Subscription Report", 14, 16);
+
+      // Report Meta Information
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(75, 85, 99);
+
+      const generatedDate = format(new Date(), "dd MMM yyyy, hh:mm a");
+      doc.text(`Generated On: ${generatedDate}`, 14, 27);
+      doc.text(`Total Customers Exported: ${filtered.length}`, pageWidth - 14, 27, { align: "right" });
+
+      // Active filters summary
+      const activeFilters: string[] = [];
+      if (searchTerm) activeFilters.push(`Search: "${searchTerm}"`);
+      if (filterDistrict !== "all") activeFilters.push(`District: ${filterDistrict}`);
+      if (filterMandal !== "all") activeFilters.push(`Mandal: ${filterMandal}`);
+      if (filterVillage !== "all") activeFilters.push(`Village/Area: ${filterVillage}`);
+
+      if (activeFilters.length > 0) {
+        doc.setFontSize(7.5);
+        doc.setTextColor(107, 114, 128);
+        doc.text(`Filters: ${activeFilters.join(" | ")}`, 14, 32);
+      }
+
+      const startY = activeFilters.length > 0 ? 35 : 30;
+
+      // Table Setup
+      const tableHeaders = [
+        ["#", "Customer Name", "Mobile", "Location / Area", "STB VC Number", "Customer ID", "Last Recharge"]
+      ];
+
+      const tableRows = filtered.map((c, index) => [
+        (index + 1).toString(),
+        c.name || "—",
+        c.mobile || "—",
+        locationLabel(c),
+        c.stbId || "—",
+        c.customerId || (c.gtplId ? `GTPL: ${c.gtplId}` : "—"),
+        formatDate(c.lastRechargeDate)
+      ]);
+
+      autoTable(doc, {
+        head: tableHeaders,
+        body: tableRows,
+        startY: startY,
+        theme: "striped",
+        headStyles: {
+          fillColor: [234, 88, 12],
+          textColor: [255, 255, 255],
+          fontSize: 8,
+          fontStyle: "bold",
+          halign: "left",
+        },
+        bodyStyles: {
+          fontSize: 7.5,
+          textColor: [31, 41, 55],
+          cellPadding: { top: 2, bottom: 2, left: 1.5, right: 1.5 },
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251],
+        },
+        columnStyles: {
+          0: { cellWidth: 14, halign: "center" },
+          1: { cellWidth: 38, fontStyle: "bold" },
+          2: { cellWidth: 24 },
+          3: { cellWidth: 34 },
+          4: { cellWidth: 30 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 20 },
+        },
+        didDrawPage: (data) => {
+          const pageCount = (doc.internal as any).getNumberOfPages();
+          const pageNumber = data.pageNumber;
+
+          // Footer separator line
+          doc.setDrawColor(229, 231, 235);
+          doc.line(14, pageHeight - 10, pageWidth - 14, pageHeight - 10);
+
+          doc.setFontSize(7);
+          doc.setTextColor(156, 163, 175);
+          doc.text("Navanidhi Digital - Sony Cable Network • Customer Records", 14, pageHeight - 5.5);
+          doc.text(`Page ${pageNumber} of ${pageCount}`, pageWidth - 14, pageHeight - 5.5, { align: "right" });
+        },
+      });
+
+      const dateStr = format(new Date(), "yyyyMMdd_HHmm");
+      doc.save(`SonyCable_Customers_${dateStr}.pdf`);
+      toast({
+        title: "PDF Downloaded",
+        description: `Exported ${filtered.length} customers to PDF.`,
+      });
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   // ── Bulk upload ────────────────────────────────────────────────────────────
@@ -223,6 +358,20 @@ export default function CustomersPage() {
               <p className="text-sm text-muted-foreground mt-0.5">Manage your customer information here.</p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadCustomersPdf}
+                disabled={isExportingPdf || filtered.length === 0}
+                className="h-8 text-xs border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950 font-medium"
+              >
+                {isExportingPdf ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="mr-1.5 h-3.5 w-3.5 text-orange-500" />
+                )}
+                Download PDF
+              </Button>
               <Button variant="outline" size="sm" onClick={handleSyncAreas} disabled={isSyncing} className="h-8 text-xs">
                 {isSyncing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
                 Sync Areas
