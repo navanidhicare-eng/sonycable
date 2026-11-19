@@ -18,15 +18,15 @@ async function run() {
   const snap = await getDoc(ref);
   console.log('Current Firestore config:', snap.data());
   await setDoc(ref, {
-    version: '1.0.10',
-    latestVersion: '1.0.10',
-    buildNumber: 2011,
+    version: '1.0.11',
+    latestVersion: '1.0.11',
+    buildNumber: 2012,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: 'Fixed operator login infinite buffering on Android 13, added network timeouts, and local profile fallback.',
+    releaseNotes: '• Direct SIM SMS on Recharge & Collections\n• Custom Operator Lines & Packages\n• Clean Complaint Ticket IDs (CMP-...)\n• Add Customer option in directory',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.10+2011 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.11+2012 successfully!');
   process.exit(0);
 }
 
