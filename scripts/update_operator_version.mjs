@@ -18,15 +18,15 @@ async function run() {
   const snap = await getDoc(ref);
   console.log('Current Firestore config:', snap.data());
   await setDoc(ref, {
-    version: '1.0.11',
-    latestVersion: '1.0.11',
-    buildNumber: 2012,
+    version: '1.0.12',
+    latestVersion: '1.0.12',
+    buildNumber: 2013,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: '• Direct SIM SMS on Recharge & Collections\n• Custom Operator Lines & Packages\n• Clean Complaint Ticket IDs (CMP-...)\n• Add Customer option in directory',
+    releaseNotes: '• Fixed new customer expiry date defaulting (new customers start as No Recharge until recharged)\n• Direct SIM SMS on Recharge & Collections\n• Custom Operator Lines & Packages\n• Clean Complaint Ticket IDs',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.11+2012 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.12+2013 successfully!');
   process.exit(0);
 }
 

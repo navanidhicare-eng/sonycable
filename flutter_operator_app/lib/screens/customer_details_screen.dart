@@ -44,10 +44,11 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
             : widget.customer;
 
         final currency = NumberFormat('#,##,###');
-        final expStr = cust.expiryDate != null
+        final hasRecharge = cust.expiryDate != null;
+        final expStr = hasRecharge
             ? DateFormat('dd MMM yyyy').format(cust.expiryDate!)
-            : 'No date';
-        final isExpired = cust.expiryDate != null && cust.expiryDate!.isBefore(DateTime.now());
+            : 'Not Recharged';
+        final isExpired = hasRecharge && cust.expiryDate!.isBefore(DateTime.now());
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -157,15 +158,21 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: isExpired ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                                        color: !hasRecharge
+                                            ? const Color(0xFFF1F5F9)
+                                            : (isExpired ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7)),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        isExpired ? "EXPIRED" : "ACTIVE",
+                                        !hasRecharge
+                                            ? "NO RECHARGE"
+                                            : (isExpired ? "EXPIRED" : "ACTIVE"),
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w900,
-                                          color: isExpired ? AppColors.danger : const Color(0xFF16A34A),
+                                          color: !hasRecharge
+                                              ? const Color(0xFF64748B)
+                                              : (isExpired ? AppColors.danger : const Color(0xFF16A34A)),
                                         ),
                                       ),
                                     ),
@@ -268,10 +275,14 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: isExpired ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
+                          color: !hasRecharge
+                              ? const Color(0xFFF8FAFC)
+                              : (isExpired ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF)),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isExpired ? const Color(0xFFFECACA) : const Color(0xFFBFDBFE),
+                            color: !hasRecharge
+                                ? const Color(0xFFE2E8F0)
+                                : (isExpired ? const Color(0xFFFECACA) : const Color(0xFFBFDBFE)),
                           ),
                         ),
                         child: Column(
@@ -285,13 +296,17 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: isExpired ? AppColors.danger : const Color(0xFF1E40AF),
+                                    color: !hasRecharge
+                                        ? const Color(0xFF64748B)
+                                        : (isExpired ? AppColors.danger : const Color(0xFF1E40AF)),
                                   ),
                                 ),
                                 Icon(
                                   Icons.calendar_today_rounded,
                                   size: 15,
-                                  color: isExpired ? AppColors.danger : const Color(0xFF1E40AF),
+                                  color: !hasRecharge
+                                      ? const Color(0xFF64748B)
+                                      : (isExpired ? AppColors.danger : const Color(0xFF1E40AF)),
                                 ),
                               ],
                             ),
@@ -301,15 +316,21 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
-                                color: isExpired ? AppColors.danger : const Color(0xFF1E40AF),
+                                color: !hasRecharge
+                                    ? const Color(0xFF475569)
+                                    : (isExpired ? AppColors.danger : const Color(0xFF1E40AF)),
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              isExpired ? "Package Expired" : "Valid Subscription",
+                              !hasRecharge
+                                  ? "No Active Pack"
+                                  : (isExpired ? "Package Expired" : "Valid Subscription"),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isExpired ? AppColors.danger : const Color(0xFF3B82F6),
+                                color: !hasRecharge
+                                    ? const Color(0xFF94A3B8)
+                                    : (isExpired ? AppColors.danger : const Color(0xFF3B82F6)),
                               ),
                             ),
                           ],
@@ -400,13 +421,13 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                       ),
                       const Divider(height: 18),
                       _buildInfoRow("Assigned Area / Line:", cust.area.isNotEmpty ? cust.area : "Not Set"),
-                      if (cust.lastRechargeDate != null) ...[
-                        const Divider(height: 18),
-                        _buildInfoRow(
-                          "Last Recharged:",
-                          DateFormat('dd MMM yyyy, hh:mm a').format(cust.lastRechargeDate!),
-                        ),
-                      ],
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        "Last Recharged:",
+                        cust.lastRechargeDate != null
+                            ? DateFormat('dd MMM yyyy, hh:mm a').format(cust.lastRechargeDate!)
+                            : "Not Recharged Yet",
+                      ),
                     ],
                   ),
                 ),

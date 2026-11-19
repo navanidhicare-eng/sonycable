@@ -39,8 +39,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   bool _isCustomArea = false;
   CablePackage? _selectedPackage;
 
-  DateTime _lastRechargeDate = DateTime.now();
-  DateTime _expiryDate = DateTime.now().add(const Duration(days: 30));
+  bool _setCustomDates = false;
+  DateTime? _lastRechargeDate;
+  DateTime? _expiryDate;
 
   bool _isLoadingAreas = true;
   List<String> _availableAreas = [];
@@ -122,8 +123,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   }
 
   Future<void> _pickDate({required bool isRechargeDate}) async {
-    final initial = isRechargeDate ? _lastRechargeDate : _expiryDate;
     final now = DateTime.now();
+    final initial = isRechargeDate
+        ? (_lastRechargeDate ?? now)
+        : (_expiryDate ?? now.add(const Duration(days: 30)));
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -215,8 +218,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         'customerType': _customerType,
         'packageName': _selectedPackage?.name,
         'packageAmount': _selectedPackage?.price,
-        'lastRechargeDate': Timestamp.fromDate(_lastRechargeDate),
-        'expiryDate': Timestamp.fromDate(_expiryDate),
+        'lastRechargeDate': _setCustomDates && _lastRechargeDate != null ? Timestamp.fromDate(_lastRechargeDate!) : null,
+        'expiryDate': _setCustomDates && _expiryDate != null ? Timestamp.fromDate(_expiryDate!) : null,
         'userId': targetAdminId,
         'adminId': targetAdminId,
         'operatorUid': widget.operatorUid,
@@ -605,73 +608,104 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                           ),
                         ),
                         const SizedBox(height: 14),
+                        // Existing Recharge Toggle
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
-                              child: InkWell(
-                                onTap: () => _pickDate(isRechargeDate: true),
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.inputBg,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text("Last Recharge", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primary),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            dateFormat.format(_lastRechargeDate),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text("Already Recharged?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+                                  Text("Turn ON only if migrating an active pack", style: TextStyle(color: AppColors.textMuted, fontSize: 10.5)),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _pickDate(isRechargeDate: false),
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.inputBg,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text("Expiry Date", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.event_available_rounded, size: 14, color: Color(0xFF16A34A)),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            dateFormat.format(_expiryDate),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textPrimary),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                            Switch.adaptive(
+                              value: _setCustomDates,
+                              activeColor: AppColors.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  _setCustomDates = val;
+                                  if (val && _lastRechargeDate == null) {
+                                    _lastRechargeDate = DateTime.now();
+                                    _expiryDate = DateTime.now().add(const Duration(days: 30));
+                                  }
+                                });
+                              },
                             ),
                           ],
                         ),
+                        if (_setCustomDates) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => _pickDate(isRechargeDate: true),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.inputBg,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.border),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text("Last Recharge", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primary),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _lastRechargeDate != null ? dateFormat.format(_lastRechargeDate!) : "Select",
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textPrimary),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => _pickDate(isRechargeDate: false),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.inputBg,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.border),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text("Expiry Date", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.event_available_rounded, size: 14, color: Color(0xFF16A34A)),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _expiryDate != null ? dateFormat.format(_expiryDate!) : "Select",
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textPrimary),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

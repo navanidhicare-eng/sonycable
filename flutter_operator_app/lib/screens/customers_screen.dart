@@ -211,8 +211,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
     required List<CablePackage> packages,
   }) {
     final currency = NumberFormat('#,##,###');
-    final expStr = cust.expiryDate != null ? DateFormat('dd MMM yyyy').format(cust.expiryDate!) : 'No date';
-    final isExpired = cust.expiryDate != null && cust.expiryDate!.isBefore(DateTime.now());
+    final hasRecharge = cust.expiryDate != null;
+    final expStr = hasRecharge ? DateFormat('dd MMM yyyy').format(cust.expiryDate!) : 'No recharge';
+    final isExpired = hasRecharge && cust.expiryDate!.isBefore(DateTime.now());
 
     return Container(
       decoration: BoxDecoration(
@@ -350,32 +351,44 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        isExpired ? Icons.cancel_outlined : Icons.check_circle_outline,
+                        !hasRecharge
+                            ? Icons.hourglass_empty_rounded
+                            : (isExpired ? Icons.cancel_outlined : Icons.check_circle_outline),
                         size: 14,
-                        color: isExpired ? AppColors.danger : AppColors.success,
+                        color: !hasRecharge
+                            ? const Color(0xFF64748B)
+                            : (isExpired ? AppColors.danger : AppColors.success),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         "Expiry: $expStr",
                         style: TextStyle(
                           fontSize: 11,
-                          color: isExpired ? AppColors.danger : AppColors.textSecondary,
-                          fontWeight: isExpired ? FontWeight.bold : FontWeight.normal,
+                          color: !hasRecharge
+                              ? const Color(0xFF64748B)
+                              : (isExpired ? AppColors.danger : AppColors.textSecondary),
+                          fontWeight: (isExpired || !hasRecharge) ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: isExpired ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                          color: !hasRecharge
+                              ? const Color(0xFFF1F5F9)
+                              : (isExpired ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7)),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          isExpired ? "EXPIRED" : "ACTIVE",
+                          !hasRecharge
+                              ? "NEW"
+                              : (isExpired ? "EXPIRED" : "ACTIVE"),
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w900,
-                            color: isExpired ? AppColors.danger : const Color(0xFF16A34A),
+                            color: !hasRecharge
+                                ? const Color(0xFF475569)
+                                : (isExpired ? AppColors.danger : const Color(0xFF16A34A)),
                           ),
                         ),
                       ),
