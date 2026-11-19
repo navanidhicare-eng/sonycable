@@ -147,64 +147,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
               decoration: const BoxDecoration(
                 color: AppColors.primaryBg,
                 border: Border(bottom: BorderSide(color: AppColors.primaryBorder)),
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(13),
-                      boxShadow: AppColors.orangeShadow,
-                    ),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(13),
-                          child: Image.asset(
-                            'assets/images/app_icon.png',
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.tv_rounded, color: Colors.white, size: 24),
-                          ),
-                        ),
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF10B981),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Navanidhi Digital",
+                          "Sony Cable Network",
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w900,
-                            fontSize: 15,
+                            fontSize: 17,
                             letterSpacing: -0.3,
                           ),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          "Sony Cable Network",
+                          "Operator Dashboard",
                           style: TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -948,22 +913,7 @@ class _DashboardHomeTab extends StatelessWidget {
             child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 23),
           ),
         ),
-        const SizedBox(width: 10),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryDark],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: AppColors.orangeShadow,
-          ),
-          child: const Icon(Icons.tv_rounded, color: Colors.white, size: 22),
-        ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
