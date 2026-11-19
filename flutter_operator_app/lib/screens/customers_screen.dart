@@ -6,16 +6,19 @@ import '../models/models.dart';
 import '../services/whatsapp_service.dart';
 import '../theme/app_theme.dart';
 import 'customer_details_screen.dart';
+import 'add_customer_screen.dart';
 
 class CustomersScreen extends StatefulWidget {
   final String operatorName;
   final String operatorUid;
+  final String? adminId;
   final VoidCallback? onOpenDrawer;
 
   const CustomersScreen({
     super.key,
     required this.operatorName,
     required this.operatorUid,
+    this.adminId,
     this.onOpenDrawer,
   });
 
@@ -26,6 +29,19 @@ class CustomersScreen extends StatefulWidget {
 class _CustomersScreenState extends State<CustomersScreen> {
   String _searchQuery = "";
   bool _onlyWithDue = false;
+
+  void _navigateToAddCustomer() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddCustomerScreen(
+          operatorName: widget.operatorName,
+          operatorUid: widget.operatorUid,
+          adminId: widget.adminId,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +60,23 @@ class _CustomersScreenState extends State<CustomersScreen> {
           "Customers Directory",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textPrimary),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
+            tooltip: "Add Customer",
+            onPressed: _navigateToAddCustomer,
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('customers').snapshots(),
         builder: (context, custSnap) {
           return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('packages').snapshots(),
+            stream: FirebaseFirestore.instance
+                .collection('packages')
+                .where('operatorUid', isEqualTo: widget.operatorUid)
+                .snapshots(),
             builder: (context, pkgSnap) {
               final allCustomers = custSnap.hasData
                   ? custSnap.data!.docs.map((d) => Customer.fromFirestore(d)).toList()

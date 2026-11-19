@@ -18,6 +18,8 @@ import 'my_collections_screen.dart';
 import 'customer_ledger_screen.dart';
 import 'recharge_expenses_screen.dart';
 import 'reports_screen.dart';
+import 'my_lines_screen.dart';
+import 'my_packages_screen.dart';
 import '../services/update_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -456,6 +458,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                   ),
+
+                  // MY NETWORK SETUP (MY LINES & PACKAGES)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.tune_rounded, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 6),
+                        const Text(
+                          "MY NETWORK SETUP",
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.alt_route_rounded,
+                    label: "My Lines (Locations)",
+                    iconColor: AppColors.primary,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MyLinesScreen(
+                            operatorName: operatorName,
+                            operatorUid: widget.authService.currentUser?.uid ?? "",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.layers_rounded,
+                    label: "My Packages (Recharge Plans)",
+                    iconColor: const Color(0xFF16A34A),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MyPackagesScreen(
+                            operatorName: operatorName,
+                            operatorUid: widget.authService.currentUser?.uid ?? "",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
                   _buildDrawerItem(
                     icon: Icons.travel_explore_rounded,
                     label: "STB Quick Locator (NXT Digital)",
@@ -565,6 +622,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       CustomersScreen(
         operatorName: operatorName,
         operatorUid: operatorUid,
+        adminId: operator?.adminId,
         onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       RemindersScreen(
@@ -696,7 +754,10 @@ class _DashboardHomeTab extends StatelessWidget {
               stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
               builder: (context, complaintsSnapshot) {
                 return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('packages').snapshots(),
+                  stream: FirebaseFirestore.instance
+                      .collection('packages')
+                      .where('operatorUid', isEqualTo: operatorUid)
+                      .snapshots(),
                   builder: (context, packagesSnapshot) {
                     final allCustomers = custSnapshot.hasData
                         ? custSnapshot.data!.docs.map((d) => Customer.fromFirestore(d)).toList()

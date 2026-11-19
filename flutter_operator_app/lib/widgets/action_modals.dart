@@ -1335,6 +1335,7 @@ class ActionModals {
                                       operatorName: operatorName,
                                       packageName: "Service: $selectedReason",
                                       isRecharge: false,
+                                      isExtraDue: true,
                                     );
                                   }
 
@@ -1562,8 +1563,17 @@ class ActionModals {
                                       ? "$selectedIssue (${detailsController.text.trim()})"
                                       : selectedIssue;
 
-                                  final docRef = await FirebaseFirestore.instance.collection('complaints').add({
+                                  final now = DateTime.now();
+                                  final cId = selectedCustomer!.displayId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+                                  final ticketId = cId.isNotEmpty
+                                      ? "CMP-$cId-${DateFormat('ddMM').format(now)}"
+                                      : "CMP-${(now.millisecondsSinceEpoch % 1000000).toString().padLeft(6, '0')}";
+
+                                  await FirebaseFirestore.instance.collection('complaints').add({
+                                    'ticketNumber': ticketId,
+                                    'complaintNumber': ticketId,
                                     'customerId': selectedCustomer!.id,
+                                    'customerDisplayId': selectedCustomer!.displayId,
                                     'customerName': selectedCustomer!.name,
                                     'customerMobile': selectedCustomer!.mobile,
                                     'customerAddress': selectedCustomer!.area,
@@ -1582,7 +1592,7 @@ class ActionModals {
 
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text("Complaint for ${selectedCustomer!.name} registered successfully! ✅"),
+                                        content: Text("Complaint for ${selectedCustomer!.name} registered successfully! ✅ ($ticketId)"),
                                         backgroundColor: AppColors.success,
                                       ),
                                     );
@@ -1592,7 +1602,7 @@ class ActionModals {
                                     customerName: selectedCustomer!.name,
                                     customerId: selectedCustomer!.displayId,
                                     complaintText: fullIssue,
-                                    complaintId: docRef.id,
+                                    complaintId: ticketId,
                                   );
 
                                   await WhatsAppService.sendWhatsApp(

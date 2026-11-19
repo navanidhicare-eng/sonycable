@@ -329,7 +329,10 @@ class _RechargeExpensesScreenState extends State<RechargeExpensesScreen> with Si
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('packages').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('packages')
+            .where('operatorUid', isEqualTo: widget.operatorUid)
+            .snapshots(),
         builder: (context, pkgSnap) {
           final packages = pkgSnap.hasData
               ? pkgSnap.data!.docs.map((d) => CablePackage.fromFirestore(d)).toList()

@@ -38,6 +38,20 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with SingleTickerPr
     super.dispose();
   }
 
+  Future<void> _openNewComplaint() async {
+    final custSnap = await FirebaseFirestore.instance.collection('customers').get();
+    final allCustomers = custSnap.docs.map((d) => Customer.fromFirestore(d)).toList();
+
+    if (mounted) {
+      ActionModals.showComplaintModal(
+        context,
+        allCustomers: allCustomers,
+        operatorName: widget.operatorName,
+        operatorUid: widget.operatorUid,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,6 +69,14 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with SingleTickerPr
           "Customer Complaints",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textPrimary),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 24),
+            tooltip: "New Complaint",
+            onPressed: _openNewComplaint,
+          ),
+          const SizedBox(width: 6),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,
@@ -87,24 +109,6 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with SingleTickerPr
               _buildComplaintList(resolved, isPending: false),
             ],
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("New Complaint", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () async {
-          final custSnap = await FirebaseFirestore.instance.collection('customers').get();
-          final allCustomers = custSnap.docs.map((d) => Customer.fromFirestore(d)).toList();
-
-          if (context.mounted) {
-            ActionModals.showComplaintModal(
-              context,
-              allCustomers: allCustomers,
-              operatorName: widget.operatorName,
-              operatorUid: widget.operatorUid,
-            );
-          }
         },
       ),
     );
@@ -180,9 +184,33 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with SingleTickerPr
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
-                "ID: ${comp.customerId} • ${comp.customerMobile}",
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBg,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: AppColors.primaryBorder),
+                    ),
+                    child: Text(
+                      comp.ticketNumber,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Cust ID: ${comp.customerId} • ${comp.customerMobile}",
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
               if (comp.customerAddress != null && comp.customerAddress!.isNotEmpty) ...[
                 const SizedBox(height: 2),
@@ -232,10 +260,20 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with SingleTickerPr
                         IconButton(
                           icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 18),
                           onPressed: () {
+                            final tNum = comp.ticketNumber.isNotEmpty ? '• కంప్లైంట్ ID: ${comp.ticketNumber}\n' : '';
                             final msg = '''*Sony Cable Network - కంప్లైంట్ అప్‌డేట్* ⚠️
-నమస్కారం ${comp.customerName} గారు,
-మీ సమస్య (${comp.complaintText}) పరిశీలనలో ఉంది.
-త్వరలోనే మా టెక్నీషియన్ మీ వద్దకు వచ్చి సమస్యను పరిష్కరిస్తారు.''';
+
+నమస్కారం *${comp.customerName}* గారు,
+మీ సమస్య పరిశీలనలో ఉంది.
+
+----------------------------------------
+$tNum• సమస్య: ${comp.complaintText}
+• స్టేటస్: పరిశీలనలో ఉంది 🔧
+----------------------------------------
+
+త్వరలోనే మా టెక్నీషియన్ మీ వద్దకు వచ్చి సమస్యను పరిష్కరిస్తారు.
+ధన్యవాదాలు - *Sony Cable Network*
+హెల్ప్‌లైన్: ${WhatsAppService.helpline}''';
                             WhatsAppService.sendWhatsApp(mobile: comp.customerMobile, message: msg);
                           },
                         ),
@@ -258,11 +296,19 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> with SingleTickerPr
                                 .update({'status': 'Resolved'});
 
                             if (comp.customerMobile.isNotEmpty) {
+                              final tNum = comp.ticketNumber.isNotEmpty ? '• కంప్లైంట్ ID: ${comp.ticketNumber}\n' : '';
                               final resolvedMsg = '''*Sony Cable Network - కంప్లైంట్ పరిష్కరించబడింది* ✅
-నమస్కారం ${comp.customerName} గారు,
-మీరు నమోదు చేసిన సమస్య (${comp.complaintText}) విజయవంతంగా పరిష్కరించబడింది.
 
-ధన్యవాదాలు! - Sony Cable Network''';
+నమస్కారం *${comp.customerName}* గారు,
+మీరు నమోదు చేసిన ఫిర్యాదు విజయవంతంగా పరిష్కరించబడింది.
+
+----------------------------------------
+$tNum• సమస్య: ${comp.complaintText}
+• స్టేటస్: పరిష్కరించబడింది (Resolved) ✅
+----------------------------------------
+
+ధన్యవాదాలు! - *Sony Cable Network*
+హెల్ప్‌లైన్: ${WhatsAppService.helpline}''';
                               WhatsAppService.sendWhatsApp(mobile: comp.customerMobile, message: resolvedMsg);
                             }
                           },

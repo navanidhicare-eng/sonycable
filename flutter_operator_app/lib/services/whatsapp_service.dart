@@ -201,6 +201,20 @@ $ledgerLink
 హెల్ప్‌లైన్: $helpline''';
   }
 
+  static String formatComplaintId(String rawId, {String? customerId}) {
+    if (rawId.startsWith('CMP-')) return rawId;
+    if (rawId.length > 10 && !rawId.contains('-')) {
+      final cust = (customerId != null && customerId.isNotEmpty)
+          ? customerId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+          : '';
+      if (cust.isNotEmpty) {
+        return "CMP-$cust-${DateFormat('ddMM').format(DateTime.now())}";
+      }
+      return "CMP-${rawId.substring(rawId.length - 6).toUpperCase()}";
+    }
+    return rawId.startsWith('CMP') ? rawId : "CMP-$rawId";
+  }
+
   // 4. Complaint Registration Notification
   static String getComplaintRegisteredMessage({
     required String customerName,
@@ -209,6 +223,7 @@ $ledgerLink
     required String complaintId,
   }) {
     final now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
+    final formattedComplaintId = formatComplaintId(complaintId, customerId: customerId);
 
     return '''*Sony Cable Network - ఫిర్యాదు నమోదు*
 
@@ -218,7 +233,7 @@ $ledgerLink
 ----------------------------------------
 • తేదీ & సమయం: $now
 • కస్టమర్ ID: $customerId
-• కంప్లైంట్ ID: $complaintId
+• కంప్లైంట్ ID: $formattedComplaintId
 • సమస్య: $complaintText
 • స్టేటస్: పెండింగ్ (త్వరలో పరిష్కరించబడును)
 ----------------------------------------

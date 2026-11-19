@@ -74,7 +74,10 @@ class _RemindersScreenState extends State<RemindersScreen> with SingleTickerProv
         stream: FirebaseFirestore.instance.collection('customers').snapshots(),
         builder: (context, custSnap) {
           return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('packages').snapshots(),
+            stream: FirebaseFirestore.instance
+                .collection('packages')
+                .where('operatorUid', isEqualTo: widget.operatorUid)
+                .snapshots(),
             builder: (context, pkgSnap) {
               final allCustomers = custSnap.hasData
                   ? custSnap.data!.docs.map((d) => Customer.fromFirestore(d)).toList()

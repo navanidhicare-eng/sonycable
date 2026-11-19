@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/customer.dart';
+import '../services/sms_service.dart';
 import '../services/whatsapp_service.dart';
 import '../theme/app_theme.dart';
 
@@ -12,6 +14,7 @@ class PaymentSuccessDialog extends StatefulWidget {
   final String operatorName;
   final String? packageName;
   final bool isRecharge;
+  final bool isExtraDue;
   final double? previousBalance;
 
   const PaymentSuccessDialog({
@@ -23,6 +26,7 @@ class PaymentSuccessDialog extends StatefulWidget {
     required this.operatorName,
     this.packageName,
     this.isRecharge = false,
+    this.isExtraDue = false,
     this.previousBalance,
   });
 
@@ -35,6 +39,7 @@ class PaymentSuccessDialog extends StatefulWidget {
     required String operatorName,
     String? packageName,
     bool isRecharge = false,
+    bool isExtraDue = false,
     double? previousBalance,
   }) {
     return showDialog(
@@ -48,6 +53,7 @@ class PaymentSuccessDialog extends StatefulWidget {
         operatorName: operatorName,
         packageName: packageName,
         isRecharge: isRecharge,
+        isExtraDue: isExtraDue,
         previousBalance: previousBalance,
       ),
     );
@@ -62,6 +68,8 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   bool _whatsappSent = false;
+  bool _smsSent = false;
+  bool _isSendingSms = false;
 
   @override
   void initState() {
@@ -75,6 +83,9 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
       curve: Curves.elasticOut,
     );
     _animController.forward();
+
+    // Auto-trigger direct background SIM SMS
+    _sendSmsReceipt();
   }
 
   @override
@@ -83,11 +94,63 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
     super.dispose();
   }
 
+  void _sendSmsReceipt() async {
+    final c = widget.customer;
+    if (c.mobile.isEmpty) return;
+
+    final String smsText;
+    if (widget.isExtraDue) {
+      smsText = SmsService.getExtraDueSms(
+        customerId: c.displayId,
+        customerName: c.name,
+        amount: widget.amountPaid,
+        totalDue: widget.remainingBalance,
+      );
+    } else if (widget.isRecharge) {
+      smsText = SmsService.getRechargeSms(
+        customerId: c.displayId,
+        customerName: c.name,
+        totalDue: widget.remainingBalance,
+      );
+    } else {
+      smsText = SmsService.getPaymentSms(
+        customerId: c.displayId,
+        customerName: c.name,
+        paidAmount: widget.amountPaid,
+        remainingDue: widget.remainingBalance,
+      );
+    }
+
+    if (mounted) {
+      setState(() => _isSendingSms = true);
+    }
+
+    final sent = await SmsService.sendDirectSms(mobile: c.mobile, message: smsText);
+
+    if (mounted) {
+      setState(() {
+        _isSendingSms = false;
+        _smsSent = sent;
+      });
+    }
+  }
+
   void _sendWhatsAppReceipt() async {
     final c = widget.customer;
     final String msg;
 
-    if (widget.isRecharge) {
+    if (widget.isExtraDue) {
+      final reason = widget.packageName?.replaceFirst('Service: ', '') ?? 'Service Charge';
+      msg = WhatsAppService.getExtraDueReceiptMessage(
+        customerName: c.name,
+        customerId: c.displayId,
+        customerDocId: c.id,
+        reason: reason,
+        amount: widget.amountPaid,
+        newTotalBalance: widget.remainingBalance,
+        operatorName: widget.operatorName,
+      );
+    } else if (widget.isRecharge) {
       final prev = widget.previousBalance ?? (widget.remainingBalance - widget.amountPaid);
       msg = WhatsAppService.getRechargeReceiptMessage(
         customerName: c.name,
@@ -127,6 +190,10 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
     final timeStr = DateFormat('dd MMM yyyy, hh:mm a').format(now);
     final remaining = widget.remainingBalance;
 
+    final titleText = widget.isExtraDue
+        ? "Service Charge Added!"
+        : (widget.isRecharge ? "Recharge Successful!" : "Payment Collected!");
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: Colors.white,
@@ -137,7 +204,7 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // PhonePe Green Animated Success Icon
+              // Success Icon
               ScaleTransition(
                 scale: _scaleAnimation,
                 child: Container(
@@ -167,7 +234,7 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
 
               // Title
               Text(
-                widget.isRecharge ? "Recharge Successful!" : "Payment Collected!",
+                titleText,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
@@ -198,7 +265,7 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
               ),
               const SizedBox(height: 18),
 
-              // Transaction Details Card (PhonePe style)
+              // Transaction Details Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -304,7 +371,69 @@ class _PaymentSuccessDialogState extends State<PaymentSuccessDialog>
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
+
+              // Auto SIM SMS Status Banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _smsSent
+                      ? const Color(0xFFECFDF5)
+                      : (kIsWeb ? const Color(0xFFF8FAFC) : const Color(0xFFFEF3C7)),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _smsSent
+                        ? const Color(0xFFA7F3D0)
+                        : (kIsWeb ? const Color(0xFFE2E8F0) : const Color(0xFFFDE68A)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _smsSent
+                          ? Icons.mark_chat_read_rounded
+                          : (kIsWeb ? Icons.sim_card_outlined : Icons.sms_outlined),
+                      size: 18,
+                      color: _smsSent
+                          ? const Color(0xFF059669)
+                          : (kIsWeb ? const Color(0xFF64748B) : const Color(0xFFD97706)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _smsSent
+                            ? "SIM SMS sent to ${c.mobile} 📱"
+                            : (_isSendingSms
+                                ? "Sending SIM SMS..."
+                                : (kIsWeb
+                                    ? "Direct SIM SMS works on Android phone"
+                                    : "SIM SMS to ${c.mobile}")),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _smsSent
+                              ? const Color(0xFF065F46)
+                              : (kIsWeb ? const Color(0xFF475569) : const Color(0xFF92400E)),
+                        ),
+                      ),
+                    ),
+                    if (!_smsSent && !kIsWeb && c.mobile.isNotEmpty)
+                      GestureDetector(
+                        onTap: _sendSmsReceipt,
+                        child: const Text(
+                          "Resend",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // Send WhatsApp Receipt Button
               SizedBox(

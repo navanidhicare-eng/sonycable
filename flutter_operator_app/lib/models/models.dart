@@ -51,6 +51,7 @@ class CablePackage {
   final double? sixMonthPrice;
   final double? twelveMonthPrice;
   final String? type;
+  final String? operatorUid;
 
   CablePackage({
     required this.id,
@@ -62,6 +63,7 @@ class CablePackage {
     this.sixMonthPrice,
     this.twelveMonthPrice,
     this.type,
+    this.operatorUid,
   });
 
   /// Effective MSO cost: if set, use it; otherwise fallback to 70% of price
@@ -101,6 +103,7 @@ class CablePackage {
       sixMonthPrice: p6 > 0 ? p6 : null,
       twelveMonthPrice: p12 > 0 ? p12 : null,
       type: data['type']?.toString(),
+      operatorUid: data['operatorUid']?.toString(),
     );
   }
 }
@@ -185,6 +188,7 @@ class RechargeRecord {
 
 class ComplaintModel {
   final String id;
+  final String ticketNumber;
   final String customerId;
   final String customerName;
   final String customerMobile;
@@ -196,6 +200,7 @@ class ComplaintModel {
 
   ComplaintModel({
     required this.id,
+    required this.ticketNumber,
     required this.customerId,
     required this.customerName,
     required this.customerMobile,
@@ -213,9 +218,24 @@ class ComplaintModel {
       if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
       return DateTime.now();
     }
+    final rawTicket = data['ticketNumber'] ?? data['complaintNumber'];
+    String cleanTicket;
+    if (rawTicket != null && rawTicket.toString().trim().isNotEmpty) {
+      cleanTicket = rawTicket.toString().trim();
+    } else {
+      final cust = (data['customerDisplayId'] ?? data['customerId'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      if (cust.isNotEmpty && cust.length <= 8) {
+        cleanTicket = "CMP-$cust";
+      } else {
+        final idPart = doc.id.length > 6 ? doc.id.substring(doc.id.length - 6) : doc.id;
+        cleanTicket = "CMP-${idPart.toUpperCase()}";
+      }
+    }
+
     return ComplaintModel(
       id: doc.id,
-      customerId: data['customerId'] ?? '',
+      ticketNumber: cleanTicket,
+      customerId: data['customerDisplayId'] ?? data['customerId'] ?? '',
       customerName: data['customerName'] ?? 'Customer',
       customerMobile: data['customerMobile'] ?? data['mobile'] ?? '',
       customerAddress: data['customerAddress'] ?? data['address'] ?? data['area'],
