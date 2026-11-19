@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 class SmsService {
   static const MethodChannel _channel = MethodChannel('com.sonycable.operator/sms');
+  static String businessName = 'Sony Cable';
 
   static String _cleanPhone(String phone) {
     return phone.replaceAll(RegExp(r'[^0-9]'), '');
@@ -22,9 +23,11 @@ class SmsService {
     required String customerId,
     required String customerName,
     required double totalDue,
+    String? customBusinessName,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
     final dueStr = _formatDue(totalDue);
-    return "Sony Cable: Recharge Successful! ID: $customerId, Name: $customerName, Total Due: Rs.$dueStr. Sony Cable Network.";
+    return "$bName: Recharge Successful! ID: $customerId, Name: $customerName, Total Due: Rs.$dueStr. $bName Network.";
   }
 
   /// 2. Short Payment Received (Collection) SMS (English, <130 chars, fits 1 SMS)
@@ -33,10 +36,12 @@ class SmsService {
     required String customerName,
     required double paidAmount,
     required double remainingDue,
+    String? customBusinessName,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
     final paidStr = paidAmount.toInt().toString();
     final dueStr = _formatDue(remainingDue);
-    return "Sony Cable: Payment Received! ID: $customerId, Name: $customerName, Paid: Rs.$paidStr, Remaining Due: Rs.$dueStr. Thank You - Sony Cable.";
+    return "$bName: Payment Received! ID: $customerId, Name: $customerName, Paid: Rs.$paidStr, Remaining Due: Rs.$dueStr. Thank You - $bName.";
   }
 
   /// 3. Short Extra Due SMS (English, <130 chars, fits 1 SMS)
@@ -45,10 +50,12 @@ class SmsService {
     required String customerName,
     required double amount,
     required double totalDue,
+    String? customBusinessName,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
     final amtStr = amount.toInt().toString();
     final dueStr = _formatDue(totalDue);
-    return "Sony Cable: Service Charge Added. ID: $customerId, Name: $customerName, Amount: Rs.$amtStr, Total Due: Rs.$dueStr. Sony Cable Network.";
+    return "$bName: Service Charge Added. ID: $customerId, Name: $customerName, Amount: Rs.$amtStr, Total Due: Rs.$dueStr. $bName Network.";
   }
 
   /// Send direct background SMS using phone's SIM card without prompt
@@ -104,4 +111,3 @@ class SmsService {
     }
   }
 }
-

@@ -64,6 +64,9 @@ class AuthService extends ChangeNotifier {
         await prefs.setString('operator_name', _currentOperator!.name);
         await prefs.setString('operator_role', _currentOperator!.role);
         await prefs.setString('admin_id', _currentOperator!.adminId);
+        await prefs.setString('operator_business_name', _currentOperator!.businessName);
+        await prefs.setString('operator_helpline', _currentOperator!.helpline);
+        await prefs.setString('operator_mobile', _currentOperator!.mobile);
         notifyListeners();
         return _currentOperator;
       }
@@ -77,16 +80,21 @@ class AuthService extends ChangeNotifier {
       final cachedName = prefs.getString('operator_name') ?? 'Prasad';
       final cachedRole = prefs.getString('operator_role') ?? 'Cable Operator';
       final cachedAdmin = prefs.getString('admin_id') ?? 'yElLWtpRRWdcHNRwu4aKbwR5AzU2';
+      final cachedBusiness = prefs.getString('operator_business_name') ?? 'Sony Cable Network';
+      final cachedHelpline = prefs.getString('operator_helpline') ?? '9010737882';
+      final cachedMobile = prefs.getString('operator_mobile') ?? '9010737882';
       _currentOperator = OperatorModel(
         id: uid,
         uid: uid,
         name: cachedName,
         email: _auth.currentUser?.email ?? '9010@gmail.com',
-        mobile: '',
+        mobile: cachedMobile,
         role: cachedRole,
         adminId: cachedAdmin,
         areas: [],
         status: 'active',
+        businessName: cachedBusiness,
+        helpline: cachedHelpline,
       );
       notifyListeners();
       return _currentOperator;

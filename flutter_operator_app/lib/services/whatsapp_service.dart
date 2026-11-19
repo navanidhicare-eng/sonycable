@@ -3,7 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 class WhatsAppService {
   static const String publicBaseUrl = 'https://sony.navanidhi.org';
-  static const String helpline = '9010737882';
+  static String helpline = '9010737882';
+  static String businessName = 'Sony Cable Network';
 
   static String cleanMobile(String mobile) {
     String cleaned = mobile.replaceAll(RegExp(r'[^0-9]'), '');
@@ -24,17 +25,16 @@ class WhatsAppService {
     if (phone.isEmpty) return false;
 
     // Use Uri.https with queryParameters so Dart handles UTF-8 percent-encoding cleanly
-    // without double-encoding or surrogate-pair corruption
     final url = Uri.https('wa.me', '/$phone', {'text': message});
 
     try {
-      return await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      try {
-        return await launchUrl(url, mode: LaunchMode.platformDefault);
-      } catch (_) {
-        return false;
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        return true;
       }
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -43,13 +43,17 @@ class WhatsAppService {
     if (phone.isEmpty) return false;
     final url = Uri.parse('tel:$phone');
     try {
-      return await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (_) {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+        return true;
+      }
+      return false;
+    } catch (e) {
       return false;
     }
   }
 
-  // 1. Payment Collection Receipt
+  // 1. Payment Receipt Notification
   static String getPaymentReceiptMessage({
     required String customerName,
     required String customerId,
@@ -61,7 +65,12 @@ class WhatsAppService {
     required String paymentMethod,
     required String operatorName,
     String? transactionId,
+    String? customBusinessName,
+    String? customHelpline,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
+    final phone = (customHelpline != null && customHelpline.isNotEmpty) ? customHelpline : helpline;
+
     final now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
     final currency = NumberFormat('#,##,###');
 
@@ -76,7 +85,7 @@ class WhatsAppService {
         : customerId;
     final ledgerLink = '$publicBaseUrl/passbook?id=$docId';
 
-    return '''*Sony Cable Network - చెల్లింపు రసీదు*
+    return '''*$bName - చెల్లింపు రసీదు*
 
 నమస్కారం *$customerName* గారు,
 మీ కేబుల్ టీవీ బిల్లు చెల్లింపు విజయవంతంగా నమోదైంది.
@@ -96,8 +105,8 @@ class WhatsAppService {
 $ledgerLink
 
 ధన్యవాదాలు!
-*Sony Cable Network Support*
-హెల్ప్‌లైన్: $helpline''';
+*$bName Support*
+హెల్ప్‌లైన్: $phone''';
   }
 
   // 2. Recharge / Renewal Receipt
@@ -113,7 +122,12 @@ $ledgerLink
     double? newTotalBalance,
     String? paymentMethod,
     required String operatorName,
+    String? customBusinessName,
+    String? customHelpline,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
+    final phone = (customHelpline != null && customHelpline.isNotEmpty) ? customHelpline : helpline;
+
     final now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
     final expStr = DateFormat('dd-MM-yyyy').format(expiryDate);
     final currency = NumberFormat('#,##,###');
@@ -136,7 +150,7 @@ $ledgerLink
             ? '₹0'
             : '₹${currency.format(totalDue)}');
 
-    return '''*Sony Cable Network - రీఛార్జ్ విజయవంతం*
+    return '''*$bName - రీఛార్జ్ విజయవంతం*
 
 నమస్కారం *$customerName* గారు,
 మీ సెట్-టాప్ బాక్స్ రీఛార్జ్ విజయవంతంగా పూర్తయింది.
@@ -157,8 +171,8 @@ $ledgerLink
 $ledgerLink
 
 నిరంతరాయ వినోదాన్ని ఆస్వాదించండి!
-ధన్యవాదాలు - *Sony Cable Network*
-హెల్ప్‌లైన్: $helpline''';
+ధన్యవాదాలు - *$bName*
+హెల్ప్‌లైన్: $phone''';
   }
 
   // 3. Extra Due / Service Charge Receipt
@@ -170,7 +184,12 @@ $ledgerLink
     required double amount,
     required double newTotalBalance,
     required String operatorName,
+    String? customBusinessName,
+    String? customHelpline,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
+    final phone = (customHelpline != null && customHelpline.isNotEmpty) ? customHelpline : helpline;
+
     final now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
     final currency = NumberFormat('#,##,###');
 
@@ -179,7 +198,7 @@ $ledgerLink
         : customerId;
     final ledgerLink = '$publicBaseUrl/passbook?id=$docId';
 
-    return '''*Sony Cable Network - సర్వీస్ ఛార్జ్ అప్‌డేట్*
+    return '''*$bName - సర్వీస్ ఛార్జ్ అప్‌డేట్*
 
 నమస్కారం *$customerName* గారు,
 మీ ఖాతాకు సర్వీస్ ఛార్జ్ వివరాలు జోడించబడ్డాయి.
@@ -197,8 +216,8 @@ $ledgerLink
 $ledgerLink
 
 ధన్యవాదాలు!
-*Sony Cable Network*
-హెల్ప్‌లైన్: $helpline''';
+*$bName*
+హెల్ప్‌లైన్: $phone''';
   }
 
   static String formatComplaintId(String rawId, {String? customerId}) {
@@ -221,11 +240,16 @@ $ledgerLink
     required String customerId,
     required String complaintText,
     required String complaintId,
+    String? customBusinessName,
+    String? customHelpline,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
+    final phone = (customHelpline != null && customHelpline.isNotEmpty) ? customHelpline : helpline;
+
     final now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
     final formattedComplaintId = formatComplaintId(complaintId, customerId: customerId);
 
-    return '''*Sony Cable Network - ఫిర్యాదు నమోదు*
+    return '''*$bName - ఫిర్యాదు నమోదు*
 
 నమస్కారం *$customerName* గారు,
 మీ సమస్య విజయవంతంగా నమోదైంది.
@@ -239,8 +263,8 @@ $ledgerLink
 ----------------------------------------
 
 మా టెక్నీషియన్ త్వరలోనే మీ వద్దకు వచ్చి సమస్యను పరిష్కరిస్తారు.
-ధన్యవాదాలు - *Sony Cable Network*
-హెల్ప్‌లైన్: $helpline''';
+ధన్యవాదాలు - *$bName*
+హెల్ప్‌లైన్: $phone''';
   }
 
   // 5. Expiry Reminder
@@ -250,7 +274,12 @@ $ledgerLink
     String? customerDocId,
     required DateTime? expiryDate,
     required double balanceAmount,
+    String? customBusinessName,
+    String? customHelpline,
   }) {
+    final bName = (customBusinessName != null && customBusinessName.isNotEmpty) ? customBusinessName : businessName;
+    final phone = (customHelpline != null && customHelpline.isNotEmpty) ? customHelpline : helpline;
+
     final currency = NumberFormat('#,##,###');
     String expNotice = '';
     if (expiryDate != null) {
@@ -273,7 +302,7 @@ $ledgerLink
         : customerId;
     final ledgerLink = '$publicBaseUrl/passbook?id=$docId';
 
-    return '''*Sony Cable Network - రీఛార్జ్ రిమైండర్*
+    return '''*$bName - రీఛార్జ్ రిమైండర్*
 
 నమస్కారం *$customerName* గారు,
 మీ సెట్-టాప్ బాక్స్ వివరాలు:
@@ -287,7 +316,7 @@ ${balanceAmount > 0 ? '• బకాయి మొత్తం: ₹${currency.for
 $ledgerLink
 
 టీవీ ప్రసారాలకు అంతరాయం కలగకుండా రీఛార్జ్ చేసుకోగలరు.
-ధన్యవాదాలు - *Sony Cable Network*
-హెల్ప్‌లైన్: $helpline''';
+ధన్యవాదాలు - *$bName*
+హెల్ప్‌లైన్: $phone''';
   }
 }

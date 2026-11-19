@@ -20,6 +20,8 @@ import 'recharge_expenses_screen.dart';
 import 'reports_screen.dart';
 import 'my_lines_screen.dart';
 import 'my_packages_screen.dart';
+import 'my_network_info_screen.dart';
+import '../services/sms_service.dart';
 import '../services/update_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -154,21 +156,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Sony Cable Network",
-                          style: TextStyle(
+                          operator?.businessName ?? "Sony Cable Network",
+                          style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w900,
                             fontSize: 17,
                             letterSpacing: -0.3,
                           ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
+                        const SizedBox(height: 2),
+                        const Text(
                           "Operator Dashboard",
                           style: TextStyle(
                             color: AppColors.primary,
@@ -477,6 +479,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                   ),
+                  _buildDrawerItem(
+                    icon: Icons.storefront_rounded,
+                    label: "My Network Info & Helpline",
+                    iconColor: const Color(0xFF8B5CF6),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MyNetworkInfoScreen(
+                            operator: operator,
+                            operatorUid: widget.authService.currentUser?.uid ?? "",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
 
                   _buildDrawerItem(
                     icon: Icons.travel_explore_rounded,
@@ -573,6 +592,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final operator = widget.authService.currentOperator;
+    if (operator != null) {
+      WhatsAppService.businessName = operator.businessName;
+      WhatsAppService.helpline = operator.helpline;
+      SmsService.businessName = operator.businessName.replaceAll(' Network', '').trim();
+    }
     final operatorName = operator?.name ?? "Operator";
     final operatorUid = widget.authService.currentUser?.uid ?? "";
 
@@ -920,9 +944,9 @@ class _DashboardHomeTab extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text(
-                    "Sony Cable Network",
-                    style: TextStyle(
+                  Text(
+                    operator?.businessName ?? "Sony Cable Network",
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,

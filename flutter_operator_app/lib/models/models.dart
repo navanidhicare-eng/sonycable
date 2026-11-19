@@ -10,6 +10,8 @@ class OperatorModel {
   final String adminId;
   final List<String> areas;
   final String status;
+  final String businessName;
+  final String helpline;
 
   OperatorModel({
     required this.id,
@@ -21,22 +23,38 @@ class OperatorModel {
     required this.adminId,
     required this.areas,
     required this.status,
+    required this.businessName,
+    required this.helpline,
   });
 
   factory OperatorModel.fromFirestore(DocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>?) ?? {};
+    final rawName = (data['name'] ?? '').toString().trim();
+    final rawMobile = (data['mobile'] ?? data['helpline'] ?? '').toString().trim();
+    final customBusiness = (data['businessName'] ?? data['networkName'] ?? '').toString().trim();
+
+    final resolvedBusiness = customBusiness.isNotEmpty
+        ? customBusiness
+        : (rawName.toLowerCase() == 'prasad'
+            ? 'Sony Cable Network'
+            : (rawName.isNotEmpty ? '$rawName Cable Network' : 'Sony Cable Network'));
+
+    final resolvedHelpline = rawMobile.isNotEmpty ? rawMobile : '9010737882';
+
     return OperatorModel(
       id: doc.id,
       uid: data['uid'] ?? '',
-      name: data['name'] ?? '',
+      name: rawName,
       email: data['email'] ?? '',
-      mobile: data['mobile'] ?? '',
+      mobile: rawMobile,
       role: data['role'] ?? 'Cable Operator',
       adminId: data['adminId'] ?? data['userId'] ?? '',
       areas: (data['area'] is List)
           ? List<String>.from(data['area'])
           : [],
       status: data['status'] ?? 'active',
+      businessName: resolvedBusiness,
+      helpline: resolvedHelpline,
     );
   }
 }
