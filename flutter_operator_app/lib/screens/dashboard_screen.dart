@@ -20,7 +20,7 @@ import 'recharge_expenses_screen.dart';
 import 'reports_screen.dart';
 import 'my_lines_screen.dart';
 import 'my_packages_screen.dart';
-import 'my_network_info_screen.dart';
+import 'operator_profile_screen.dart';
 import '../services/sms_service.dart';
 import '../services/update_service.dart';
 
@@ -190,83 +190,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // Operator Profile Box
-            Container(
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
-                boxShadow: AppColors.cardShadow,
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: AppColors.primary,
-                    child: Text(
-                      operatorName.isNotEmpty ? operatorName[0].toUpperCase() : "P",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            // Operator Profile Box (Clickable Profile & Network Settings)
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OperatorProfileScreen(
+                      operator: operator,
+                      operatorUid: widget.authService.currentUser?.uid ?? "",
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                operatorName,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                ).then((_) => setState(() {}));
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: AppColors.cardShadow,
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        operatorName.isNotEmpty ? operatorName[0].toUpperCase() : "P",
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  operatorName,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                "ACTIVE",
-                                style: TextStyle(
-                                  color: Color(0xFF059669),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  "ACTIVE",
+                                  style: TextStyle(
+                                    color: Color(0xFF059669),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "📱 $operatorMobile",
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                        ),
-                        if (areasCount > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              "📍 $areasCount Assigned Lines",
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            ],
                           ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            "📱 $operatorMobile",
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                          ),
+                          if (areasCount > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                "📍 $areasCount Assigned Lines",
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
+                  ],
+                ),
               ),
             ),
 
@@ -477,33 +493,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                       );
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.storefront_rounded,
-                    label: "My Network Info & Helpline",
-                    iconColor: const Color(0xFF8B5CF6),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MyNetworkInfoScreen(
-                            operator: operator,
-                            operatorUid: widget.authService.currentUser?.uid ?? "",
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  _buildDrawerItem(
-                    icon: Icons.travel_explore_rounded,
-                    label: "STB Quick Locator (NXT Digital)",
-                    iconColor: const Color(0xFF2563EB),
-                    onTap: () {
-                      Navigator.pop(context);
-                      NxtDigitalModals.showLocatorModal(context);
                     },
                   ),
                   _buildDrawerItem(

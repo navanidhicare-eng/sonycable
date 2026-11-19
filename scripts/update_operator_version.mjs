@@ -20,13 +20,13 @@ async function run() {
   await setDoc(ref, {
     version: '1.0.14',
     latestVersion: '1.0.14',
-    buildNumber: 2015,
+    buildNumber: 2016,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: '• Operator-scoped Network Branding & Helpline (SMS & WhatsApp receipts use each operator’s own business name and phone)\n• Added My Network Info screen in drawer\n• Clean UI layout without unwanted icons',
+    releaseNotes: '• Operator Profile & Network Settings accessible directly by tapping profile card in drawer\n• Removed STB Quick Locator from sidebar (active on Dashboard)\n• Operator-scoped Network Branding & Helpline on receipts',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.14+2015 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.14+2016 successfully!');
   process.exit(0);
 }
 
