@@ -12,6 +12,8 @@ class Customer {
   final DateTime? expiryDate;
   final DateTime? lastRechargeDate;
   final String adminId;
+  final String? packageName;
+  final String? customerType;
 
   Customer({
     required this.id,
@@ -25,6 +27,8 @@ class Customer {
     this.expiryDate,
     this.lastRechargeDate,
     required this.adminId,
+    this.packageName,
+    this.customerType,
   });
 
   factory Customer.fromFirestore(DocumentSnapshot doc) {
@@ -56,7 +60,21 @@ class Customer {
       expiryDate: parseDate(data['expiryDate']),
       lastRechargeDate: parseDate(data['lastRechargeDate']),
       adminId: data['adminId'] ?? data['userId'] ?? '',
+      packageName: data['packageName']?.toString() ?? data['plan']?.toString(),
+      customerType: data['customerType']?.toString() ?? data['connectionType']?.toString(),
     );
+  }
+
+  bool get isInternetCustomer {
+    final type = (customerType ?? '').toUpperCase();
+    final pkg = (packageName ?? '').toLowerCase();
+    if (type.contains('INTERNET') || type.contains('BROADBAND') || type.contains('FIBER')) {
+      return true;
+    }
+    if (pkg.contains('internet') || pkg.contains('broadband') || pkg.contains('fiber') || pkg.contains('mbps') || pkg.contains('wifi')) {
+      return true;
+    }
+    return false;
   }
 
   String get displayId {

@@ -44,6 +44,7 @@ jobs:
       - name: Prepare Release Artifacts
         run: |
           cp flutter_operator_app/build/app/outputs/flutter-apk/app-release.apk SonyCable_Operator.apk
+          cp flutter_operator_app/build/app/outputs/flutter-apk/app-release.apk public/downloads/SonyCable_Operator.apk
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
@@ -63,3 +64,11 @@ jobs:
           files: SonyCable_Operator.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy APK to public downloads
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/downloads/SonyCable_Operator.apk
+          git commit -m "Update public SonyCable_Operator.apk [skip ci]" || echo "No changes to commit"
+          git push origin main

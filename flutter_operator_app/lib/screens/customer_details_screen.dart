@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/customer.dart';
 import '../models/models.dart';
+import '../services/bill_pdf_service.dart';
 import '../services/whatsapp_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/action_modals.dart';
@@ -501,6 +502,23 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                           operatorUid: widget.operatorUid,
                         ),
                       ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+
+                _buildActionButton(
+                  title: "Monthly Bill PDF",
+                  subtitle: "View payments & generate official monthly bill PDF",
+                  icon: Icons.picture_as_pdf_rounded,
+                  iconColor: const Color(0xFF059669),
+                  bgColor: const Color(0xFFF0FDF4),
+                  borderColor: const Color(0xFFBBF7D0),
+                  onTap: () {
+                    BillPdfService.showCustomerPaymentsBillSelectorModal(
+                      context,
+                      customer: cust,
+                      operatorName: widget.operatorName,
                     );
                   },
                 ),

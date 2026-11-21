@@ -12,6 +12,8 @@ class CustomerLedgerScreen extends StatefulWidget {
   final String? initialCustomerId;
   final String operatorName;
   final String operatorUid;
+  final String? businessName;
+  final String? helpline;
 
   const CustomerLedgerScreen({
     super.key,
@@ -19,6 +21,8 @@ class CustomerLedgerScreen extends StatefulWidget {
     this.initialCustomerId,
     required this.operatorName,
     required this.operatorUid,
+    this.businessName,
+    this.helpline,
   });
 
   @override

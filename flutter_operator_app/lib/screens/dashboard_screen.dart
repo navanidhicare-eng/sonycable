@@ -402,6 +402,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           builder: (_) => CustomerLedgerScreen(
                             operatorName: operatorName,
                             operatorUid: widget.authService.currentUser?.uid ?? "",
+                            businessName: operator?.businessName,
+                            helpline: operator?.helpline,
                           ),
                         ),
                       );

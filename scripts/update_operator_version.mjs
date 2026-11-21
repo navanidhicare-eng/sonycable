@@ -18,15 +18,15 @@ async function run() {
   const snap = await getDoc(ref);
   console.log('Current Firestore config:', snap.data());
   await setDoc(ref, {
-    version: '1.0.14',
-    latestVersion: '1.0.14',
-    buildNumber: 2016,
+    version: '1.0.15',
+    latestVersion: '1.0.15',
+    buildNumber: 2017,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: '• Operator Profile & Network Settings accessible directly by tapping profile card in drawer\n• Removed STB Quick Locator from sidebar (active on Dashboard)\n• Operator-scoped Network Branding & Helpline on receipts',
+    releaseNotes: '• Added Monthly Bill PDF for Cable TV & Internet Broadband with WhatsApp sharing\n• Clean payments list on Customer screen to generate bills anytime',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.14+2016 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.15+2017 successfully!');
   process.exit(0);
 }
 
