@@ -19,6 +19,8 @@ import 'customer_ledger_screen.dart';
 import 'recharge_expenses_screen.dart';
 import 'reports_screen.dart';
 import 'my_lines_screen.dart';
+import 'line_design_screen.dart';
+import 'optical_power_calculator_screen.dart';
 import 'my_packages_screen.dart';
 import 'operator_profile_screen.dart';
 import '../services/sms_service.dart';
@@ -476,6 +478,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             operatorName: operatorName,
                             operatorUid: widget.authService.currentUser?.uid ?? "",
                           ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.account_tree_rounded,
+                    label: "Line Design (Fiber Map)",
+                    iconColor: const Color(0xFF0284C7),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LineDesignScreen(
+                            operatorName: operatorName,
+                            operatorUid: widget.authService.currentUser?.uid ?? "",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.calculate_rounded,
+                    label: "Optical Power Calculator",
+                    iconColor: const Color(0xFFF59E0B),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const OpticalPowerCalculatorScreen(),
                         ),
                       );
                     },

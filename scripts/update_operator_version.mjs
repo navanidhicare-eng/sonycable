@@ -18,15 +18,15 @@ async function run() {
   const snap = await getDoc(ref);
   console.log('Current Firestore config:', snap.data());
   await setDoc(ref, {
-    version: '1.0.15',
-    latestVersion: '1.0.15',
-    buildNumber: 2017,
+    version: '1.0.16',
+    latestVersion: '1.0.16',
+    buildNumber: 2018,
     apkUrl: 'https://sony.navanidhi.org/downloads/SonyCable_Operator.apk',
-    releaseNotes: '• Added Monthly Bill PDF for Cable TV & Internet Broadband with WhatsApp sharing\n• Clean payments list on Customer screen to generate bills anytime',
+    releaseNotes: '• Optical Power Calculator (Ratio FBT & PLC Splitter)\n• Interactive loss reference cheat sheet\n• Fiber Map & Network Line Design improvements',
     mandatory: false,
     updatedAt: new Date().toISOString()
   }, { merge: true });
-  console.log('Updated app_config/operator_app to 1.0.15+2017 successfully!');
+  console.log('Updated app_config/operator_app to 1.0.16+2018 successfully!');
   process.exit(0);
 }
 

@@ -9,6 +9,7 @@ import '../services/whatsapp_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/action_modals.dart';
 import '../widgets/nxt_digital_modals.dart';
+import '../widgets/optical_power_modal.dart';
 import 'customer_ledger_screen.dart';
 
 class CustomerDetailsScreen extends StatefulWidget {
@@ -422,6 +423,13 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                       ),
                       const Divider(height: 18),
                       _buildInfoRow("Assigned Area / Line:", cust.area.isNotEmpty ? cust.area : "Not Set"),
+                      if (cust.fiberBoxName != null && cust.fiberBoxName!.isNotEmpty) ...[
+                        const Divider(height: 18),
+                        _buildInfoRow(
+                          "Fiber Box & Port:",
+                          "${cust.fiberBoxName} • Port #${cust.fiberPortIndex ?? 1}",
+                        ),
+                      ],
                       const Divider(height: 18),
                       _buildInfoRow(
                         "Last Recharged:",
@@ -432,6 +440,10 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // 3B. Optical Power Card (Node / Receiver)
+                _buildOpticalPowerCard(context, cust),
                 const SizedBox(height: 20),
 
                 // 4. Quick Action Hub (Full Buttons)
@@ -516,6 +528,23 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
                   borderColor: const Color(0xFFBBF7D0),
                   onTap: () {
                     BillPdfService.showCustomerPaymentsBillSelectorModal(
+                      context,
+                      customer: cust,
+                      operatorName: widget.operatorName,
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+
+                _buildActionButton(
+                  title: "Optical Power & History",
+                  subtitle: "Record node/receiver dBm (-6 Good, -10 Low, -12 Critical)",
+                  icon: Icons.settings_input_antenna_rounded,
+                  iconColor: const Color(0xFF0284C7),
+                  bgColor: const Color(0xFFF0F9FF),
+                  borderColor: const Color(0xFFBAE6FD),
+                  onTap: () {
+                    OpticalPowerModal.show(
                       context,
                       customer: cust,
                       operatorName: widget.operatorName,
@@ -781,6 +810,113 @@ class _CustomerDetailsScreenState extends State<CustomerDetailsScreen> {
               ),
             ),
             Icon(Icons.arrow_forward_ios_rounded, color: iconColor.withValues(alpha: 0.6), size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOpticalPowerCard(BuildContext context, Customer cust) {
+    final double? power = cust.opticalPower;
+    final bool hasPower = power != null;
+    final Color color = hasPower ? OpticalPowerConfig.getStatusColor(power) : const Color(0xFF64748B);
+    final Color bgColor = hasPower ? OpticalPowerConfig.getStatusBgColor(power) : Colors.white;
+    final Color borderColor = hasPower ? OpticalPowerConfig.getStatusBorderColor(power) : AppColors.border;
+    final String label = hasPower ? OpticalPowerConfig.getStatusLabel(power) : "Not Recorded";
+
+    return InkWell(
+      onTap: () {
+        OpticalPowerModal.show(
+          context,
+          customer: cust,
+          operatorName: widget.operatorName,
+        );
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+              ),
+              child: Icon(
+                Icons.settings_input_antenna_rounded,
+                color: color,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        "Optical Power: ",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        hasPower ? "${power.toStringAsFixed(1)} dBm" : "Not Set",
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: hasPower ? color : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    hasPower && cust.opticalPowerDate != null
+                        ? "Checked ${DateFormat('dd MMM yyyy, hh:mm a').format(cust.opticalPowerDate!)}"
+                        : "Tap to record & view history",
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: hasPower ? color : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                hasPower ? label : "+ Record",
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  color: hasPower ? Colors.white : const Color(0xFF64748B),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_forward_ios_rounded, size: 11, color: color),
           ],
         ),
       ),

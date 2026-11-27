@@ -14,6 +14,13 @@ class Customer {
   final String adminId;
   final String? packageName;
   final String? customerType;
+  final double? opticalPower;
+  final DateTime? opticalPowerDate;
+  final String? opticalPowerUpdatedBy;
+  final String? opticalPowerRemarks;
+  final String? fiberBoxId;
+  final String? fiberBoxName;
+  final int? fiberPortIndex;
 
   Customer({
     required this.id,
@@ -29,6 +36,13 @@ class Customer {
     required this.adminId,
     this.packageName,
     this.customerType,
+    this.opticalPower,
+    this.opticalPowerDate,
+    this.opticalPowerUpdatedBy,
+    this.opticalPowerRemarks,
+    this.fiberBoxId,
+    this.fiberBoxName,
+    this.fiberPortIndex,
   });
 
   factory Customer.fromFirestore(DocumentSnapshot doc) {
@@ -48,6 +62,13 @@ class Customer {
       return 0.0;
     }
 
+    double? parseNullableDouble(dynamic field) {
+      if (field == null) return null;
+      if (field is num) return field.toDouble();
+      if (field is String) return double.tryParse(field);
+      return null;
+    }
+
     return Customer(
       id: doc.id,
       name: data['name'] ?? 'Unnamed',
@@ -62,7 +83,25 @@ class Customer {
       adminId: data['adminId'] ?? data['userId'] ?? '',
       packageName: data['packageName']?.toString() ?? data['plan']?.toString(),
       customerType: data['customerType']?.toString() ?? data['connectionType']?.toString(),
+      opticalPower: parseNullableDouble(data['opticalPower']),
+      opticalPowerDate: parseDate(data['opticalPowerDate']),
+      opticalPowerUpdatedBy: data['opticalPowerUpdatedBy']?.toString(),
+      opticalPowerRemarks: data['opticalPowerRemarks']?.toString(),
+      fiberBoxId: data['fiberBoxId']?.toString(),
+      fiberBoxName: data['fiberBoxName']?.toString(),
+      fiberPortIndex: (data['fiberPortIndex'] as num?)?.toInt(),
     );
+  }
+
+  /// Scale:
+  /// >= -6.0 dBm -> Good / Normal (Green)
+  /// >= -10.0 dBm -> Warning / Low (Orange)
+  /// < -10.0 dBm (e.g. -11, -12, -15) -> Critical / Loss (Red)
+  String? get opticalPowerStatus {
+    if (opticalPower == null) return null;
+    if (opticalPower! >= -6.0) return 'Good';
+    if (opticalPower! >= -10.0) return 'Low';
+    return 'Critical';
   }
 
   bool get isInternetCustomer {

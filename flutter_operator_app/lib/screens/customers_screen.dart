@@ -5,6 +5,7 @@ import '../models/customer.dart';
 import '../models/models.dart';
 import '../services/whatsapp_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/optical_power_modal.dart';
 import 'customer_details_screen.dart';
 import 'add_customer_screen.dart';
 
@@ -389,6 +390,56 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             color: !hasRecharge
                                 ? const Color(0xFF475569)
                                 : (isExpired ? AppColors.danger : const Color(0xFF16A34A)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () {
+                          OpticalPowerModal.show(
+                            context,
+                            customer: cust,
+                            operatorName: widget.operatorName,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cust.opticalPower != null
+                                ? OpticalPowerConfig.getStatusBgColor(cust.opticalPower!)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: cust.opticalPower != null
+                                  ? OpticalPowerConfig.getStatusBorderColor(cust.opticalPower!)
+                                  : const Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.settings_input_antenna_rounded,
+                                size: 11,
+                                color: cust.opticalPower != null
+                                    ? OpticalPowerConfig.getStatusColor(cust.opticalPower!)
+                                    : const Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                cust.opticalPower != null
+                                    ? "${cust.opticalPower!.toStringAsFixed(1)} dBm"
+                                    : "Power",
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: cust.opticalPower != null
+                                      ? OpticalPowerConfig.getStatusColor(cust.opticalPower!)
+                                      : const Color(0xFF475569),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

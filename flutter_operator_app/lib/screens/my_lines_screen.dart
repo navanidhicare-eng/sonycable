@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/customer.dart';
 import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
+import 'line_design_screen.dart';
 
 class MyLinesScreen extends StatefulWidget {
   final String operatorName;
@@ -398,6 +399,45 @@ class _MyLinesScreenState extends State<MyLinesScreen> {
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.bold,
                                                     color: custCount > 0 ? const Color(0xFF16A34A) : AppColors.textMuted,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              InkWell(
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => LineDesignScreen(
+                                                        operatorName: widget.operatorName,
+                                                        operatorUid: widget.operatorUid,
+                                                        initialLineName: lineName,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius: BorderRadius.circular(6),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFEFF6FF),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                                  ),
+                                                  child: const Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.account_tree_rounded, size: 12, color: Color(0xFF2563EB)),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        "Fiber Map",
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Color(0xFF1D4ED8),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ),
